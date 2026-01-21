@@ -127,6 +127,7 @@ beforeEach(() => {
 // };
 
 // Suppress React Router v7 future flag deprecation warnings in tests only
+/* eslint-disable no-console */
 (() => {
   const originalWarn = console.warn.bind(console);
   const shouldFilter = (args) => {
@@ -143,3 +144,4 @@ beforeEach(() => {
     originalWarn(...args);
   });
 })();
+/* eslint-enable no-console */

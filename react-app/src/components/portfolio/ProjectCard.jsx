@@ -1,4 +1,3 @@
-import React from 'react';
 import GlassCard from '../glass/GlassCard';
 
 const ProjectCard = ({ title, description, tech = [] }) => {

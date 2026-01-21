@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { fadeUpBlur } from '../../lib/motion';
 import GlassCard from '../glass/GlassCard';

@@ -1,5 +1,3 @@
-import React from 'react';
-
 function SectionContainer({ id, className = '', style = {}, children }) {
   return (
     <section id={id} className={`section-space ${className}`} style={style}>
