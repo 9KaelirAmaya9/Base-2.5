@@ -35,6 +35,31 @@ pre-commit run --all-files
 - Playwright E2E: runs via deploy script; artifacts under local_run_logs/<run>/react-app/playwright/
 - API/Django Pytest: runs inside containers; outputs under local_run_logs/<run>/(api|django)/
 
+## Public vs Protected Routes (React)
+
+Route wiring lives in react-app/src/App.js.
+
+Public routes (no auth required):
+
+- / (Home)
+- /login
+- /signup
+- /items
+- /verify-email
+- /forgot-password
+- /reset-password
+
+Protected routes (auth required):
+
+- /dashboard
+- /settings
+
+Protected behavior:
+
+- Protected routes are wrapped by react-app/src/components/ProtectedRoute.jsx.
+- If unauthenticated, the user is redirected to /login?next=<original-path>.
+- While auth state is loading, a full-height loading state is shown.
+
 ## Storybook
 
 Run Storybook locally:

@@ -46,6 +46,17 @@ Alias/Flag note: Recent runs used `-RunAllTests` which is equivalent to `-AllTes
 - If UpdateOnly changes don’t reflect on the droplet, verify a recent push to `origin/<DO_APP_BRANCH>`.
 - For DNS allowlists, the script updates `.env` with your public IP; restart Traefik if needed.
 
+## Cache guidance (SPA)
+
+CRA builds produce hashed asset filenames, so `static/js/*.js` and `static/css/*.css` can be cached long-term.
+
+The main risk is `index.html` being cached too aggressively, which can create a mismatch where some clients (often mobile) fetch a new `index.html` referencing new assets while others keep an older HTML (or vice-versa).
+
+Recommended posture:
+
+- Cache `index.html` with `no-store` (or very short TTL), and cache hashed assets as `immutable`.
+- After deploying breaking frontend changes, if you see “desktop works, mobile broken”, force-refresh on mobile and consider purging any proxy/CDN cache for `index.html`.
+
 ## Migration Safety (CI)
 
 CI enforces Django migration safety by failing if model changes are detected without migrations.

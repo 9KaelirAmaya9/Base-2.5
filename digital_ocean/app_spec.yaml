@@ -1,0 +1,22 @@
+# DigitalOcean App Platform spec (OPTIONAL)
+#
+# This repository primarily deploys to a Droplet using Docker Compose.
+# This file exists to support App Platform deployments when DO_APP_SPEC_PATH
+# is configured.
+#
+# NOTE: Keep this minimal and treat it as documentation unless you actively
+# use App Platform.
+
+name: base2-app
+region: nyc3
+services:
+  - name: web
+    # Placeholder; update with your own repo/image strategy if using App Platform.
+    github:
+      repo: woodkill00/base2
+      branch: main
+      deploy_on_push: false
+    envs:
+      - key: REACT_APP_GOOGLE_CLIENT_ID
+        scope: BUILD_TIME
+        value: '${REACT_APP_GOOGLE_CLIENT_ID}'

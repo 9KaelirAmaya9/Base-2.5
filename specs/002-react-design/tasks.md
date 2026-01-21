@@ -4,362 +4,214 @@ description: 'Tasks for React Glass UI System + App Shell'
 
 # Tasks: React Glass UI System + App Shell
 
-**Input**: Design documents from specs/002-react-design/
-**Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
+Input: Design documents from specs/002-react-design/
+Prerequisites: specs/002-react-design/plan.md (required), specs/002-react-design/spec.md (required for user stories), specs/002-react-design/research.md, specs/002-react-design/data-model.md, specs/002-react-design/contracts/
 
-**Tests**: Tests are mandatory and must be written first per constitution. Include RTL, accessibility (jest-axe), and Storybook interaction tests.
+Tests: Tests are REQUIRED for this feature (RTL, jest-axe, Storybook interactions, Playwright) per specs/002-react-design/plan.md and specs/002-react-design/spec.md.
+Organization: Tasks are grouped by user story to enable independent implementation and testing.
 
-**Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
+Checklist format (REQUIRED):
 
-## Format: `[ID] [P?] [Story] Description`
+```text
+ - [ ] T001 [P] [US1] Description with file path
+```
 
-- [P]: Can run in parallel (different files, no dependencies)
-- [Story]: Which user story this task belongs to (e.g., US1, US2, US3)
-- Include exact file paths in descriptions (absolute paths)
+Notes:
+
+- [P] tasks can be done in parallel (different files, no dependency)
+- [US1]/[US2]/[US3] labels appear only inside user story phases
+- All task descriptions include repo-relative file paths
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-**Purpose**: Project initialization and basic structure for the frontend feature.
+Purpose: Project initialization and baseline wiring for the React frontend.
 
-- [x] T001 [P] Create glass styles directory at c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\
-- [x] T002 [P] Create component library directory at c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\
-- [x] T003 [P] Create Storybook stories directory at c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\
-- [x] T004 Add spec README pointer in c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\quickstart.md
-- [x] T005 Ensure npm dependencies installed in c:\Users\theju\Documents\coding\website_build\base2\react-app\package.json
+- [x] T001 [P] Ensure frontend dependencies install cleanly in react-app/package.json
+- [x] T002 [P] Ensure Storybook is runnable and configured in react-app/.storybook/preview.js
+- [x] T003 [P] Ensure Playwright runner is configured in react-app/playwright.config.js
+- [x] T004 [P] Confirm baseline test setup is present (RTL + jest-axe helpers) in react-app/src/setupTests.js
+- [x] T005 Add feature pointers to quickstart in specs/002-react-design/quickstart.md
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: Core infrastructure that MUST be complete before ANY user story can be implemented.
+Purpose: Core styling and layout primitives that block all user stories.
 
-- [x] T006 Define CSS tokens (glass, spacing, motion, layout) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\tokens.css
+CRITICAL: No user story work starts until this phase completes.
 
-- [x] T007 [P] Add global glass base styles and `.dark` class handling in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\glass.css
-- [x] T008 [P] Wire tokens and base styles in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\App.css
-- [x] T009 [P] Early theme hydration snippet in c:\Users\theju\Documents\coding\website_build\base2\react-app\public\index.html
+- [x] T006 Define/verify design tokens (glass + layout + motion + focus) in react-app/src/styles/tokens.css
+- [x] T007 [P] Define global glass base styles and dark-mode variants in react-app/src/styles/glass.css
+- [x] T008 [P] Define mesh/gradient background primitives for light/dark in react-app/src/styles/background.css
+- [x] T009 [P] Ensure global style import order (tokens → background → glass → app) in react-app/src/App.css
+- [x] T010 [P] Add early theme hydration script to set theme class before React mounts in react-app/public/index.html
+- [x] T011 Wire style entrypoints (tokens/glass/background) in react-app/src/index.js
+- [x] T012 [P] Add/verify Storybook global style loading matches app order in react-app/.storybook/preview.js
+- [x] T013 Confirm API contracts unchanged for this feature (no new endpoints) by reviewing specs/002-react-design/contracts/openapi.yaml
 
-### Design Port Additions (Build Home Page Design)
-
-- [x] T084 [P] Inventory source design system under ./junk/idea/ (c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\styles\index.css, theme.css, glass.css; and c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\*.tsx) and map → Base2 targets in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\README-design-port.md
-- [x] T085 Update/ensure required glass + layout + motion + focus tokens (including --drawer-w and --sidebar-w capped at 20vw) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\tokens.css, porting intent from c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\styles\theme.css
-- [x] T086 Update/ensure base glass classes include drawer transitions and modal overlay/panel styles in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\glass.css, ported from c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\styles\glass.css
-- [x] T087 [P] Create mesh/gradient background system (light + dark + reduced-motion guards) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\background.css, porting `.gradient-background` from c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\styles\glass.css
-- [x] T088 [P] Ensure global style import order is tokens.css → background.css → glass.css → globals in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\App.css, mirroring the source order in c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\styles\index.css
-
-**Checkpoint**: Foundation ready - user story implementation can now begin in parallel.
+Checkpoint: Foundation ready; user stories can proceed.
 
 ---
 
-## Phase 3: User Story 1 - Toggle Theme + Glass Fidelity (Priority: P1) 🎯 MVP
+## Phase 3: User Story 1 - Toggle Theme + Glass Fidelity (Priority: P1) MVP
 
-**Goal**: Persistent theme toggle and visible glass fidelity in the App Shell.
+Goal: Users can toggle light/dark and see consistent glass fidelity across the shell.
+Independent Test: Toggle theme; reload; theme persists via cookie; no flicker; focus-visible glow present; contrast meets 4.5:1 for key text.
 
-**Independent Test**: Toggle persists across reloads; glass acceptance checklist passes in light/dark; focus-visible glow visible; contrast ≥ 4.5:1.
+### Tests for User Story 1 (write first)
 
-### Testing Scenarios
-
-- Cookie precedence: backend profile override → client `theme` cookie → `prefers-color-scheme` fallback.
-- No localStorage usage; root theme class set before React mounts to prevent flicker.
-- Set-Cookie attributes present: Secure=true, SameSite=Lax, Path=/, Domain=.woodkilldev.com, Expires≈180 days.
-- Fallback when `backdrop-filter` is unsupported: semi-transparent background + border/shadow (no blur) retains fidelity.
-- Focus-visible glow (3px) and contrast ≥ 4.5:1 validated across interactive elements.
-
-### Tests for User Story 1 (MANDATORY — write first)
-
-- [x] T050 [P] [US1] RTL unit tests for ThemeToggle in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\theme-toggle.test.tsx
-- [x] T051 [P] [US1] Accessibility tests (jest-axe) for focus-visible and contrast in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\glass-a11y.test.tsx
-- [x] T052 [P] [US1] Storybook interaction tests for Header/ThemeToggle in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\ThemeToggle.stories.tsx
-- [x] T063 [P] [US1] RTL tests: cookie precedence (backend override > client cookie > prefers-color-scheme) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\theme-persistence.test.tsx
-- [x] T064 [P] [US1] RTL tests: ensure no localStorage usage and root theme class set pre-mount in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\theme-persistence.test.tsx
-- [x] T065 [P] [US1] Playwright e2e: verify Set-Cookie attributes (Secure, SameSite=Lax, Path=/, Domain=.woodkilldev.com, Expires≈180d) in c:\Users\theju\Documents\coding\website_build\base2\react-app\e2e\theme-cookie.spec.js
-- [x] T066 [P] [US1] RTL/Storybook: simulate no `backdrop-filter` support and verify fallback styles (semi-transparent + border/shadow) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\glass-fallback.test.jsx
+- [x] T014 [P] [US1] Add RTL tests for theme toggle behavior in react-app/src/**tests**/glass-header.test.tsx
+- [x] T015 [P] [US1] Add RTL tests for cookie persistence + prefers-color-scheme fallback in react-app/src/**tests**/app-shell.test.tsx
+- [x] T016 [P] [US1] Add accessibility tests for focus-visible + basic landmarks (jest-axe) in react-app/src/**tests**/\_\_home/home-a11y.test.jsx
+- [x] T017 [P] [US1] Add Storybook interaction coverage for theme toggle in react-app/src/stories/glass/GlassHeader.stories.tsx
 
 ### Implementation for User Story 1
 
-- [x] T010 [P] [US1] Implement `ThemeToggle` component in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\ThemeToggle.tsx
-- [x] T011 [P] [US1] Add theme persistence util in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\services\theme\persistence.ts
-- [x] T012 [P] [US1] Implement animated sun/moon SVG in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\icons\SunMoon.tsx
-- [x] T013 [US1] Integrate `ThemeToggle` into app header in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassHeader.tsx
-- [x] T014 [US1] Apply focus-visible 3px glow to interactive elements in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\glass.css
-- [x] T015 [US1] Storybook: ThemeToggle and header stories (light/dark, hover/focus) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\ThemeToggle.stories.tsx
+- [x] T018 [US1] Implement deterministic theme resolution (cookie → system) in react-app/src/contexts/ThemeContext.js
+- [x] T019 [US1] Wire ThemeProvider at app root in react-app/src/App.js
+- [x] T020 [P] [US1] Implement/verify ThemeToggle control UI in react-app/src/components/glass/ThemeToggle.tsx
+- [x] T021 [US1] Ensure focus-visible 3px glow tokens and styles apply across components in react-app/src/styles/glass.css
+- [x] T022 [US1] Document theme persistence rules (cookie attributes, precedence) in specs/002-react-design/quickstart.md
 
-**Checkpoint**: User Story 1 independently testable via UI and Storybook.
+Checkpoint: US1 is independently testable (toggle + persistence + a11y).
 
 ---
 
 ## Phase 4: User Story 2 - Compose Screens with Glass Components (Priority: P2)
 
-**Goal**: Reusable glass component library for screens: cards, buttons, inputs, tabs, modals, spinners, skeletons.
+Goal: A reusable glass component library plus a composed public Home page.
+Independent Test: Render each component in Storybook with states; Home page renders with no API calls and passes basic a11y.
 
-**Independent Test**: Each component renders in isolation with accessible states; Storybook stories demonstrate light/dark and interaction states without console warnings.
+### Tests for User Story 2 (write first)
 
-### Testing Scenarios
-
-- Blur fallback: when `backdrop-filter` unsupported, components render semi-transparent with border/shadow (no blur) consistently.
-- Storybook interactions validate light/dark themes with fallback toggles; no console warnings.
-- Accessibility in fallback mode: contrast ≥ 4.5:1 for key text/controls; focus-visible glow present.
-- Modal behavior: ESC/backdrop click closes; focus returns to trigger; tabs switch via keyboard.
-- Button variants show hover elevation and disabled states correctly under both themes.
-
-### Tests for User Story 2 (MANDATORY — write first)
-
-- [x] T053 [P] [US2] RTL tests for `GlassButton` variants in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\glass-button.test.tsx
-- [x] T054 [P] [US2] RTL tests for `GlassModal` open/close + focus trap in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\glass-modal.test.tsx
-- [x] T055 [P] [US2] Storybook interaction tests for all components in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\glass\
-- [x] T067 [P] [US2] RTL tests: blur fallback active on components when `backdrop-filter` unsupported in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\glass-components-fallback.test.tsx
-- [x] T068 [P] [US2] Storybook interactions: verify light/dark with glass fallback toggles across components in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\glass\GlassFallback.stories.tsx
-- [x] T069 [P] [US2] Accessibility (jest-axe): contrast ≥ 4.5:1 in fallback mode for key text/controls in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\glass-a11y-fallback.test.tsx
+- [x] T023 [P] [US2] Add RTL tests for GlassButton variants and disabled state in react-app/src/**tests**/glass-button.test.tsx
+- [x] T024 [P] [US2] Add RTL tests for GlassCard variants and interactive states in react-app/src/**tests**/glass-card.test.tsx
+- [x] T025 [P] [US2] Add RTL tests for GlassModal open/close and focus return in react-app/src/**tests**/glass-modal.test.tsx
+- [x] T026 [P] [US2] Add RTL tests for GlassSidebar drawer behavior in react-app/src/**tests**/glass-sidebar.test.tsx
+- [x] T027 [P] [US2] Add Storybook stories for component library states in react-app/src/stories/glass/GlassButton.stories.tsx (and siblings: GlassCard/GlassInput/GlassModal/GlassSidebar/GlassHeader)
+- [x] T028 [P] [US2] Add Home page render + keyboard nav tests in react-app/src/**tests**/home/home-page.test.jsx
 
 ### Implementation for User Story 2
 
-- [x] T016 [P] [US2] Create `GlassCard` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassCard.tsx
-- [x] T017 [P] [US2] Create `GlassButton` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassButton.tsx
-- [x] T018 [P] [US2] Create `GlassInput` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassInput.tsx
-- [x] T019 [P] [US2] Create `GlassTabs` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassTabs.tsx
-- [x] T020 [P] [US2] Create `GlassModal` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassModal.tsx
-- [x] T021 [P] [US2] Create `GlassSpinner` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassSpinner.tsx
-- [x] T022 [P] [US2] Create `GlassSkeleton` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassSkeleton.tsx
-- [x] T023 [US2] Implement inline SVG icon pattern with aria labels in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\icons\README.md
-- [x] T024 [US2] Storybook: Stories for all components with light/dark, hover/focus, disabled/error in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\glass\
+- [x] T029 [P] [US2] Implement GlassCard component in react-app/src/components/glass/GlassCard.tsx
+- [x] T030 [P] [US2] Implement GlassButton component in react-app/src/components/glass/GlassButton.tsx
+- [x] T031 [P] [US2] Implement GlassInput component in react-app/src/components/glass/GlassInput.tsx
+- [x] T032 [P] [US2] Implement GlassModal component in react-app/src/components/glass/GlassModal.tsx
+- [x] T033 [P] [US2] Implement GlassHeader component (public/app variants) in react-app/src/components/glass/GlassHeader.tsx
+- [x] T034 [P] [US2] Implement GlassSidebar component (drawer + desktop) in react-app/src/components/glass/GlassSidebar.tsx
+- [x] T035 [US2] Compose public Home sections using glass components in react-app/src/pages/Home.js
+- [x] T036 [P] [US2] Implement HomeHero section in react-app/src/components/home/HomeHero.jsx
+- [x] T037 [P] [US2] Implement HomeFeatures/HomeVisual/HomeTrust/HomeFooter in react-app/src/components/home/HomeFeatures.jsx, react-app/src/components/home/HomeVisual.jsx, react-app/src/components/home/HomeTrust.jsx, react-app/src/components/home/HomeFooter.jsx
+- [x] T038 [US2] Add Home page Storybook composition in react-app/src/stories/home/HomePage.stories.jsx
 
-**Checkpoint**: Components independently testable; stories render with no console warnings.
-
----
-
-### Home Page (Public) — Implementation (User Story 2)
-
-**Goal**: Implement the Public Home Page (`/`) using glass components with a black backdrop, gradient/mesh background, and no API calls.
-
-**Independent Test**: Home page renders without API; sections present and accessible; glass visible in both themes; no flat sections; no JS layout math.
-
-#### Implementation Tasks (Write tests first where applicable)
-
-- [x] T070 [P] [US2] Create Home components directory at c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\home\
-- [x] T071 [P] [US2] Implement `HomeHero` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\home\HomeHero.jsx
-- [x] T072 [P] [US2] Implement `HomeFeatures` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\home\HomeFeatures.jsx
-- [x] T073 [P] [US2] Implement `HomeVisual` (lazy-load Illustration) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\home\HomeVisual.jsx
-- [x] T074 [P] [US2] Implement `HomeTrust` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\home\HomeTrust.jsx
-- [x] T075 [P] [US2] Implement `HomeFooter` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\home\HomeFooter.jsx
-- [x] T076 [US2] Compose sections on Home page in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\pages\Home.js (gradient/mesh background; glass-only containers; black backdrop)
-- [x] T077 [P] [US2] Add ARIA labels and role="img" for inline SVGs in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\home\
-- [x] T078 [P] [US2] Add search-style glass input in header (public variant) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassHeader.tsx
-- [x] T079 [P] [US2] Add assets (logo.svg, hero.svg/webp, feature icons, decorative-glass.svg, mesh-light.svg, mesh-dark.svg) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\assets\
-
-#### Tests for Home Page
-
-- [x] T080 [P] [US2] Storybook composition: Home page in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\home\HomePage.stories.jsx
-- [x] T081 [P] [US2] RTL tests: sections render and keyboard navigation works in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\_\_home\home-page.test.jsx
-- [x] T082 [P] [US2] Playwright: verify black backdrop and glass visibility across sections in c:\Users\theju\Documents\coding\website_build\base2\react-app\e2e\home-style.spec.ts
-- [x] T083 [P] [US2] Accessibility (jest-axe): focus-visible glow everywhere and contrast ≥ 4.5:1 in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\_\_home\home-a11y.test.jsx
-
-#### Design Port Additions (Build Home Page Design)
-
-- [x] T089 [P] [US2] Add home page assets folder and document usage/ownership in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\assets\home\README.md (source references, if any, live under c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\)
-- [x] T090 [US2] Ensure Home page makes zero API requests and uses only glass components + CTAs to /signup and /login in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\pages\Home.js, using layout/content intent from c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\hero.tsx and footer.tsx
-- [x] T091 [US2] Implement hero layout constraints (min-height 50vh; max width 960px via calc) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\home\HomeHero.jsx, porting structure from c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\hero.tsx
-- [x] T092 [P] [US2] Add micro-interactions (idle float, hover elevation/glow, CTA hover pulse) with reduced-motion safety in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\home\HomeHero.jsx, porting behavior from c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\hero.tsx
-- [x] T093 [P] [US2] Ensure all home UI icons are inline SVG with role/aria-label defaults in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\home\, porting icon patterns from c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\hero.tsx, features.tsx, trust-section.tsx
-
-**Checkpoint**: Public Home Page independently testable and compliant with spec.
+Checkpoint: US2 is independently testable via Storybook + Home page tests.
 
 ---
 
 ## Phase 5: User Story 3 - Calc-Driven Responsive App Shell (Priority: P3)
 
-**Goal**: App Shell layout using CSS `calc()` for header, sidebar, content, footer; responsive constraints without JS layout math.
+Goal: App shell layout uses CSS calc discipline (no JS layout math) and is responsive.
+Independent Test: Resize viewport; sidebar respects bounds; content height uses calc(100vh - header - footer); mobile drawer works.
 
-**Independent Test**: Resize viewport; verify header/footer heights, sidebar width, and content height computed via `calc()` with min/max bounds.
+### Tests for User Story 3 (write first)
 
-### Testing Scenarios
-
-- Sidebar width respects bounds 320–400px and `calc(100vw * 0.25)` across desktop widths.
-- Content height equals `calc(100vh - header - footer)`; stable with minimal layout shift.
-- Layout shift ≤ 5% measured via Lighthouse/Web Vitals; no JS layout math used.
-- Safe-area insets respected with `env(safe-area-inset-*)` where applicable.
-
-### Tests for User Story 3 (MANDATORY — write first)
-
-- [x] T056 [P] [US3] Playwright e2e checks for calc sizes and sidebar bounds in c:\Users\theju\Documents\coding\website_build\base2\react-app\e2e\app-shell.spec.ts
-- [x] T057 [P] [US3] Performance measurement: Lighthouse/Web Vitals layout shift ≤ 5% in c:\Users\theju\Documents\coding\website_build\base2\react-app\scripts\perf\layout-shift.spec.ts
-
-### Design Port Additions Tests (Drawer/Sidebar behavior)
-
-- [x] T094 [P] [US3] RTL tests: side menu hidden by default, opens on toggle, closes on overlay click + ESC, and focus returns in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_glass-sidebar-drawer.test.tsx (behavior reference: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\side-menu.tsx)
-- [x] T095 [P] [US3] Playwright: drawer open/close on mobile viewport + sidebar width ≤ 20vw on desktop in c:\Users\theju\Documents\coding\website_build\base2\react-app\e2e\side-menu.spec.ts (behavior reference: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\side-menu.tsx)
+- [x] T039 [P] [US3] Add RTL tests for AppShell structure and layout class wiring in react-app/src/**tests**/pages-glass.test.jsx
+- [x] T040 [P] [US3] Add Playwright checks for responsive behavior in react-app/e2e/app-shell-layout.spec.ts
+- [x] T041 [P] [US3] Add Playwright checks for sidebar drawer behavior in react-app/e2e/app-shell-sidebar.spec.ts
 
 ### Implementation for User Story 3
 
-- [x] T025 [P] [US3] Implement `GlassHeader` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassHeader.tsx
-- [x] T026 [P] [US3] Implement `GlassSidebar` (5 items) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassSidebar.tsx
-- [x] T027 [P] [US3] Implement `AppShell` and content grid in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\AppShell.tsx
-- [x] T028 [US3] Apply layout tokens and calc discipline in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\tokens.css
-- [x] T029 [US3] Storybook: AppShell composition and responsive grid in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\AppShell.stories.tsx
+- [x] T042 [P] [US3] Implement AppShell layout wrapper (public/app variants) in react-app/src/components/glass/AppShell.tsx
+- [x] T043 [US3] Enforce calc-based sizing tokens (header/footer/sidebar/content) in react-app/src/styles/tokens.css
+- [x] T044 [US3] Ensure page routes use AppShell variants correctly in react-app/src/App.js
+- [x] T045 [US3] Add AppShell Storybook composition and responsive controls in react-app/src/stories/glass/AppShell.stories.tsx
 
-### Design Port Additions (Hidden-by-default side menu; public vs app shell)
-
-- [x] T096 [US3] Add header menu toggle button with aria-controls/aria-expanded and inline SVG icon in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassHeader.tsx (source behavior: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\header.tsx)
-- [x] T097 [US3] Implement side menu as hidden-by-default drawer on mobile (overlay, ESC close, scroll lock, focus management) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassSidebar.tsx (source behavior: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\side-menu.tsx)
-- [x] T098 [US3] Enforce desktop side menu width never exceeds 20vw via tokens + CSS (no JS layout math) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\tokens.css (source intent: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\styles\theme.css)
-- [x] T099 [US3] Add AppShell variants (public/app) so public routes have no persistent sidebar and app routes allow toggleable sidebar on desktop in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\AppShell.tsx (source composition: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\App.tsx)
-- [x] T100 [US3] Ensure content height uses calc(100vh - var(--nav-h) - var(--footer-h)) and respects safe-area insets in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\AppShell.tsx (source intent: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\styles\glass.css and theme.css)
-
-**Checkpoint**: App Shell independently testable; layout validates via calc-only sizing.
+Checkpoint: US3 is independently testable via Playwright + Storybook.
 
 ---
 
-## Phase 6: Integration
+## Phase 6: Integration (Cross-Story)
 
-**Purpose**: Wrap target pages and ensure no auth/routing regressions.
+Purpose: Ensure target pages and global wiring are stable and do not change auth or backend/API behavior.
 
-- [x] T030 [US2] Integrate components into dashboard in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\pages\Dashboard.tsx
-- [x] T031 [US2] Integrate components into settings in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\pages\Settings.tsx
-- [x] T032 Preserve auth behavior and routing; verify no changes in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\services\auth\
-
----
-
-## Phase 7: Accessibility & Performance Review
-
-**Purpose**: Accessibility checks and performance sanity.
-
-- [x] T033 [P] Focus-visible glow validation across components in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\glass.css
-- [x] T034 [P] Keyboard navigation and focus management validation in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\
-- [x] T035 [P] Reduced-motion support and transform-only animations in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\glass.css
-- [x] T036 [P] Contrast checks ≥ 4.5:1 for key text/controls in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\
-
----
-
-## Phase 8: Storybook Review
-
-**Purpose**: Stories for all components and compositions; verify interaction states and no console warnings.
-
-- [x] T037 [P] Run Storybook and fix warnings in c:\Users\theju\Documents\coding\website_build\base2\react-app\
-- [x] T038 [P] Add interaction stories and controls for components in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\glass\
-- [x] T039 [P] Ensure stories cover modal open and responsive grid in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\
-
-### Design Port Additions (Storybook)
-
-- [x] T101 [P] Add Storybook stories for GlassSidebar open/closed (mobile drawer + desktop cap) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\glass\GlassSidebar.stories.tsx (source reference: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\side-menu.tsx)
-- [x] T102 [P] Add Storybook stories for GlassHeader public/app variants (menu toggle + search/title slot) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\glass\GlassHeader.stories.tsx (source reference: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\header.tsx)
-- [x] T103 [P] Ensure Storybook loads tokens + background + glass styles globally in c:\Users\theju\Documents\coding\website_build\base2\react-app\.storybook\preview.js (source import order: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\styles\index.css)
+- [x] T046 Integrate AppShell + GlassHeader/GlassSidebar on authenticated pages in react-app/src/pages/Dashboard.jsx
+- [x] T047 Integrate AppShell + GlassHeader/GlassSidebar on authenticated pages in react-app/src/pages/Settings.jsx
+- [x] T048 Confirm auth flows are unchanged (no token/routing behavior changes) by reviewing react-app/src/contexts/AuthContext.js
 
 ---
 
 ## Final Phase: Polish & Cross-Cutting Concerns
 
-**Purpose**: Improvements that affect multiple user stories.
+Purpose: Cross-cutting hardening, docs, and operational safety.
 
-- [x] T040 [P] Documentation updates in c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\
-- [x] T041 Code cleanup and refactoring in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\
-- [x] T042 Performance optimization across stories in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\
-- [x] T043 [P] Quickstart validation and checklist in c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\quickstart.md
-- [x] T044 [P] Prepare deploy script usage notes (update-only + all tests) in c:\Users\theju\Documents\coding\website_build\base2\docs\DEPLOY.md
-- [x] T045 [P] After push, run deploy script update-only with all tests in c:\Users\theju\Documents\coding\website_build\base2\digital_ocean\scripts\powershell\deploy.ps1
-- [x] T060 [P] Validate Visual Acceptance Checklist across AppShell and components in c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\checklists\requirements.md
-- [x] T061 [P] Observability artifact review post-deploy (logs, configs, health responses) in c:\Users\theju\Documents\coding\website_build\base2\local_run_logs\
-- [x] T062 [P] Performance verification: confirm layout shift metrics (CLS/Web Vitals) meet targets documented in c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\plan.md
+- [x] T049 [P] Run and document local validation commands (lint/test/build/storybook) in docs/TESTING.md
+- [x] T050 [P] Update developer notes for telling public vs protected routes in docs/DEVELOPMENT.md
 
----
+### Additional tasks imported from junk/woodkilldev-speckit-tasks.md
 
-## Phase 9: Follow-on — Exact Parity with junk/idea (Public Home)
+- [x] T051 [P] Remove standalone "..." placeholders from react-app/src/contexts/ThemeContext.js
+- [x] T052 [P] Remove standalone "..." placeholders from react-app/src/components/ErrorBoundary.jsx
+- [x] T053 Add repo-wide guard to prevent "..." placeholder commits by documenting a grep check in docs/TESTING.md
 
-**Purpose**: User-approved follow-on work to make the `react-app` public landing experience visually match `c:\Users\theju\Documents\coding\website_build\base2\junk\idea\` exactly.
+- [x] T054 Add error + component stack logging in ErrorBoundary componentDidCatch in react-app/src/components/ErrorBoundary.jsx
 
-- [x] T200 Add runtime deps used by `junk/idea` (motion + lucide-react) in c:\Users\theju\Documents\coding\website_build\base2\react-app\package.json
-- [x] T201 Add copied Vite/Tailwind compiled CSS bundle in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\idea-vite.css (source: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\dist\assets\index-\*.css)
-- [ ] T202 Port `junk/idea` landing components (Header, SideMenu, Hero, Features, VisualSection, TrustSection, Footer, Modal/SubPageModal, ImageWithFallback) into c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\idea\
-- [ ] T203 Replace c:\Users\theju\Documents\coding\website_build\base2\react-app\src\pages\Home.js composition to match c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\App.tsx (keep Login/Sign Up CTAs wired to /login and /signup)
-- [ ] T204 Ensure theme toggle updates both `.dark` and the `theme` cookie in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\idea\Header.tsx (using c:\Users\theju\Documents\coding\website_build\base2\react-app\src\services\theme\persistence.ts)
-- [ ] T205 Update public home tests to match the new parity layout while preserving global 100% coverage in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests**\_\_home\ and c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests**\home\
+- [x] T055 Update CSP to allow Google OAuth domains (script-src/connect-src/frame-src) in traefik/dynamic.yml
+- [x] T056 Validate CSP changes in docs by adding a troubleshooting section in docs/CONFIG.md
 
-### Design Port Additions (Modal unification + cross-cutting audit)
+- [x] T057 [P] Move inline theme init from react-app/public/index.html to external script file react-app/public/theme-init.js
+- [x] T058 Update index.html to reference theme-init.js in react-app/public/index.html
 
-- [x] T104 [US2] Update GlassModal visual parity (overlay + close button SVG + spacing tokens) and keep focus trap behavior passing in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassModal.tsx (source references: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\modal.tsx and sub-page-modal.tsx)
-- [x] T105 [P] Audit and replace any non-standard modal/dialog usage with GlassModal in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\pages\ (source references: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\modal.tsx and sub-page-modal.tsx)
-- [x] T106 Ensure public routes use AppShell public variant and authed routes use AppShell app variant without routing/auth logic changes in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\App.js
-- [x] T107 [P] Add a design-port final review checklist doc and link it from quickstart in c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\checklists\design-port.md
+- [x] T059 Ensure production builds inject REACT_APP_GOOGLE_CLIENT_ID via deploy configuration in local.docker.yml
+- [x] T060 Ensure production builds inject REACT_APP_GOOGLE_CLIENT_ID via deploy configuration in digital_ocean/app_spec.yaml
+
+- [x] T061 Add cache guidance for index.html vs hashed assets (purge strategy) in docs/DEPLOY.md
+- [x] T062 Add a mobile regression checklist (iOS Safari + Android Chrome + dark mode) in docs/RELEASE.md
+- [ ] T063 (Optional) Add frontend crash monitoring (Sentry) scaffolding in react-app/src/index.js
 
 ---
 
 ## Dependencies & Execution Order
 
-### Phase Dependencies
+Phase dependencies:
 
-- Setup (Phase 1): No dependencies - can start immediately.
-- Foundational (Phase 2): Depends on Setup completion - BLOCKS all user stories.
-- User Stories (Phases 3-5): Depend on Foundational - implement in priority order (P1 → P2 → P3) or parallel after Phase 2.
-- Integration (Phase 6): Depends on user story completion where integrated.
-- Accessibility/Performance (Phase 7): Independent but depends on components presence.
-- Storybook Review (Phase 8): Depends on stories creation.
-- Polish (Final): Depends on desired user stories being complete.
+- Setup (Phase 1) → Foundational (Phase 2) → User Stories (Phase 3+) → Integration → Polish
 
-### User Story Dependencies
+User story dependencies:
 
-- User Story 1 (P1): Starts after Foundational; no dependencies on other stories.
-- User Story 2 (P2): Starts after Foundational; independent, may integrate with US1 visually.
-- User Story 3 (P3): Starts after Foundational; independent; relies on tokens for layout.
+- US1 depends on Phase 2 (tokens + early hydration)
+- US2 depends on Phase 2; can proceed in parallel with US1 after Phase 2, but final UI review should include both
+- US3 depends on Phase 2 and US2 components (AppShell composes header/sidebar/content)
 
-### Parallel Opportunities
+Parallel opportunities:
 
-- Setup tasks T001–T003 can run in parallel.
-- Foundational tasks T006–T009 can run in parallel.
-- Within US2, component tasks T016–T022 can run in parallel.
-- Accessibility checks T033–T036 can run in parallel.
-- Storybook tasks T037–T039 can run in parallel.
+- Within Phase 2, T006–T012 can be split across styling vs Storybook wiring
+- Within each user story, tasks marked [P] can be assigned to different owners (tests, components, stories)
 
-## Parallel Example: User Story 2
+---
 
-- Create `GlassCard`, `GlassButton`, `GlassInput`, `GlassTabs`, `GlassModal`, `GlassSpinner`, `GlassSkeleton` in parallel (distinct files).
-- Write stories for each concurrently under src/stories/glass/.
+## Parallel Execution Examples
 
-## Parallel Example: User Story 1
+User Story 1 parallel bundle:
 
-- Write RTL tests for `ThemeToggle`, cookie precedence, fallback styling in parallel (distinct test files).
-- Implement `ThemeToggle`, persistence util, and header integration in parallel (separate files) before wiring in App Shell.
+- T014, T015, T016, T017 (tests/stories)
+- T020 (ThemeToggle UI) can proceed while T018/T019 is in progress
 
-## Parallel Example: User Story 3
+User Story 2 parallel bundle:
 
-- Implement `GlassHeader`, `GlassSidebar`, and `AppShell` in parallel (separate components).
-- Create Playwright calc-sizing e2e and performance spec in parallel with CSS token updates.
+- T029–T034 (glass components) in parallel
+- T023–T028 (tests/stories) in parallel
+- T036–T037 (home sections) in parallel
+
+---
 
 ## Implementation Strategy
 
-### MVP First (User Story 1 Only)
+MVP scope: Phase 1 + Phase 2 + US1 only.
 
-1. Complete Setup + Foundational.
-2. Implement theme toggle and header integration.
-3. Validate glass fidelity across app shell.
-4. Storybook validation, accessibility checks.
+Incremental delivery:
 
-### Incremental Delivery
-
-1. Add component library (US2) → Storybook coverage.
-2. Implement App Shell (US3) → Responsive grid.
-3. Integrate into pages (dashboard/settings) → No auth/routing changes.
-
-### Deployment Notes
-
-- After pushing to branch `002-react-design`, run deploy script with update-only and all tests:
-  - Path: c:\Users\theju\Documents\coding\website_build\base2\digital_ocean\scripts\powershell\deploy.ps1
-  - Flags: `-UpdateOnly -RunAllTests`
-
-### TypeScript Setup (Phase 1 additions)
-
-- [x] T046 [P] Add TypeScript to react-app: create c:\Users\theju\Documents\coding\website_build\base2\react-app\tsconfig.json and install devDependencies (typescript, @types/react, @types/react-dom, @types/jest).
-
-- [x] T047 [P] Configure Storybook for TypeScript in c:\Users\theju\Documents\coding\website_build\base2\react-app\.storybook\ (if not auto-detected).
-
-### Tailwind Usage Policy
-
-- [x] T048 Document Tailwind usage policy (utilities allowed, no removal/replacement, no global overrides, no new plugins) in c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\plan.md and c:\Users\theju\Documents\coding\website_build\base2\docs\DEVELOPMENT.md.
-- [x] T049 Add a style guard: scan for global overrides and ensure component-scoped CSS variables/tokens in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\.
-
-### Independent Test Criteria (per story)
-
-- US1: Theme toggle persists; glass acceptance checklist passes; focus-visible glow and contrast.
-- US2: Each component renders in isolation; ARIA labels present; stories pass without warnings.
-- US3: Layout sizes via `calc()`; sidebar 320–400px bounds; content height equals `calc(100vh - header - footer)`.
-
-### Suggested MVP Scope
-
-- US1 only: Theme toggle + glass fidelity in App Shell.
+1. Land Foundation (Phase 1–2) and validate styling + theme hydration
+2. Ship US1 (toggle + persistence + a11y) and validate independently
+3. Ship US2 (component library + Home composition) and validate independently
+4. Ship US3 (calc-driven AppShell) and validate independently
+5. Apply Polish tasks (including Speckit production hardening backlog)

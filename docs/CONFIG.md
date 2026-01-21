@@ -50,3 +50,22 @@ Frontend usage:
 
 - `react-app/src/flags.js` provides `fetchFlags()` and `isFlagEnabled()`.
 - If `window.__FLAGS__` is set (optional), the frontend will use it without making a network call.
+
+## Frontend OAuth + CSP (Google)
+
+If the React app uses `@react-oauth/google`, the browser must be allowed to load Google scripts/frames and make OAuth network calls.
+
+Symptoms of a CSP issue:
+
+- The app shows a blank screen or falls back to a generic "Something went wrong" error
+- The browser console shows CSP violations (e.g. "Refused to load the script" / "Refused to frame")
+
+Where to configure:
+
+- Traefik CSP middleware in traefik/dynamic.yml (`security-csp`)
+
+Minimum allowlist (typical):
+
+- `script-src`: `https://accounts.google.com` and `https://apis.google.com`
+- `connect-src`: `https://oauth2.googleapis.com` and `https://www.googleapis.com`
+- `frame-src`: `https://accounts.google.com`

@@ -21,6 +21,14 @@ Coverage thresholds enforced in CI and deploy gate.
 - Tests: `cd react-app && npm run test:ci`
 - E2E: `cd react-app && npm run e2e`
 
+### Frontend crash guard (placeholder check)
+
+To prevent accidental placeholder artifacts from shipping (e.g. a standalone `...` line in a module), run:
+
+`powershell -Command "Select-String -Path react-app/src/**/* -Pattern '^\s*\.\.\.\s*$' -List"`
+
+This should return no matches.
+
 ## Contract
 
 - Runtime OpenAPI vs contract: `cd api && pytest -q -m contract`
