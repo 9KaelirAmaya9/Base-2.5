@@ -8,6 +8,8 @@
     "axios": "^1.6.0",
     "framer-motion": "^11.18.2",
     "jwt-decode": "^4.0.0",
+    "lucide-react": "^0.562.0",
+    "motion": "^12.26.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0"

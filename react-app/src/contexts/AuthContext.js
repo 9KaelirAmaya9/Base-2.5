@@ -4,6 +4,30 @@ import { normalizeApiError } from '../lib/apiErrors';
 
 const AuthContext = createContext(null);
 
+const safeStorageGet = (key) => {
+  try {
+    return window.localStorage.getItem(key);
+  } catch (_) {
+    return null;
+  }
+};
+
+const safeStorageSet = (key, value) => {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch (_) {
+    // ignore
+  }
+};
+
+const safeStorageRemove = (key) => {
+  try {
+    window.localStorage.removeItem(key);
+  } catch (_) {
+    // ignore
+  }
+};
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -14,7 +38,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
-    const storedUser = localStorage.getItem('user');
+    const storedUser = safeStorageGet('user');
     if (!storedUser) {
       return null;
     }
@@ -22,7 +46,7 @@ export const AuthProvider = ({ children }) => {
     try {
       return JSON.parse(storedUser);
     } catch (error) {
-      localStorage.removeItem('user');
+      safeStorageRemove('user');
       return null;
     }
   });
@@ -41,19 +65,24 @@ export const AuthProvider = ({ children }) => {
       const userPayload = await authAPI.register(email, password, name);
       if (userPayload && userPayload.email) {
         setUser(userPayload);
-        localStorage.setItem('user', JSON.stringify(userPayload));
+        safeStorageSet('user', JSON.stringify(userPayload));
         if (userPayload.access_token) {
-          localStorage.setItem('token', userPayload.access_token);
+          safeStorageSet('token', userPayload.access_token);
         }
         if (userPayload.refresh_token) {
-          localStorage.setItem('refresh_token', userPayload.refresh_token);
+          safeStorageSet('refresh_token', userPayload.refresh_token);
         }
       }
       return { success: true, data: userPayload };
     } catch (error) {
       const apiErr = normalizeApiError(error, { fallbackMessage: 'Registration failed' });
       setError(apiErr.message);
-      return { success: false, error: apiErr.message, fields: apiErr.fields || null, code: apiErr.code };
+      return {
+        success: false,
+        error: apiErr.message,
+        fields: apiErr.fields || null,
+        code: apiErr.code,
+      };
     }
   };
 
@@ -64,12 +93,12 @@ export const AuthProvider = ({ children }) => {
       const userPayload = await authAPI.login(email, password);
 
       if (userPayload && userPayload.email) {
-        localStorage.setItem('user', JSON.stringify(userPayload));
+        safeStorageSet('user', JSON.stringify(userPayload));
         if (userPayload.access_token) {
-          localStorage.setItem('token', userPayload.access_token);
+          safeStorageSet('token', userPayload.access_token);
         }
         if (userPayload.refresh_token) {
-          localStorage.setItem('refresh_token', userPayload.refresh_token);
+          safeStorageSet('refresh_token', userPayload.refresh_token);
         }
         setUser(userPayload);
         return { success: true };
@@ -79,7 +108,12 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       const apiErr = normalizeApiError(error, { fallbackMessage: 'Login failed' });
       setError(apiErr.message);
-      return { success: false, error: apiErr.message, fields: apiErr.fields || null, code: apiErr.code };
+      return {
+        success: false,
+        error: apiErr.message,
+        fields: apiErr.fields || null,
+        code: apiErr.code,
+      };
     }
   };
 
@@ -90,11 +124,11 @@ export const AuthProvider = ({ children }) => {
       const data = await authAPI.googleAuth(credential);
 
       if (data && data.email && data.access_token) {
-        localStorage.setItem('token', data.access_token);
+        safeStorageSet('token', data.access_token);
         if (data.refresh_token) {
-          localStorage.setItem('refresh_token', data.refresh_token);
+          safeStorageSet('refresh_token', data.refresh_token);
         }
-        localStorage.setItem('user', JSON.stringify(data));
+        safeStorageSet('user', JSON.stringify(data));
         setUser(data);
         return { success: true };
       }
@@ -103,16 +137,21 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       const apiErr = normalizeApiError(error, { fallbackMessage: 'Google login failed' });
       setError(apiErr.message);
-      return { success: false, error: apiErr.message, fields: apiErr.fields || null, code: apiErr.code };
+      return {
+        success: false,
+        error: apiErr.message,
+        fields: apiErr.fields || null,
+        code: apiErr.code,
+      };
     }
   };
 
   // Legacy login function for compatibility
   const login = (userData, token = null) => {
     setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
+    safeStorageSet('user', JSON.stringify(userData));
     if (token) {
-      localStorage.setItem('token', token);
+      safeStorageSet('token', token);
     }
   };
 
@@ -124,9 +163,9 @@ export const AuthProvider = ({ children }) => {
       // Ignore network/server errors; we still clear local session state.
     } finally {
       setUser(null);
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
-      localStorage.removeItem('refresh_token');
+      safeStorageRemove('user');
+      safeStorageRemove('token');
+      safeStorageRemove('refresh_token');
     }
   };
 
@@ -134,7 +173,7 @@ export const AuthProvider = ({ children }) => {
   const updateUser = (userData) => {
     const updatedUser = { ...(user || {}), ...userData };
     setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
+    safeStorageSet('user', JSON.stringify(updatedUser));
   };
 
   // Verify email
@@ -147,7 +186,12 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       const apiErr = normalizeApiError(error, { fallbackMessage: 'Email verification failed' });
       setError(apiErr.message);
-      return { success: false, error: apiErr.message, fields: apiErr.fields || null, code: apiErr.code };
+      return {
+        success: false,
+        error: apiErr.message,
+        fields: apiErr.fields || null,
+        code: apiErr.code,
+      };
     }
   };
 
@@ -161,7 +205,12 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       const apiErr = normalizeApiError(error, { fallbackMessage: 'Failed to send reset email' });
       setError(apiErr.message);
-      return { success: false, error: apiErr.message, fields: apiErr.fields || null, code: apiErr.code };
+      return {
+        success: false,
+        error: apiErr.message,
+        fields: apiErr.fields || null,
+        code: apiErr.code,
+      };
     }
   };
 
@@ -175,7 +224,12 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       const apiErr = normalizeApiError(error, { fallbackMessage: 'Password reset failed' });
       setError(apiErr.message);
-      return { success: false, error: apiErr.message, fields: apiErr.fields || null, code: apiErr.code };
+      return {
+        success: false,
+        error: apiErr.message,
+        fields: apiErr.fields || null,
+        code: apiErr.code,
+      };
     }
   };
 
@@ -195,9 +249,5 @@ export const AuthProvider = ({ children }) => {
     resetPassword,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

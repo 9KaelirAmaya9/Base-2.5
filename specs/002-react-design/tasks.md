@@ -59,6 +59,14 @@
 - [x] T008 [P] Wire tokens and base styles in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\App.css
 - [x] T009 [P] Early theme hydration snippet in c:\Users\theju\Documents\coding\website_build\base2\react-app\public\index.html
 
+### Design Port Additions (Build Home Page Design)
+
+- [x] T084 [P] Inventory source design system under ./junk/idea/ (c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\styles\index.css, theme.css, glass.css; and c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\*.tsx) and map → Base2 targets in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\README-design-port.md
+- [x] T085 Update/ensure required glass + layout + motion + focus tokens (including --drawer-w and --sidebar-w capped at 20vw) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\tokens.css, porting intent from c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\styles\theme.css
+- [x] T086 Update/ensure base glass classes include drawer transitions and modal overlay/panel styles in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\glass.css, ported from c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\styles\glass.css
+- [x] T087 [P] Create mesh/gradient background system (light + dark + reduced-motion guards) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\background.css, porting `.gradient-background` from c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\styles\glass.css
+- [x] T088 [P] Ensure global style import order is tokens.css → background.css → glass.css → globals in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\App.css, mirroring the source order in c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\styles\index.css
+
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel.
 
 ---
@@ -161,9 +169,17 @@
 #### Tests for Home Page
 
 - [x] T080 [P] [US2] Storybook composition: Home page in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\home\HomePage.stories.jsx
-- [x] T081 [P] [US2] RTL tests: sections render and keyboard navigation works in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\home\home-page.test.jsx
+- [x] T081 [P] [US2] RTL tests: sections render and keyboard navigation works in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_home\home-page.test.jsx
 - [x] T082 [P] [US2] Playwright: verify black backdrop and glass visibility across sections in c:\Users\theju\Documents\coding\website_build\base2\react-app\e2e\home-style.spec.ts
-- [x] T083 [P] [US2] Accessibility (jest-axe): focus-visible glow everywhere and contrast ≥ 4.5:1 in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\home\home-a11y.test.jsx
+- [x] T083 [P] [US2] Accessibility (jest-axe): focus-visible glow everywhere and contrast ≥ 4.5:1 in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_home\home-a11y.test.jsx
+
+#### Design Port Additions (Build Home Page Design)
+
+- [x] T089 [P] [US2] Add home page assets folder and document usage/ownership in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\assets\home\README.md (source references, if any, live under c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\)
+- [x] T090 [US2] Ensure Home page makes zero API requests and uses only glass components + CTAs to /signup and /login in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\pages\Home.js, using layout/content intent from c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\hero.tsx and footer.tsx
+- [x] T091 [US2] Implement hero layout constraints (min-height 50vh; max width 960px via calc) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\home\HomeHero.jsx, porting structure from c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\hero.tsx
+- [x] T092 [P] [US2] Add micro-interactions (idle float, hover elevation/glow, CTA hover pulse) with reduced-motion safety in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\home\HomeHero.jsx, porting behavior from c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\hero.tsx
+- [x] T093 [P] [US2] Ensure all home UI icons are inline SVG with role/aria-label defaults in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\home\, porting icon patterns from c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\hero.tsx, features.tsx, trust-section.tsx
 
 **Checkpoint**: Public Home Page independently testable and compliant with spec.
 
@@ -187,6 +203,11 @@
 - [x] T056 [P] [US3] Playwright e2e checks for calc sizes and sidebar bounds in c:\Users\theju\Documents\coding\website_build\base2\react-app\e2e\app-shell.spec.ts
 - [x] T057 [P] [US3] Performance measurement: Lighthouse/Web Vitals layout shift ≤ 5% in c:\Users\theju\Documents\coding\website_build\base2\react-app\scripts\perf\layout-shift.spec.ts
 
+### Design Port Additions Tests (Drawer/Sidebar behavior)
+
+- [x] T094 [P] [US3] RTL tests: side menu hidden by default, opens on toggle, closes on overlay click + ESC, and focus returns in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_glass-sidebar-drawer.test.tsx (behavior reference: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\side-menu.tsx)
+- [x] T095 [P] [US3] Playwright: drawer open/close on mobile viewport + sidebar width ≤ 20vw on desktop in c:\Users\theju\Documents\coding\website_build\base2\react-app\e2e\side-menu.spec.ts (behavior reference: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\side-menu.tsx)
+
 ### Implementation for User Story 3
 
 - [x] T025 [P] [US3] Implement `GlassHeader` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassHeader.tsx
@@ -194,6 +215,14 @@
 - [x] T027 [P] [US3] Implement `AppShell` and content grid in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\AppShell.tsx
 - [x] T028 [US3] Apply layout tokens and calc discipline in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\tokens.css
 - [x] T029 [US3] Storybook: AppShell composition and responsive grid in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\AppShell.stories.tsx
+
+### Design Port Additions (Hidden-by-default side menu; public vs app shell)
+
+- [x] T096 [US3] Add header menu toggle button with aria-controls/aria-expanded and inline SVG icon in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassHeader.tsx (source behavior: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\header.tsx)
+- [x] T097 [US3] Implement side menu as hidden-by-default drawer on mobile (overlay, ESC close, scroll lock, focus management) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassSidebar.tsx (source behavior: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\side-menu.tsx)
+- [x] T098 [US3] Enforce desktop side menu width never exceeds 20vw via tokens + CSS (no JS layout math) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\tokens.css (source intent: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\styles\theme.css)
+- [x] T099 [US3] Add AppShell variants (public/app) so public routes have no persistent sidebar and app routes allow toggleable sidebar on desktop in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\AppShell.tsx (source composition: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\App.tsx)
+- [x] T100 [US3] Ensure content height uses calc(100vh - var(--nav-h) - var(--footer-h)) and respects safe-area insets in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\AppShell.tsx (source intent: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\styles\glass.css and theme.css)
 
 **Checkpoint**: App Shell independently testable; layout validates via calc-only sizing.
 
@@ -223,6 +252,18 @@
 ## Phase 8: Storybook Review
 
 **Purpose**: Stories for all components and compositions; verify interaction states and no console warnings.
+
+- [x] T037 [P] Run Storybook and fix warnings in c:\Users\theju\Documents\coding\website_build\base2\react-app\
+- [x] T038 [P] Add interaction stories and controls for components in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\glass\
+- [x] T039 [P] Ensure stories cover modal open and responsive grid in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\
+
+### Design Port Additions (Storybook)
+
+- [x] T101 [P] Add Storybook stories for GlassSidebar open/closed (mobile drawer + desktop cap) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\glass\GlassSidebar.stories.tsx (source reference: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\side-menu.tsx)
+- [x] T102 [P] Add Storybook stories for GlassHeader public/app variants (menu toggle + search/title slot) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\glass\GlassHeader.stories.tsx (source reference: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\header.tsx)
+- [x] T103 [P] Ensure Storybook loads tokens + background + glass styles globally in c:\Users\theju\Documents\coding\website_build\base2\react-app\.storybook\preview.js (source import order: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\styles\index.css)
+
+---
 
 ## Final Phase: Polish & Cross-Cutting Concerns
 
@@ -300,6 +341,28 @@
  - [x] T107 [P] Link to design bundle README in c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\plan.md and clarify no backend changes required
 
 **Checkpoint**: Home page design integrated into glass system; stories and tests validate fidelity, accessibility, and layout discipline without raster dependencies.
+## Phase 9: Follow-on — Exact Parity with junk/idea (Public Home)
+
+**Purpose**: User-approved follow-on work to make the `react-app` public landing experience visually match `c:\Users\theju\Documents\coding\website_build\base2\junk\idea\` exactly.
+
+- [x] T200 Add runtime deps used by `junk/idea` (motion + lucide-react) in c:\Users\theju\Documents\coding\website_build\base2\react-app\package.json
+- [x] T201 Add copied Vite/Tailwind compiled CSS bundle in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\idea-vite.css (source: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\dist\assets\index-\*.css)
+- [ ] T202 Port `junk/idea` landing components (Header, SideMenu, Hero, Features, VisualSection, TrustSection, Footer, Modal/SubPageModal, ImageWithFallback) into c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\idea\
+- [ ] T203 Replace c:\Users\theju\Documents\coding\website_build\base2\react-app\src\pages\Home.js composition to match c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\App.tsx (keep Login/Sign Up CTAs wired to /login and /signup)
+- [ ] T204 Ensure theme toggle updates both `.dark` and the `theme` cookie in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\idea\Header.tsx (using c:\Users\theju\Documents\coding\website_build\base2\react-app\src\services\theme\persistence.ts)
+- [ ] T205 Update public home tests to match the new parity layout while preserving global 100% coverage in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests**\_\_home\ and c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests**\home\
+
+### Design Port Additions (Modal unification + cross-cutting audit)
+
+- [x] T104 [US2] Update GlassModal visual parity (overlay + close button SVG + spacing tokens) and keep focus trap behavior passing in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassModal.tsx (source references: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\modal.tsx and sub-page-modal.tsx)
+- [x] T105 [P] Audit and replace any non-standard modal/dialog usage with GlassModal in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\pages\ (source references: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\components\modal.tsx and sub-page-modal.tsx)
+- [x] T106 Ensure public routes use AppShell public variant and authed routes use AppShell app variant without routing/auth logic changes in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\App.js
+- [x] T107 [P] Add a design-port final review checklist doc and link it from quickstart in c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\checklists\design-port.md
+
+---
+
+## Dependencies & Execution Order
+
 
 ### Phase Dependencies
 

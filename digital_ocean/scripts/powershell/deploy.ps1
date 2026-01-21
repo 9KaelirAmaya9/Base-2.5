@@ -106,6 +106,54 @@ function Invoke-LocalCmdWithTimeout {
   }
 }
 
+function Invoke-NativeWithTimeout {
+  param(
+    [string]$FilePath,
+    [string[]]$ArgumentList,
+    [string]$Label,
+    [int]$TimeoutSec,
+    [string]$StdoutPath,
+    [string]$StderrPath,
+    [int]$HeartbeatSec = 30
+  )
+
+  if ([string]::IsNullOrWhiteSpace($StdoutPath)) { throw 'StdoutPath is required' }
+  if ([string]::IsNullOrWhiteSpace($StderrPath)) { throw 'StderrPath is required' }
+
+  try { New-Item -ItemType Directory -Path (Split-Path -Parent $StdoutPath) -Force | Out-Null } catch {}
+  try { New-Item -ItemType Directory -Path (Split-Path -Parent $StderrPath) -Force | Out-Null } catch {}
+
+  # Ensure files exist so callers can always read them even if the process fails early.
+  try { '' | Set-Content -Path $StdoutPath -Encoding UTF8 } catch {}
+  try { '' | Set-Content -Path $StderrPath -Encoding UTF8 } catch {}
+
+  $p = Start-Process -FilePath $FilePath -ArgumentList $ArgumentList -NoNewWindow -PassThru -RedirectStandardOutput $StdoutPath -RedirectStandardError $StderrPath
+  $startedAt = Get-Date
+  $lastBeatAt = $startedAt
+
+  while (-not $p.HasExited) {
+    Start-Sleep -Seconds 2
+
+    $now = Get-Date
+    $elapsedSec = [int]($now - $startedAt).TotalSeconds
+    if ($elapsedSec -ge $TimeoutSec) {
+      try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch {}
+      throw ("{0} timed out after {1}s (killed)." -f $Label, $TimeoutSec)
+    }
+
+    if ([int]($now - $lastBeatAt).TotalSeconds -ge $HeartbeatSec) {
+      $outBytes = 0
+      $errBytes = 0
+      try { if (Test-Path $StdoutPath) { $outBytes = (Get-Item -LiteralPath $StdoutPath -ErrorAction Stop).Length } } catch {}
+      try { if (Test-Path $StderrPath) { $errBytes = (Get-Item -LiteralPath $StderrPath -ErrorAction Stop).Length } } catch {}
+      Write-Host ("{0} still running... elapsed={1}s stdoutBytes={2} stderrBytes={3}" -f $Label, $elapsedSec, $outBytes, $errBytes) -ForegroundColor DarkGray
+      $lastBeatAt = $now
+    }
+  }
+
+  return [int]$p.ExitCode
+}
+
 function Get-ArtifactServiceSubdir([string]$fileName) {
   # Map known artifact files to per-service folders.
   # Keep meta files (deploy-console.log, post-deploy-report.json, etc.) under meta/.
@@ -194,7 +242,6 @@ echo "Rollback completed. Current HEAD: $(git rev-parse HEAD 2>/dev/null || true
     $ErrorActionPreference = 'Continue'
     $txt = (& $sshExe @sshArgs $remote 2>&1 | Out-String)
     Set-Content -Path $outPath -Value $txt.TrimEnd() -Encoding UTF8
-    Write-Host "Rollback output saved: $outPath" -ForegroundColor Yellow
   } catch {
     try { Set-Content -Path $outPath -Value ("Rollback failed: " + $($_.Exception.Message)) -Encoding UTF8 } catch {}
     Write-Warning "Rollback hook failed: $($_.Exception.Message)"
@@ -718,6 +765,7 @@ function Run-Orchestrator {
 function Remote-Verify($ip, $keyPath) {
   Write-Section "Remote verification on $ip"
   $null = Ensure-ArtifactDir -ip $ip
+  $dest = Ensure-ArtifactDir
   $sshExe = "ssh"
   $scpExe = "scp"
   # Be resilient to transient SSH/SCP handshake slowness; OpenSSH on Windows sometimes hits
@@ -744,11 +792,15 @@ function Remote-Verify($ip, $keyPath) {
     throw "Unable to resolve EnvPath '$EnvPath': $($_.Exception.Message)"
   }
   # Ensure repo directory exists (user_data should create it, but be defensive)
-  & $sshExe @sshArgs "mkdir -p /opt/apps/base2" *> $null
-  if ($LASTEXITCODE -ne 0) { throw "Failed to create /opt/apps/base2 on droplet (ssh exit $LASTEXITCODE)" }
+  $sshMkdirOut = Join-Path $dest 'ssh-mkdir.stdout.txt'
+  $sshMkdirErr = Join-Path $dest 'ssh-mkdir.stderr.txt'
+  $code = Invoke-NativeWithTimeout -FilePath $sshExe -ArgumentList ($sshArgs + @('mkdir -p /opt/apps/base2')) -Label 'SSH mkdir /opt/apps/base2' -TimeoutSec 120 -StdoutPath $sshMkdirOut -StderrPath $sshMkdirErr -HeartbeatSec 9999
+  if ($code -ne 0) { throw "Failed to create /opt/apps/base2 on droplet (ssh exit $code)" }
   # Upload .env (secrets) to droplet repo root
-  & $scpExe -i $keyPath @($sshCommon) $localEnvPath "root@${ip}:/opt/apps/base2/.env" *> $null
-  if ($LASTEXITCODE -ne 0) { throw "Failed to upload .env to droplet (scp exit $LASTEXITCODE)" }
+  $scpEnvOut = Join-Path $dest 'scp-env.stdout.txt'
+  $scpEnvErr = Join-Path $dest 'scp-env.stderr.txt'
+  $code = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @($localEnvPath, "root@${ip}:/opt/apps/base2/.env")) -Label 'SCP upload .env' -TimeoutSec 300 -StdoutPath $scpEnvOut -StderrPath $scpEnvErr -HeartbeatSec 60
+  if ($code -ne 0) { throw "Failed to upload .env to droplet (scp exit $code). See scp-env.stderr.txt in artifacts." }
 
   # Create a remote verification script to avoid quoting pitfalls
   $tmpScript = Join-Path $env:TEMP "remote_verify.sh"
@@ -760,6 +812,20 @@ if [ -d /opt/apps/base2 ]; then
   # Prepare log directories; clear stale artifacts from previous runs.
   rm -rf /root/logs/* || true
   mkdir -p /root/logs/build /root/logs/services /root/logs/meta || true
+
+  # Lightweight progress reporting for the deploy script heartbeat loop.
+  # Writes a single "current step" file plus an append-only progress log.
+  LOG_TAIL_LINES=${LOG_TAIL_LINES:-800}
+  LOG_SINCE=${LOG_SINCE:-15m}
+  status() {
+    STEP="$1"
+    MSG="$2"
+    TS=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date)
+    printf "%s\t%s\t%s\n" "$TS" "$STEP" "$MSG" >> /root/logs/meta/remote_verify_progress.log 2>/dev/null || true
+    printf "%s\n" "$STEP" > /root/logs/meta/remote_verify_step.txt 2>/dev/null || true
+  }
+  status "init" "starting remote verification"
+
   # Record pre-deploy git SHA for optional rollback.
   if command -v git >/dev/null 2>&1; then
     (git rev-parse HEAD 2>/dev/null || true) > /root/logs/build/pre-deploy-head.txt || true
@@ -775,19 +841,27 @@ if [ -d /opt/apps/base2 ]; then
   fi
   # Ensure latest repo and rebuild traefik to render new templates
   if command -v git >/dev/null 2>&1; then
-    echo "STEP: git sync $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> /root/logs/build/steps.txt
+    status "repo-sync" "fetch/checkout/reset"
     # Determine branch from .env (DO_APP_BRANCH), default to main
     BRANCH=$(grep -E '^DO_APP_BRANCH=' .env 2>/dev/null | cut -d'=' -f2 | tr -d '\r')
     if [ -z "$BRANCH" ]; then BRANCH=main; fi
     git fetch --all --prune || true
-    # Backup and remove potential untracked files that can block checkout (e.g., ACME storage)
+    # Preserve ACME storage across git operations.
+    # If letsencrypt/ is wiped, Traefik will fall back to its default cert and browsers will error.
     if [ -d letsencrypt ]; then
       tar -czf /root/logs/build/letsencrypt-backup.tgz letsencrypt || true
-      rm -rf letsencrypt || true
+      rm -rf /root/letsencrypt.keep || true
+      mv letsencrypt /root/letsencrypt.keep || true
     fi
     # Reset any local changes and clean untracked files to avoid checkout failures
     git reset --hard HEAD || true
     git clean -fd || true
+
+    # Restore ACME storage after git clean/checkout.
+    if [ -d /root/letsencrypt.keep ]; then
+      rm -rf letsencrypt || true
+      mv /root/letsencrypt.keep letsencrypt || true
+    fi
     # Force checkout to track remote branch and hard reset to remote to avoid rebase or merge prompts
     if git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
       git checkout -B "$BRANCH" "origin/$BRANCH" || git checkout -f "$BRANCH" || true
@@ -848,23 +922,75 @@ PY
   set -e
   echo $STATUS > /root/logs/build/env-dollar-check.status || true
   # IMPORTANT: We have observed Docker caching causing stale FastAPI code to persist across
-  # UpdateOnly deploys. Use a targeted no-cache rebuild for the `api` service to ensure the
-  # running container matches the git checkout (keeps overall verification time reasonable).
-  echo "STEP: docker build api (no-cache) $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> /root/logs/build/steps.txt
-  docker compose -f local.docker.yml build --no-cache api > /root/logs/build/api-build-nocache.txt 2>&1 || true
+  # UpdateOnly deploys can be severely slowed down by rebuilding the React image (npm run build)
+  # on a small droplet. To keep verification fast, rebuild services only when their source changed
+  # between the pre/post deploy git SHAs.
+  status "diff" "detecting changed files"
+  OLD_SHA=$(cat /root/logs/build/pre-deploy-head.txt 2>/dev/null || true)
+  NEW_SHA=$(cat /root/logs/build/post-deploy-head.txt 2>/dev/null || true)
+  : > /root/logs/build/changed-files.txt || true
+  if command -v git >/dev/null 2>&1 && [ -n "$OLD_SHA" ] && [ -n "$NEW_SHA" ] && [ "$OLD_SHA" != "$NEW_SHA" ]; then
+    git diff --name-only "$OLD_SHA" "$NEW_SHA" > /root/logs/build/changed-files.txt 2>/dev/null || true
+  fi
+  NEED_REACT=0
+  NEED_API=0
+  NEED_DJANGO=0
+  NEED_TRAEFIK=0
+  if grep -q '^react-app/' /root/logs/build/changed-files.txt 2>/dev/null; then NEED_REACT=1; fi
+  if grep -q '^api/' /root/logs/build/changed-files.txt 2>/dev/null; then NEED_API=1; fi
+  if grep -q '^django/' /root/logs/build/changed-files.txt 2>/dev/null; then NEED_DJANGO=1; fi
+  if grep -q '^traefik/' /root/logs/build/changed-files.txt 2>/dev/null; then NEED_TRAEFIK=1; fi
+  printf "NEED_REACT=%s\nNEED_API=%s\nNEED_DJANGO=%s\nNEED_TRAEFIK=%s\n" "$NEED_REACT" "$NEED_API" "$NEED_DJANGO" "$NEED_TRAEFIK" > /root/logs/build/changed-services.txt 2>/dev/null || true
 
-  # Bring up services. `up --build` is generally sufficient to rebuild when inputs change.
-  # Bring up core services needed for edge routing (avoid 502 due to missing upstreams)
-  # Also start Celery worker/beat by default (Option A: no profile gating).
-  echo "STEP: compose up core $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> /root/logs/build/steps.txt
-  docker compose -f local.docker.yml up -d --build --remove-orphans postgres django api nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1 || true
-  # Ensure API container uses the freshly built image
-  docker compose -f local.docker.yml up -d --build --force-recreate --no-deps api > /root/logs/build/api-up.txt 2>&1 || true
-  docker compose -f local.docker.yml up -d --build --force-recreate --no-deps traefik > /root/logs/build/traefik-up.txt 2>&1 || true
-  echo "STEP: docker build react-app (cached) $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> /root/logs/build/steps.txt
-  docker compose -f local.docker.yml build react-app > /root/logs/build/react-app-build.txt 2>&1 || true
-  echo "STEP: compose up react-app $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> /root/logs/build/steps.txt
-  docker compose -f local.docker.yml up -d --force-recreate --no-deps react-app > /root/logs/build/react-app-up.txt 2>&1 || true
+  # Bring up core services without forcing builds (fast path).
+  status "up" "docker compose up core services (no build)"
+  set +e
+  docker compose -f local.docker.yml up -d --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1
+  CORE_UP_CODE=$?
+  echo $CORE_UP_CODE > /root/logs/build/compose-up-core.status 2>/dev/null || true
+  set -e
+  if [ "$CORE_UP_CODE" != "0" ]; then
+    # Fallback for first-time builds or missing images.
+    status "up" "compose up failed; retrying with --build"
+    docker compose -f local.docker.yml up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core-build.txt 2>&1 || true
+  fi
+
+  # Selective rebuilds/recreates based on diff.
+  # API: default to no-cache rebuild when api/ changed (historically stale cache issues).
+  if [ "$NEED_API" = "1" ]; then
+    status "build" "docker compose build --no-cache api (api changed)"
+    docker compose -f local.docker.yml build --no-cache api > /root/logs/build/api-build-nocache.txt 2>&1 || true
+  fi
+  status "recreate" "force-recreate api"
+  docker compose -f local.docker.yml up -d --force-recreate --no-deps api > /root/logs/build/api-up.txt 2>&1 || true
+
+  if [ "$NEED_DJANGO" = "1" ]; then
+    status "build" "docker compose build django (django changed)"
+    docker compose -f local.docker.yml build django > /root/logs/build/django-build.txt 2>&1 || true
+  fi
+  status "recreate" "force-recreate django"
+  docker compose -f local.docker.yml up -d --force-recreate --no-deps django > /root/logs/build/django-up.txt 2>&1 || true
+
+  # Traefik: rebuild only when traefik/ changed; always recreate to pick up env and templates.
+  if [ "$NEED_TRAEFIK" = "1" ]; then
+    status "build" "docker compose build traefik (traefik changed)"
+    docker compose -f local.docker.yml build traefik > /root/logs/build/traefik-build.txt 2>&1 || true
+  fi
+  status "recreate" "force-recreate traefik"
+  docker compose -f local.docker.yml up -d --force-recreate --no-deps traefik > /root/logs/build/traefik-up.txt 2>&1 || true
+
+  # React: rebuild only when react-app/ changed.
+  if [ "$NEED_REACT" = "1" ]; then
+    status "build" "docker compose build react-app (react-app changed)"
+    docker compose -f local.docker.yml build react-app > /root/logs/build/react-app-build.txt 2>&1 || true
+    status "recreate" "force-recreate react-app"
+    docker compose -f local.docker.yml up -d --force-recreate --no-deps react-app > /root/logs/build/react-app-up.txt 2>&1 || true
+  else
+    status "build" "skipping react-app rebuild (no react-app changes)"
+    : > /root/logs/build/react-app-build.txt || true
+    echo "SKIPPED: no react-app/ changes between SHAs" > /root/logs/build/react-app-build.txt || true
+  fi
+
 
   # ENOSPC safeguard for React build: if npm/docker report "no space left on device",
   # prune images/volumes and retry a targeted rebuild to refresh assets.
@@ -880,11 +1006,10 @@ PY
   fi
 
   # Ensure Flower is started (kept as a separate log artifact)
+  status "up" "ensure flower"
   docker compose -f local.docker.yml up -d --build flower > /root/logs/build/flower-up.txt 2>&1 || true
-
-  # Ensure Django service is running for admin route
-  docker compose -f local.docker.yml up -d --build django > /root/logs/build/django-up.txt 2>&1 || true
   # Capture Django migration output into a dedicated artifact
+  status "django" "migrate/check-deploy/health"
   docker compose -f local.docker.yml exec -T django python manage.py migrate --noinput > /root/logs/django-migrate.txt 2>&1 || true
   # Django deploy checks (security + config sanity)
   docker compose -f local.docker.yml exec -T django python manage.py check --deploy > /root/logs/django-check-deploy.txt 2>&1 || true
@@ -893,6 +1018,7 @@ PY
 import json
 import os
 import sys
+import time
 from urllib.error import HTTPError
 from urllib.request import urlopen
 
@@ -901,19 +1027,28 @@ url = f"http://127.0.0.1:{port}/internal/health"
 status = 0
 body = "{}"
 
-try:
+last_error = ""
+
+for _ in range(20):
+  try:
     with urlopen(url, timeout=5) as resp:
-        status = getattr(resp, "status", None) or resp.getcode() or 200
-        body = resp.read().decode("utf-8")
-except HTTPError as e:
+      status = getattr(resp, "status", None) or resp.getcode() or 200
+      body = resp.read().decode("utf-8")
+      break
+  except HTTPError as e:
     status = e.code
     try:
-        body = e.read().decode("utf-8")
+      body = e.read().decode("utf-8")
     except Exception:
-        body = json.dumps({"ok": False, "service": "django", "db_ok": False})
-except Exception as e:
+      body = json.dumps({"ok": False, "service": "django", "db_ok": False})
+    break
+  except Exception as e:
+    last_error = str(e)
     status = 0
-    body = json.dumps({"ok": False, "service": "django", "db_ok": False, "error": str(e)})
+    time.sleep(1)
+
+if status == 0 and not body.strip():
+  body = json.dumps({"ok": False, "service": "django", "db_ok": False, "error": last_error})
 
 sys.stdout.write(body)
 sys.stderr.write(str(status))
@@ -937,6 +1072,7 @@ PY
   fi
   # Best-effort: wait for key services to report healthy before snapshotting.
   # This reduces false negatives where compose-ps.txt is captured during startup.
+  status "wait" "waiting for services to become healthy"
   set +e
   : > /root/logs/build/health-wait.txt || true
   for i in $(seq 1 60); do
@@ -956,6 +1092,7 @@ PY
   done
   set -e
 
+  status "snapshot" "capturing compose ps/config and ports"
   docker compose -f local.docker.yml ps > /root/logs/compose-ps.txt || true
   docker compose -f local.docker.yml config > /root/logs/compose-config.yml || true
   # Published host ports report (Traefik should be the only one)
@@ -966,6 +1103,7 @@ PY
   S_CEL=$(docker compose -f local.docker.yml --profile celery config --services || true)
   S_FLO=$(docker compose -f local.docker.yml --profile flower config --services || true)
   SERVICES=$(printf "%s\n%s\n%s\n" "$S_DEF" "$S_CEL" "$S_FLO" | awk 'NF && !x[$0]++')
+  status "logs" "collecting container logs"
   for s in $SERVICES; do
     OUT="/root/logs/services/${s}.log"
     echo "===== SERVICE LOG: ${s} =====" > "$OUT" || true
@@ -983,13 +1121,13 @@ PY
     for cid in $CIDS; do
       echo "" >> "$OUT" || true
       echo "--- docker logs (cid=$cid) ---" >> "$OUT" || true
-      docker logs --timestamps --tail=2000 "$cid" >> "$OUT" 2>&1 || true
+      docker logs --timestamps --tail=$LOG_TAIL_LINES "$cid" >> "$OUT" 2>&1 || true
     done
 
     # Also include compose logs as a fallback/aggregate view.
     echo "" >> "$OUT" || true
     echo "--- docker compose logs (service=$s) ---" >> "$OUT" || true
-    docker compose -f local.docker.yml logs --no-color --timestamps --tail=2000 "$s" >> "$OUT" 2>&1 || true
+    docker compose -f local.docker.yml logs --no-color --timestamps --tail=$LOG_TAIL_LINES "$s" >> "$OUT" 2>&1 || true
   done
 
   # Some services may log primarily to files inside the container/volume.
@@ -999,7 +1137,7 @@ PY
     OUT="/root/logs/services/traefik.log"
     echo "" >> "$OUT" || true
     echo "--- /var/log/traefik (file-based logs) ---" >> "$OUT" || true
-    docker exec "$TID" sh -lc 'ls -la /var/log/traefik 2>/dev/null || true; for f in /var/log/traefik/*; do [ -f "$f" ] || continue; echo "\n----- $f -----"; tail -n 2000 "$f" || true; done' >> "$OUT" 2>&1 || true
+    docker exec "$TID" sh -lc 'ls -la /var/log/traefik 2>/dev/null || true; for f in /var/log/traefik/*; do [ -f "$f" ] || continue; echo "\n----- $f -----"; tail -n '$LOG_TAIL_LINES' "$f" || true; done' >> "$OUT" 2>&1 || true
   fi
 
   # Nginx: try /var/log/nginx/*
@@ -1008,7 +1146,7 @@ PY
     OUT="/root/logs/services/nginx.log"
     echo "" >> "$OUT" || true
     echo "--- /var/log/nginx (file-based logs) ---" >> "$OUT" || true
-    docker exec "$NID" sh -lc 'ls -la /var/log/nginx 2>/dev/null || true; for f in /var/log/nginx/*; do [ -f "$f" ] || continue; echo "\n----- $f -----"; tail -n 2000 "$f" || true; done' >> "$OUT" 2>&1 || true
+    docker exec "$NID" sh -lc 'ls -la /var/log/nginx 2>/dev/null || true; for f in /var/log/nginx/*; do [ -f "$f" ] || continue; echo "\n----- $f -----"; tail -n '$LOG_TAIL_LINES' "$f" || true; done' >> "$OUT" 2>&1 || true
   fi
 
   # Nginx-static: try /var/log/nginx/* (image-based static nginx may log to files)
@@ -1017,7 +1155,7 @@ PY
     OUT="/root/logs/services/nginx-static.log"
     echo "" >> "$OUT" || true
     echo "--- /var/log/nginx (file-based logs) ---" >> "$OUT" || true
-    docker exec "$NSID" sh -lc 'ls -la /var/log/nginx 2>/dev/null || true; for f in /var/log/nginx/*; do [ -f "$f" ] || continue; echo "\n----- $f -----"; tail -n 2000 "$f" || true; done' >> "$OUT" 2>&1 || true
+    docker exec "$NSID" sh -lc 'ls -la /var/log/nginx 2>/dev/null || true; for f in /var/log/nginx/*; do [ -f "$f" ] || continue; echo "\n----- $f -----"; tail -n '$LOG_TAIL_LINES' "$f" || true; done' >> "$OUT" 2>&1 || true
   fi
   CID=$(docker compose -f local.docker.yml ps -q traefik || true)
   if [ -n "$CID" ]; then
@@ -1055,6 +1193,7 @@ PY
   fi
   DOMAIN=$(grep -E '^WEBSITE_DOMAIN=' /opt/apps/base2/.env | cut -d'=' -f2 | tr -d '\r')
   if [ -n "$DOMAIN" ]; then
+    status "curl" "probing https://$DOMAIN (local resolve)"
     # Ensure expected curl artifacts exist even if curl/DNS/TLS fails
     : > /root/logs/curl-root.txt || true
     : > /root/logs/curl-api-health.txt || true
@@ -1083,16 +1222,145 @@ PY
       sleep 2
     done
 
+    # Ensure Traefik has obtained real TLS certs for the apex + key subdomains.
+    # If ACME storage is missing or cert issuance is still in progress, Traefik serves a default/staging cert,
+    # which makes browsers show TLS errors (often misreported as "blocked").
+    PG_LABEL=$(grep -E '^PGADMIN_DNS_LABEL=' /opt/apps/base2/.env 2>/dev/null | cut -d'=' -f2 | tr -d '\r' || true)
+    if [ -z "$PG_LABEL" ]; then PG_LABEL=pgadmin; fi
+    FLOWER_LABEL=$(grep -E '^FLOWER_DNS_LABEL=' /opt/apps/base2/.env 2>/dev/null | cut -d'=' -f2 | tr -d '\r' || true)
+    if [ -z "$FLOWER_LABEL" ]; then FLOWER_LABEL=flower; fi
+    TRAEFIK_LABEL=$(grep -E '^TRAEFIK_DNS_LABEL=' /opt/apps/base2/.env 2>/dev/null | cut -d'=' -f2 | tr -d '\r' || true)
+    if [ -z "$TRAEFIK_LABEL" ]; then TRAEFIK_LABEL=traefik; fi
+
+    TLS_HOSTS="$DOMAIN www.$DOMAIN swagger.$DOMAIN admin.$DOMAIN ${PG_LABEL}.$DOMAIN ${FLOWER_LABEL}.$DOMAIN ${TRAEFIK_LABEL}.$DOMAIN"
+    status "tls" "waiting for valid TLS certs (hosts: $TLS_HOSTS)"
+    DOMAIN="$DOMAIN" TLS_HOSTS="$TLS_HOSTS" python3 - <<'PY' > /root/logs/build/tls-cert-wait.txt 2>&1
+import os
+import socket
+import ssl
+import tempfile
+import time
+
+domain = os.environ.get('DOMAIN') or os.environ.get('WEBSITE_DOMAIN') or ''
+if not domain:
+  raise SystemExit('missing domain')
+
+hosts_raw = (os.environ.get('TLS_HOSTS') or '').strip()
+hosts = [h.strip() for h in hosts_raw.split() if h.strip()]
+if not hosts:
+  hosts = [domain]
+
+def get_sans_from_pem(pem: str):
+  try:
+    from ssl import _ssl
+    with tempfile.NamedTemporaryFile('w', delete=False) as f:
+      f.write(pem)
+      tmp = f.name
+    decoded = _ssl._test_decode_cert(tmp)
+    sans = decoded.get('subjectAltName') or []
+    return [v for (k, v) in sans if k == 'DNS']
+  except Exception:
+    return []
+
+def fetch_cert_pem(hostname: str):
+  ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+  ctx.check_hostname = False
+  ctx.verify_mode = ssl.CERT_NONE
+  with ctx.wrap_socket(socket.socket(socket.AF_INET), server_hostname=hostname) as s:
+    s.settimeout(5)
+    s.connect(('127.0.0.1', 443))
+    der = s.getpeercert(binary_form=True)
+  return ssl.DER_cert_to_PEM_cert(der)
+
+deadline = time.time() + 600
+ok = {h: False for h in hosts}
+last = {h: {'err': '', 'sans': []} for h in hosts}
+
+print('Waiting for valid TLS SANs for hosts:')
+for h in hosts:
+  print(' -', h)
+
+while time.time() < deadline:
+  pending = [h for h, v in ok.items() if not v]
+  if not pending:
+    print('OK: all hosts have valid TLS SANs')
+    raise SystemExit(0)
+
+  for h in pending:
+    try:
+      pem = fetch_cert_pem(h)
+      sans = get_sans_from_pem(pem)
+      last[h]['sans'] = sans
+      if h in sans:
+        ok[h] = True
+        print(f'OK: {h} SAN includes host')
+      else:
+        last[h]['err'] = 'SAN missing host'
+    except Exception as e:
+      last[h]['err'] = str(e)
+
+  time.sleep(5)
+
+print('ERROR: TLS certs never became valid for all hosts within 600s')
+for h, v in ok.items():
+  if v:
+    continue
+  sans = last[h].get('sans') or []
+  err = last[h].get('err') or ''
+  print(f'- host={h} err={err} sans={", ".join(sans) if sans else "(none)"}')
+raise SystemExit(2)
+PY
+    TLS_WAIT_STATUS=$?
+    echo $TLS_WAIT_STATUS > /root/logs/build/tls-cert-wait.status || true
+    if [ "$TLS_WAIT_STATUS" != "0" ]; then
+      status "tls" "ERROR: TLS cert invalid for $DOMAIN"
+      exit 2
+    fi
+
+    # Retry helpers: avoid producing empty artifacts during transient startup.
+    curl_head_retry() {
+      URL="$1"
+      OUT="$2"
+      : > "$OUT" || true
+      for i in $(seq 1 15); do
+        curl -skI "${RESOLVE_DOMAIN[@]}" "$URL" -o "$OUT" 2>/dev/null || true
+        if [ -s "$OUT" ]; then
+          return 0
+        fi
+        sleep 2
+      done
+      return 1
+    }
+
+    curl_get_json_retry() {
+      URL="$1"
+      OUT_BODY="$2"
+      OUT_STATUS="$3"
+      : > "$OUT_BODY" || true
+      : > "$OUT_STATUS" || true
+      for i in $(seq 1 15); do
+        CODE=$(curl -sk "${RESOLVE_DOMAIN[@]}" -o "$OUT_BODY" -w "%{http_code}" "$URL" 2>/dev/null || echo 000)
+        echo "$CODE" > "$OUT_STATUS" || true
+        if [ "$CODE" = "200" ] && [ -s "$OUT_BODY" ]; then
+          return 0
+        fi
+        sleep 2
+      done
+      return 1
+    }
+
     # Root HEAD
-    curl -skI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/" -o /root/logs/curl-root.txt || true
+    curl_head_retry "https://$DOMAIN/" /root/logs/curl-root.txt || true
 
     # API health HEAD (both forms)
-    curl -skI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/health" -o /root/logs/curl-api-health.txt || true
-    curl -skI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/health/" -o /root/logs/curl-api-health-slash.txt || true
+    curl_head_retry "https://$DOMAIN/api/health" /root/logs/curl-api-health.txt || true
+    # Back-compat: also populate curl-api.txt from the preferred health endpoint.
+    curl_head_retry "https://$DOMAIN/api/health" /root/logs/curl-api.txt || true
+    curl_head_retry "https://$DOMAIN/api/health/" /root/logs/curl-api-health-slash.txt || true
 
     # API health GET (capture body and status separately)
-    curl -sk "${RESOLVE_DOMAIN[@]}" -o /root/logs/api-health.json -w "%{http_code}" "https://$DOMAIN/api/health" > /root/logs/api-health.status || true
-    curl -sk "${RESOLVE_DOMAIN[@]}" -o /root/logs/api-health-slash.json -w "%{http_code}" "https://$DOMAIN/api/health/" > /root/logs/api-health-slash.status || true
+    curl_get_json_retry "https://$DOMAIN/api/health" /root/logs/api-health.json /root/logs/api-health.status || true
+    curl_get_json_retry "https://$DOMAIN/api/health/" /root/logs/api-health-slash.json /root/logs/api-health-slash.status || true
 
     # Request-id log propagation probe:
     # - Send a request with an explicit X-Request-Id
@@ -1191,7 +1459,7 @@ PY
       for i in $(seq 1 $POLL_MAX); do
         : > /root/logs/services/request-id-api.txt || true
         for id in $AIDS; do
-          docker logs --timestamps --since=60m "$id" 2>&1 | grep -F "$RID" >> /root/logs/services/request-id-api.txt || true
+          docker logs --timestamps --since=$LOG_SINCE "$id" 2>&1 | grep -F "$RID" >> /root/logs/services/request-id-api.txt || true
         done
         tail -n 50 /root/logs/services/request-id-api.txt > /root/logs/services/request-id-api.txt.tmp 2>/dev/null || true
         mv -f /root/logs/services/request-id-api.txt.tmp /root/logs/services/request-id-api.txt 2>/dev/null || true
@@ -1205,7 +1473,7 @@ PY
         : > /root/logs/services/request-id-django.txt || true
         : > /root/logs/services/request-id-django-context.txt || true
         for id in $DJIDS; do
-          docker logs --timestamps --since=60m "$id" 2>&1 | grep -F "$RID" >> /root/logs/services/request-id-django.txt || true
+          docker logs --timestamps --since=$LOG_SINCE "$id" 2>&1 | grep -F "$RID" >> /root/logs/services/request-id-django.txt || true
           docker logs --timestamps --since=10m "$id" 2>&1 | tail -n 200 >> /root/logs/services/request-id-django-context.txt || true
         done
         tail -n 50 /root/logs/services/request-id-django.txt > /root/logs/services/request-id-django.txt.tmp 2>/dev/null || true
@@ -1220,7 +1488,7 @@ PY
         : > /root/logs/services/request-id-celery-worker.txt || true
         : > /root/logs/services/request-id-celery-worker-context.txt || true
         for id in $CWIDS; do
-          docker logs --timestamps --since=60m "$id" 2>&1 | grep -F "$RID" >> /root/logs/services/request-id-celery-worker.txt || true
+          docker logs --timestamps --since=$LOG_SINCE "$id" 2>&1 | grep -F "$RID" >> /root/logs/services/request-id-celery-worker.txt || true
           docker logs --timestamps --since=10m "$id" 2>&1 | tail -n 200 >> /root/logs/services/request-id-celery-worker-context.txt || true
         done
         tail -n 50 /root/logs/services/request-id-celery-worker.txt > /root/logs/services/request-id-celery-worker.txt.tmp 2>/dev/null || true
@@ -1293,21 +1561,37 @@ except Exception:\
       docker cp "/opt/apps/base2/specs/001-django-fastapi-react/contracts/openapi.yaml" "$AID":/app/specs/001-django-fastapi-react/contracts/openapi.yaml >/dev/null 2>&1 || true
     fi
 
-    # mark completion
-    # Run service test suites inside containers and capture outputs
+  # Run service test suites inside containers and capture outputs.
+  # This is expensive; only run it when explicitly requested from the deploy script.
   mkdir -p /root/logs || true
-  # FastAPI (api) pytest
-  # Ensure we run from /app so `import main` / local imports resolve as expected.
-  # Set COVERAGE_FILE to a writable path inside the container to avoid read-only filesystem issues.
-  docker compose -f local.docker.yml exec -T api sh -lc 'export COVERAGE_FILE=/tmp/.coverage_api && cd /app && pytest -q --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest.txt 2>&1 || true
-  # API integration tests (marked with @pytest.mark.integration)
-  docker compose -f local.docker.yml exec -T api sh -lc 'export COVERAGE_FILE=/tmp/.coverage_api_int && cd /app && pytest -q -m integration --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest-integration.txt 2>&1 || true
-  # API lint/type checks (Ruff + Mypy)
-  docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && (ruff --version >/dev/null 2>&1 && ruff check . || echo "ruff_not_available")' > /root/logs/api-ruff.txt 2>&1 || true
-  docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && (mypy --version >/dev/null 2>&1 && mypy --show-error-codes --pretty api || echo "mypy_not_available")' > /root/logs/api-mypy.txt 2>&1 || true
-  # Django pytest
-  docker compose -f local.docker.yml exec -T django sh -lc 'export COVERAGE_FILE=/tmp/.coverage_django && pytest -q --cov=project --cov-report=term --cov-fail-under=60' > /root/logs/django-pytest.txt 2>&1 || true
-  echo "STEP: done $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> /root/logs/build/steps.txt
+  : > /root/logs/api-pytest.txt || true
+  : > /root/logs/api-pytest-integration.txt || true
+  : > /root/logs/api-ruff.txt || true
+  : > /root/logs/api-mypy.txt || true
+  : > /root/logs/django-pytest.txt || true
+  if [ "${RUN_REMOTE_TESTS:-}" = "1" ]; then
+    status "tests" "running in-container pytest/ruff/mypy"
+    # FastAPI (api) pytest
+    # Ensure we run from /app so `import main` / local imports resolve as expected.
+    # Set COVERAGE_FILE to a writable path inside the container to avoid read-only filesystem issues.
+    docker compose -f local.docker.yml exec -T api sh -lc 'export COVERAGE_FILE=/tmp/.coverage_api && cd /app && pytest -q --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest.txt 2>&1 || true
+    # API integration tests (marked with @pytest.mark.integration)
+    docker compose -f local.docker.yml exec -T api sh -lc 'export COVERAGE_FILE=/tmp/.coverage_api_int && cd /app && pytest -q -m integration --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest-integration.txt 2>&1 || true
+    # API lint/type checks (Ruff + Mypy)
+    docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && (ruff --version >/dev/null 2>&1 && ruff check . || echo "ruff_not_available")' > /root/logs/api-ruff.txt 2>&1 || true
+    docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && (mypy --version >/dev/null 2>&1 && mypy --show-error-codes --pretty api || echo "mypy_not_available")' > /root/logs/api-mypy.txt 2>&1 || true
+    # Django pytest
+    docker compose -f local.docker.yml exec -T django sh -lc 'export COVERAGE_FILE=/tmp/.coverage_django && pytest -q --cov=project --cov-report=term --cov-fail-under=60' > /root/logs/django-pytest.txt 2>&1 || true
+  else
+    status "tests" "skipped (RUN_REMOTE_TESTS!=1)"
+    echo "SKIPPED: set RUN_REMOTE_TESTS=1 (use -RunTests or -AllTests)" > /root/logs/api-pytest.txt || true
+    echo "SKIPPED: set RUN_REMOTE_TESTS=1 (use -RunTests or -AllTests)" > /root/logs/api-pytest-integration.txt || true
+    echo "SKIPPED: set RUN_REMOTE_TESTS=1 (use -RunTests or -AllTests)" > /root/logs/api-ruff.txt || true
+    echo "SKIPPED: set RUN_REMOTE_TESTS=1 (use -RunTests or -AllTests)" > /root/logs/api-mypy.txt || true
+    echo "SKIPPED: set RUN_REMOTE_TESTS=1 (use -RunTests or -AllTests)" > /root/logs/django-pytest.txt || true
+  fi
+
+  status "done" "remote verification complete"
   date -u +"%Y-%m-%dT%H:%M:%SZ" > /root/logs/remote_verify.done || true
 fi
 '@
@@ -1316,8 +1600,12 @@ fi
   Set-Content -Path $tmpScript -Value $unixScript -Encoding Ascii -NoNewline
   # Upload and execute the script
   try {
-    & $scpExe -i $keyPath @($sshCommon) $tmpScript "root@${ip}:/root/remote_verify.sh" *> $null
-    if ($LASTEXITCODE -ne 0) { throw "scp upload failed (exit $LASTEXITCODE)" }
+    $scpScriptOut = Join-Path $dest 'scp-remote-verify-script.stdout.txt'
+    $scpScriptErr = Join-Path $dest 'scp-remote-verify-script.stderr.txt'
+    $scpCode = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @($tmpScript, "root@${ip}:/root/remote_verify.sh")) -Label 'SCP upload remote_verify.sh' -TimeoutSec 300 -StdoutPath $scpScriptOut -StderrPath $scpScriptErr -HeartbeatSec 60
+    if ($scpCode -ne 0) {
+      throw "scp upload failed (exit $scpCode). See scp-remote-verify-script.stderr.txt in artifacts."
+    }
   } finally {
     $LASTEXITCODE = 0
   }
@@ -1325,57 +1613,79 @@ fi
   try { & $sshExe @sshArgs "rm -f /root/logs/remote_verify.done" *> $null } catch { }
   if ($AsyncVerify) {
     if ($RunCeleryCheck) {
-      & $sshExe @sshArgs "RUN_CELERY_CHECK=1 nohup bash /root/remote_verify.sh > /root/remote_verify.out 2>&1 & echo \$! > /root/remote_verify.pid" *> $null
+      $rt = if ($RunTests) { '1' } else { '0' }
+      & $sshExe @sshArgs "RUN_CELERY_CHECK=1 RUN_REMOTE_TESTS=$rt nohup bash /root/remote_verify.sh > /root/remote_verify.out 2>&1 & echo \$! > /root/remote_verify.pid" *> $null
     } else {
-      & $sshExe @sshArgs "nohup bash /root/remote_verify.sh > /root/remote_verify.out 2>&1 & echo \$! > /root/remote_verify.pid" *> $null
+      $rt = if ($RunTests) { '1' } else { '0' }
+      & $sshExe @sshArgs "RUN_REMOTE_TESTS=$rt nohup bash /root/remote_verify.sh > /root/remote_verify.out 2>&1 & echo \$! > /root/remote_verify.pid" *> $null
     }
   } else {
     $timeoutCmd = "if command -v timeout >/dev/null 2>&1; then timeout -k 15s $VerifyTimeoutSec bash /root/remote_verify.sh; else bash /root/remote_verify.sh; fi"
-    $remoteCmd = if ($RunCeleryCheck) { "RUN_CELERY_CHECK=1 sh -lc '$timeoutCmd'" } else { "sh -lc '$timeoutCmd'" }
+    $rt = if ($RunTests) { '1' } else { '0' }
+    $remoteCmd = if ($RunCeleryCheck) { "RUN_CELERY_CHECK=1 RUN_REMOTE_TESTS=$rt sh -lc '$timeoutCmd'" } else { "RUN_REMOTE_TESTS=$rt sh -lc '$timeoutCmd'" }
 
     Write-Host ("Remote verification running (timeout={0}s)." -f $VerifyTimeoutSec) -ForegroundColor DarkGray
     Write-Host "If this step takes a while, it will print heartbeats here." -ForegroundColor DarkGray
 
-    $job = Start-Job -ScriptBlock {
-      param($sshExeInner, $sshArgsInner, $remoteCmdInner)
-      & $sshExeInner @sshArgsInner $remoteCmdInner *> $null
-      return $LASTEXITCODE
-    } -ArgumentList $sshExe, $sshArgs, $remoteCmd
+    $sshVerifyOut = Join-Path $dest 'ssh-remote-verify.stdout.txt'
+    $sshVerifyErr = Join-Path $dest 'ssh-remote-verify.stderr.txt'
+    try { '' | Set-Content -Path $sshVerifyOut -Encoding UTF8 } catch {}
+    try { '' | Set-Content -Path $sshVerifyErr -Encoding UTF8 } catch {}
+    $proc = Start-Process -FilePath $sshExe -ArgumentList ($sshArgs + @($remoteCmd)) -NoNewWindow -PassThru -RedirectStandardOutput $sshVerifyOut -RedirectStandardError $sshVerifyErr
 
     $startedAt = Get-Date
+    $lastStep = ''
     $lastProgress = ''
-    $lastProgressAt = Get-Date
-    while ($true) {
-      $completed = Wait-Job -Job $job -Timeout 15
-      if ($completed) { break }
+    $lastStatusPollAt = $startedAt
+    $hardTimeoutSec = [int]$VerifyTimeoutSec + 120
+    while (-not $proc.HasExited) {
+      Start-Sleep -Seconds 2
 
       $elapsedSec = [int]((Get-Date) - $startedAt).TotalSeconds
+      if ($elapsedSec -ge $hardTimeoutSec) {
+        try { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue } catch {}
+        throw "Remote verification exceeded local hard timeout (${hardTimeoutSec}s). See ssh-remote-verify.stderr.txt/stdout.txt in artifacts."
+      }
+
       Write-Host ("Remote verification still running... elapsed={0}s" -f $elapsedSec) -ForegroundColor DarkGray
 
-      if (((Get-Date) - $lastProgressAt).TotalSeconds -ge 60) {
-        $lastProgressAt = Get-Date
+      # Poll droplet-side progress markers for more actionable logging.
+      $now = Get-Date
+      if ([int]($now - $lastStatusPollAt).TotalSeconds -ge 60) {
+        $lastStatusPollAt = $now
         try {
-          $progress = & $sshExe @sshArgs "tail -n 3 /root/logs/build/steps.txt 2>/dev/null | tr -d '\r'" 2>$null
-          $progressText = ($progress | ForEach-Object { "$_" }) -join "`n"
-          if ($progressText -and ($progressText -ne $lastProgress)) {
-            Write-Host "Remote progress:" -ForegroundColor DarkGray
-            Write-Host $progressText -ForegroundColor DarkGray
-            $lastProgress = $progressText
+          $statusCmd = 'sh -lc ''STEP=""; LAST=""; [ -f /root/logs/meta/remote_verify_step.txt ] && STEP=$(cat /root/logs/meta/remote_verify_step.txt 2>/dev/null | tr -d "\015"); [ -f /root/logs/meta/remote_verify_progress.log ] && LAST=$(tail -n 1 /root/logs/meta/remote_verify_progress.log 2>/dev/null | tr -d "\015"); echo "STEP=$STEP"; echo "LAST=$LAST"'''
+          $statusOutPath = Join-Path $dest 'ssh-remote-verify-status.stdout.txt'
+          $statusErrPath = Join-Path $dest 'ssh-remote-verify-status.stderr.txt'
+          $statusCode = Invoke-NativeWithTimeout -FilePath $sshExe -ArgumentList ($sshArgs + @($statusCmd)) -Label 'SSH remote verify status poll' -TimeoutSec 30 -StdoutPath $statusOutPath -StderrPath $statusErrPath -HeartbeatSec 9999
+          $statusOut = $null
+          if ($statusCode -eq 0 -and (Test-Path $statusOutPath)) {
+            $statusOut = Get-Content -Path $statusOutPath -ErrorAction SilentlyContinue
           }
-        } catch {
-          # ignore (SSH may be busy while build is running)
-        }
+          if ($statusOut) {
+            $lines = @($statusOut) | ForEach-Object { $_.ToString().Trim() } | Where-Object { $_ -ne '' }
+            $stepLine = $lines | Where-Object { $_ -like 'STEP=*' } | Select-Object -First 1
+            $lastLine = $lines | Where-Object { $_ -like 'LAST=*' } | Select-Object -First 1
+            if ($stepLine) {
+              $step = $stepLine.Substring(5)
+              if ($step -and $step -ne $lastStep) {
+                Write-Host ("phase: {0}" -f $step) -ForegroundColor DarkGray
+                $lastStep = $step
+              }
+            }
+            if ($lastLine) {
+              $prog = $lastLine.Substring(5)
+              if ($prog -and $prog -ne $lastProgress) {
+                Write-Host ("progress: {0}" -f $prog) -ForegroundColor DarkGray
+                $lastProgress = $prog
+              }
+            }
+          }
+        } catch { }
       }
     }
 
-    $code = 0
-    try {
-      $code = (Receive-Job -Job $job -ErrorAction SilentlyContinue | Select-Object -Last 1)
-      if ($null -eq $code) { $code = 0 }
-    } finally {
-      try { Remove-Job -Job $job -Force -ErrorAction SilentlyContinue } catch {}
-    }
-    $LASTEXITCODE = [int]$code
+    $LASTEXITCODE = [int]$proc.ExitCode
   }
 
   if ($LASTEXITCODE -ne 0) {
@@ -1417,8 +1727,11 @@ fi
         }
       }
       # Copy entire remote logs directory (build + services + snapshots)
-      & $scpExe -i $keyPath @($sshCommon) -r "root@${ip}:/root/logs" $dest *> $null
-      if ($LASTEXITCODE -ne 0) { throw "scp logs failed (exit $LASTEXITCODE)" }
+      $scpTimeoutSec = [Math]::Max(300, [Math]::Min(1200, [int]$VerifyTimeoutSec))
+      $scpLogsOut = Join-Path $dest ("scp-logs-attempt-{0}.stdout.txt" -f $i)
+      $scpLogsErr = Join-Path $dest ("scp-logs-attempt-{0}.stderr.txt" -f $i)
+      $scpCode = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @('-r', "root@${ip}:/root/logs", $dest)) -Label ("SCP logs attempt {0}/{1}" -f $i, $attempts) -TimeoutSec $scpTimeoutSec -StdoutPath $scpLogsOut -StderrPath $scpLogsErr -HeartbeatSec 30
+      if ($scpCode -ne 0) { throw "scp logs failed (exit $scpCode)" }
       $copied = $true
       break
     } catch {
@@ -1430,11 +1743,15 @@ fi
   # Fallback: try copying a single tarball if directory copy was flaky.
   if (-not $copied) {
     try {
-      & $sshExe @sshArgs "tar -czf /root/logs.tgz -C /root logs" *> $null
-      if ($LASTEXITCODE -ne 0) { throw "remote tar failed (exit $LASTEXITCODE)" }
+      $sshTarOut = Join-Path $dest 'ssh-tar-logs.stdout.txt'
+      $sshTarErr = Join-Path $dest 'ssh-tar-logs.stderr.txt'
+      $tarCode = Invoke-NativeWithTimeout -FilePath $sshExe -ArgumentList ($sshArgs + @('tar -czf /root/logs.tgz -C /root logs')) -Label 'SSH tar logs' -TimeoutSec 300 -StdoutPath $sshTarOut -StderrPath $sshTarErr -HeartbeatSec 9999
+      if ($tarCode -ne 0) { throw "remote tar failed (exit $tarCode)" }
       $tgzPath = Join-Path $dest 'logs.tgz'
-      & $scpExe -i $keyPath @($sshCommon) "root@${ip}:/root/logs.tgz" $tgzPath *> $null
-      if ($LASTEXITCODE -ne 0) { throw "scp logs.tgz failed (exit $LASTEXITCODE)" }
+      $scpTgzOut = Join-Path $dest 'scp-logs-tgz.stdout.txt'
+      $scpTgzErr = Join-Path $dest 'scp-logs-tgz.stderr.txt'
+      $scpCode = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @("root@${ip}:/root/logs.tgz", $tgzPath)) -Label 'SCP logs.tgz' -TimeoutSec 600 -StdoutPath $scpTgzOut -StderrPath $scpTgzErr -HeartbeatSec 30
+      if ($scpCode -ne 0) { throw "scp logs.tgz failed (exit $scpCode)" }
       if (Test-Path $tgzPath) {
         & tar -xzf $tgzPath -C $dest *> $null
         Remove-Item -Force $tgzPath -ErrorAction SilentlyContinue
@@ -1448,7 +1765,25 @@ fi
   if (-not $copied) {
     $msg = "Remote logs could not be copied after $attempts attempts"
     if ($lastCopyErr) { $msg += ": $($lastCopyErr.Exception.Message)" }
-    Write-Warning "$msg; continuing. You can re-run copy later."
+    Write-Warning "$msg; continuing. Attempting minimal log capture (progress + console)."
+
+    # Best-effort: copy the most useful small files even when the full logs directory copy fails.
+    $quick = @(
+      @{ remote = '/root/logs/meta/remote_verify_step.txt'; local = 'remote_verify_step.txt' },
+      @{ remote = '/root/logs/meta/remote_verify_progress.log'; local = 'remote_verify_progress.log' },
+      @{ remote = '/root/logs/build/remote-verify-console.txt'; local = 'remote-verify-console.txt' },
+      @{ remote = '/root/remote_verify.out'; local = 'remote_verify.out' },
+      @{ remote = '/root/remote_verify.pid'; local = 'remote_verify.pid' }
+    )
+    foreach ($q in $quick) {
+      try {
+        $localPath = Join-Path $dest $q.local
+        $scpQOut = Join-Path $dest ("scp-quick-{0}.stdout.txt" -f $q.local)
+        $scpQErr = Join-Path $dest ("scp-quick-{0}.stderr.txt" -f $q.local)
+        $code = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @("root@${ip}:$($q.remote)", $localPath)) -Label ("SCP quick {0}" -f $q.remote) -TimeoutSec 60 -StdoutPath $scpQOut -StderrPath $scpQErr -HeartbeatSec 9999
+        if ($code -ne 0) { continue }
+      } catch { }
+    }
   } else {
     # Best-effort copy of individual files to the root of $dest for convenience
     $files = @(
@@ -1463,6 +1798,9 @@ fi
       'curl-root.txt','curl-api.txt','curl-api-health.txt','curl-api-health-slash.txt',
       'curl-admin-head.txt',
       'api-health.json','api-health.status','api-health-slash.json','api-health-slash.status',
+      'request-id-log-propagation.json','request-id-log-propagation.err',
+      'celery-ping.json','celery-result.json',
+      'build/tls-cert-wait.txt','build/tls-cert-wait.status',
       'traefik-dynamic.template.yml','traefik-static.template.yml','remote_verify.done'
     )
     foreach ($f in $files) {

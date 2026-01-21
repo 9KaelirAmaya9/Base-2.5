@@ -7,9 +7,8 @@ import AppShell from '../components/glass/AppShell';
 import GlassCard from '../components/glass/GlassCard';
 import GlassButton from '../components/glass/GlassButton';
 import GlassInput from '../components/glass/GlassInput';
-import Navigation from '../components/Navigation';
 
-const Signup = () => {
+const Signup = ({ variant = 'public' }) => {
   const { register } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
@@ -55,9 +54,8 @@ const Signup = () => {
   };
 
   return (
-    <AppShell headerTitle="Signup">
+    <AppShell variant={variant} headerTitle="Signup">
       <div style={styles.containerInner}>
-        <Navigation />
         <GlassCard>
           <h1 style={styles.title}>Create account</h1>
 

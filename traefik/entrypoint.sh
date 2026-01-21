@@ -22,6 +22,18 @@ unescape_dollars FLOWER_BASIC_USERS
 # add any other *BASIC_USERS vars you have here
 # ---------------------------------------------------------------
 
+# Default to production Let's Encrypt unless explicitly overridden.
+# Default to staging resolver unless explicitly set.
+# Treat ENV/BASE2_ENV of 'prod' or 'production' as production.
+if [ -z "${TRAEFIK_CERT_RESOLVER:-}" ]; then
+  MODE="${ENV:-${BASE2_ENV:-}}"
+  case "${MODE}" in
+    prod|production) TRAEFIK_CERT_RESOLVER="le" ;;
+    *) TRAEFIK_CERT_RESOLVER="le-staging" ;;
+  esac
+fi
+export TRAEFIK_CERT_RESOLVER
+
 # Render configs from templates using environment variables
 STATIC_TEMPLATE_PATH="/etc/traefik/templates/traefik.yml.template"
 STATIC_OUTPUT_PATH="/tmp/traefik.yml"

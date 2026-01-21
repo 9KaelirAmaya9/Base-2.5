@@ -1,18 +1,19 @@
-import React from 'react';
-import HomeHero from '../../components/home/HomeHero';
-import HomeFeatures from '../../components/home/HomeFeatures';
-import HomeVisual from '../../components/home/HomeVisual';
-import HomeTrust from '../../components/home/HomeTrust';
-import HomeFooter from '../../components/home/HomeFooter';
+import { MemoryRouter } from 'react-router-dom';
 
-export default { title: 'Home/Page' };
+import Home from '../../pages/Home';
 
-export const HomePage = () => (
-  <div style={{ padding: 16 }}>
-    <HomeHero />
-    <HomeFeatures />
-    <HomeVisual />
-    <HomeTrust />
-    <HomeFooter />
-  </div>
+const meta = {
+  title: 'Pages/Home',
+  component: Home,
+  parameters: {
+    layout: 'fullscreen',
+  },
+};
+
+export default meta;
+
+export const Default = () => (
+  <MemoryRouter>
+    <Home />
+  </MemoryRouter>
 );
