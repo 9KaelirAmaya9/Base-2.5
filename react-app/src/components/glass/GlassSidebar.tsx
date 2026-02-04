@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   ChevronLeft,
@@ -35,6 +35,10 @@ export const GlassSidebar: React.FC<Props> = ({
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const close = useMemo(() => onClose || (() => {}), [onClose]);
 
+  const setPanelRef = useCallback((el: HTMLElement | null) => {
+    panelRef.current = el;
+  }, []);
+
   const isMobile = Boolean(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
 
   const [edgeOpen, setEdgeOpen] = useState(false);
@@ -49,7 +53,7 @@ export const GlassSidebar: React.FC<Props> = ({
   ];
 
   useEffect(() => {
-    if (!isOpen || !isMobile) {
+    if (variant === 'public' || !isOpen || !isMobile) {
       return;
     }
 
@@ -77,7 +81,7 @@ export const GlassSidebar: React.FC<Props> = ({
         el.focus();
       }
     };
-  }, [close, isMobile, isOpen]);
+  }, [close, isMobile, isOpen, variant]);
 
   if (variant === 'public') {
     const handleClick = (itemId: string) => {
@@ -322,9 +326,7 @@ export const GlassSidebar: React.FC<Props> = ({
               role="navigation"
               aria-label="Side menu"
               tabIndex={-1}
-              ref={(el) => {
-                panelRef.current = el;
-              }}
+              ref={setPanelRef}
               onClick={(e) => e.stopPropagation()}
             >
               <ul className="glass-sidebar-list">

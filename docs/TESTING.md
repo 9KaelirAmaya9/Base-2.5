@@ -28,6 +28,14 @@ Coverage thresholds enforced in CI and deploy gate.
 - Alternative (preferred in new tests): Wrap components with `TestRouter` from `react-app/src/test/TestRouter.jsx`, which sets `future={{ v7_startTransition: true, v7_relativeSplatPath: true }}`.
 - Scope: This policy affects Jest tests only. Runtime builds and behavior remain unchanged.
 
+### Frontend crash guard (placeholder check)
+
+To prevent accidental placeholder artifacts from shipping (e.g. a standalone `...` line in a module), run:
+
+`powershell -Command "Select-String -Path react-app/src/**/* -Pattern '^\s*\.\.\.\s*$' -List"`
+
+This should return no matches.
+
 ## Contract
 
 - Runtime OpenAPI vs contract: `cd api && pytest -q -m contract`

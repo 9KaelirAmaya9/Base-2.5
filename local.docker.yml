@@ -6,9 +6,13 @@ services:
       dockerfile: .Dockerfile
       args:
         - NODE_VERSION=${REACT_APP_NODE_VERSION}
+        - REACT_APP_API_URL=https://${WEBSITE_DOMAIN:-localhost}/api
+        - REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID}
     container_name: ${COMPOSE_PROJECT_NAME}_react-app
     environment:
       - NODE_ENV=production
+      - REACT_APP_API_URL=https://${WEBSITE_DOMAIN:-localhost}/api
+      - REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID}
     networks: [base2_network]
     restart: unless-stopped
     security_opt: [no-new-privileges:true]

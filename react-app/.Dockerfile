@@ -20,6 +20,9 @@ COPY . .
 # Speed up CRA production builds on small machines
 ENV GENERATE_SOURCEMAP=false
 
+ARG REACT_APP_GOOGLE_CLIENT_ID
+ENV REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID}
+
 # Create production build
 RUN npm run build
 
