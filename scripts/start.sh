@@ -32,7 +32,7 @@ if [ "$(printf '%s\n' "$REQUIRED_COMPOSE_VERSION" "$COMPOSE_VERSION" | sort -V |
     exit 1
 fi
 
-echo "🚀 Starting Base2 Docker Environment..."
+echo "🚀 Starting Docker Environment..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Check if .env file exists and validate required variables

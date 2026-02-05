@@ -12,7 +12,7 @@ BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
 RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/1")
 
 app = Celery(
-    "base2",
+    "app",
     broker=BROKER_URL,
     backend=RESULT_BACKEND,
     fixups=[],
@@ -27,13 +27,13 @@ app.conf.update(
     enable_utc=True,
 )
 
-@app.task(name="base2.ping")
+@app.task(name="app.ping")
 def ping(request_id: str | None = None):
     with suppress(Exception):
         logger.info("ping", extra={"request_id": request_id})
     return "pong"
 
-@app.task(name="base2.add")
+@app.task(name="app.add")
 def add(x: int, y: int) -> int:
     return int(x) + int(y)
 

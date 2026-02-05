@@ -77,7 +77,7 @@ def test_auth_login_cookie_mode_sets_http_only_cookie_and_hides_refresh(monkeypa
 
     # Refresh should be a cookie only.
     assert "set-cookie" in {k.lower() for k in r.headers}
-    assert "base2_refresh=" in r.headers.get("set-cookie", "")
+    assert "app_refresh=" in r.headers.get("set-cookie", "")
 
     body = r.json()
     assert body.get("access_token") == "access"

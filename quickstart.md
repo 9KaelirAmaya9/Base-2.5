@@ -11,7 +11,7 @@
 1. Clone the repository:
    ```bash
    git clone <repo-url>
-   cd base2
+   cd <repo-dir>
    ```
 2. Copy and configure environment variables:
 
@@ -56,7 +56,7 @@
    Follow these steps to get started quickly:
    1. **Clone the repository**
       - `git clone <repo-url>`
-      - `cd base2`
+      - `cd <repo-dir>`
    2. **Configure environment variables**
       - Copy `.env.example` to `.env`
       - Fill in all required Digital Ocean variables (`DO_API_TOKEN`, `DO_API_REGION`, `DO_API_IMAGE`, `DO_APP_NAME`, etc.)

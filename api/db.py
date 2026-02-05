@@ -1,6 +1,7 @@
 import os
 from contextlib import contextmanager, suppress
 import threading
+import re
 
 from psycopg2.pool import ThreadedConnectionPool
 
@@ -9,6 +10,12 @@ from api.settings import settings
 
 _pool: ThreadedConnectionPool | None = None
 _pool_lock = threading.Lock()
+
+
+def _project_slug() -> str:
+    raw = (os.getenv("PROJECT_NAME") or os.getenv("COMPOSE_PROJECT_NAME") or "").strip().lower()
+    raw = re.sub(r"[^a-z0-9_-]+", "-", raw).strip("-_")
+    return raw or "app"
 
 
 def _build_dsn() -> str:
@@ -44,7 +51,7 @@ def _get_pool() -> ThreadedConnectionPool:
             dsn=dsn,
             connect_timeout=settings.DB_CONNECT_TIMEOUT_SEC,
             options=options,
-            application_name="base2-api",
+            application_name=f"{_project_slug()}-api",
         )
         return _pool
 

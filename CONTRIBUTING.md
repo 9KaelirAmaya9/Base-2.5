@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for contributing to Base2!
+Thank you for contributing!
 
 ## Getting Started
 

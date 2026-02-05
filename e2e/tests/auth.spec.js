@@ -1,5 +1,9 @@
 const { test, expect } = require('@playwright/test');
 
+function escapeRegex(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function uniqueEmail(prefix = 'e2e') {
   const ts = new Date().toISOString().replace(/[-:.TZ]/g, '');
   return `${prefix}-${ts}-${Math.random().toString(16).slice(2)}@example.com`;
@@ -9,8 +13,21 @@ function parseCookieValue(setCookieHeader, cookieName) {
   if (!setCookieHeader) return null;
   const headers = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader];
   for (const h of headers) {
-    const m = String(h).match(new RegExp(`(?:^|\\s)${cookieName}=([^;]+)`));
+    const m = String(h).match(new RegExp(`(?:^|\\s)${escapeRegex(cookieName)}=([^;]+)`));
     if (m) return m[1];
+  }
+  return null;
+}
+
+function detectCookieNameBySuffix(setCookieHeader, suffix) {
+  if (!setCookieHeader) return null;
+  const headers = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader];
+  for (const h of headers) {
+    const first = String(h || '').split(';')[0] || '';
+    const eq = first.indexOf('=');
+    if (eq <= 0) continue;
+    const name = first.slice(0, eq).trim();
+    if (name && name.endsWith(suffix)) return name;
   }
   return null;
 }
@@ -89,15 +106,24 @@ test('register → verify (mocked via outbox) → login → me → logout', asyn
     logout = await request.post(apiUrl('/auth/logout'), { data: { refresh_token: refreshFromBody } });
   } else {
     // cookie-mode: best-effort parse from Set-Cookie
-    const refreshCookie = parseCookieValue(login.headers()['set-cookie'], 'base2_refresh');
-    const csrfCookie =
-      parseCookieValue(login.headers()['set-cookie'], 'base2_csrf') ||
-      parseCookieValue(reg.headers()['set-cookie'], 'base2_csrf');
+    const loginSetCookie = login.headers()['set-cookie'];
+    const regSetCookie = reg.headers()['set-cookie'];
+
+    const refreshName = detectCookieNameBySuffix(loginSetCookie, '_refresh');
+    const csrfName =
+      detectCookieNameBySuffix(loginSetCookie, '_csrf') || detectCookieNameBySuffix(regSetCookie, '_csrf');
+
+    const refreshCookie = refreshName ? parseCookieValue(loginSetCookie, refreshName) : null;
+    const csrfCookie = csrfName
+      ? parseCookieValue(loginSetCookie, csrfName) || parseCookieValue(regSetCookie, csrfName)
+      : null;
     expect(refreshCookie).toBeTruthy();
     expect(csrfCookie).toBeTruthy();
+    expect(refreshName).toBeTruthy();
+    expect(csrfName).toBeTruthy();
     logout = await request.post(apiUrl('/auth/logout'), {
       headers: {
-        Cookie: `base2_refresh=${refreshCookie}; base2_csrf=${csrfCookie}`,
+        Cookie: `${refreshName}=${refreshCookie}; ${csrfName}=${csrfCookie}`,
         'X-CSRF-Token': String(csrfCookie)
       }
     });
@@ -139,14 +165,19 @@ test('refresh token rotation rejects reuse', async ({ request }) => {
   const reg = await request.post(apiUrl('/auth/register'), {
     data: { email, password: PASSWORD }
   });
-  const csrfFromRegister = parseCookieValue(reg.headers()['set-cookie'], 'base2_csrf');
+  const regSetCookie = reg.headers()['set-cookie'];
+  const csrfNameFromRegister = detectCookieNameBySuffix(regSetCookie, '_csrf');
+  const csrfFromRegister = csrfNameFromRegister ? parseCookieValue(regSetCookie, csrfNameFromRegister) : null;
 
   const login = await request.post(apiUrl('/auth/login'), { data: { email, password: PASSWORD } });
   expect(login.ok()).toBeTruthy();
 
   const setCookie = login.headers()['set-cookie'];
-  const refresh1 = parseCookieValue(setCookie, 'base2_refresh');
-  const csrf1 = parseCookieValue(setCookie, 'base2_csrf') || csrfFromRegister;
+  const refreshName = detectCookieNameBySuffix(setCookie, '_refresh');
+  const csrfName = detectCookieNameBySuffix(setCookie, '_csrf') || csrfNameFromRegister;
+
+  const refresh1 = refreshName ? parseCookieValue(setCookie, refreshName) : null;
+  const csrf1 = csrfName ? parseCookieValue(setCookie, csrfName) || csrfFromRegister : null;
   if (refresh1) {
     expect(csrf1).toBeTruthy();
   }
@@ -160,7 +191,7 @@ test('refresh token rotation rejects reuse', async ({ request }) => {
   const refreshResp = await request.post(apiUrl('/auth/refresh'), {
     headers: refresh1
       ? {
-          Cookie: `base2_refresh=${refresh1}; base2_csrf=${csrf1}`,
+          Cookie: `${refreshName}=${refresh1}; ${csrfName}=${csrf1}`,
           'X-CSRF-Token': String(csrf1)
         }
       : undefined,
@@ -168,8 +199,11 @@ test('refresh token rotation rejects reuse', async ({ request }) => {
   });
   expect(refreshResp.ok()).toBeTruthy();
 
-  const refresh2 = parseCookieValue(refreshResp.headers()['set-cookie'], 'base2_refresh');
-  const csrf2 = parseCookieValue(refreshResp.headers()['set-cookie'], 'base2_csrf') || csrf1;
+  const refreshSetCookie = refreshResp.headers()['set-cookie'];
+  const refreshName2 = detectCookieNameBySuffix(refreshSetCookie, '_refresh') || refreshName;
+  const csrfName2 = detectCookieNameBySuffix(refreshSetCookie, '_csrf') || csrfName;
+  const refresh2 = refreshName2 ? parseCookieValue(refreshSetCookie, refreshName2) : null;
+  const csrf2 = csrfName2 ? parseCookieValue(refreshSetCookie, csrfName2) || csrf1 : csrf1;
   const refreshBody = await refreshResp.json();
   const refreshToken2 = refresh2 || refreshBody.refresh_token;
   expect(refreshToken2).toBeTruthy();
@@ -178,7 +212,7 @@ test('refresh token rotation rejects reuse', async ({ request }) => {
   const reuse = await request.post(apiUrl('/auth/refresh'), {
     headers: refresh1
       ? {
-          Cookie: `base2_refresh=${refresh1}; base2_csrf=${csrf1}`,
+          Cookie: `${refreshName}=${refresh1}; ${csrfName}=${csrf1}`,
           'X-CSRF-Token': String(csrf1)
         }
       : undefined,
@@ -190,7 +224,7 @@ test('refresh token rotation rejects reuse', async ({ request }) => {
   const good = await request.post(apiUrl('/auth/refresh'), {
     headers: refresh2
       ? {
-          Cookie: `base2_refresh=${refresh2}; base2_csrf=${csrf2}`,
+          Cookie: `${refreshName2}=${refresh2}; ${csrfName2}=${csrf2}`,
           'X-CSRF-Token': String(csrf2)
         }
       : undefined,

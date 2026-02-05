@@ -2,7 +2,7 @@ param(
   [switch]$Full,
   [switch]$UpdateOnly,
   [string]$EnvPath = ".\.env",
-  [string]$SshKey = "$env:USERPROFILE\.ssh\base2",
+  [string]$SshKey = "$env:USERPROFILE\.ssh\id_ed25519",
   [string]$DropletIp = "",
   [switch]$SkipAllowlist,
   [string]$LogsDir = ".\local_run_logs",
@@ -32,12 +32,32 @@ $ErrorActionPreference = 'Stop'
 $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 Push-Location $script:RepoRoot
 
+function Get-ProjectSlug {
+  param([string]$Value)
+
+  $slug = [string]$Value
+  if ([string]::IsNullOrWhiteSpace($slug)) { $slug = 'app' }
+  $slug = $slug.Trim().ToLowerInvariant()
+  $slug = [regex]::Replace($slug, '[^a-z0-9_-]+', '-')
+  $slug = [regex]::Replace($slug, '-{2,}', '-')
+  $slug = $slug.Trim('-')
+  if ([string]::IsNullOrWhiteSpace($slug)) { $slug = 'app' }
+  return $slug
+}
+
+$script:ProjectName = Get-ProjectSlug $env:PROJECT_NAME
+if ($script:ProjectName -eq 'app' -and -not [string]::IsNullOrWhiteSpace([string]$env:COMPOSE_PROJECT_NAME)) {
+  $script:ProjectName = Get-ProjectSlug $env:COMPOSE_PROJECT_NAME
+}
+
+$script:RemoteAppDir = "/opt/apps/$script:ProjectName"
+
 $script:ArtifactDir = ''
 $script:ResolvedIp = ''
 $script:RunStamp = (Get-Date -Format 'yyyyMMdd_HHmmss')
 $script:TranscriptStarted = $false
 $script:ExitCode = 0
-$script:EarlyExitSentinel = '__BASE2_EARLY_EXIT__'
+$script:EarlyExitSentinel = '__DEPLOY_EARLY_EXIT__'
 $script:PendingArtifactRenameTo = ''
 
 function Write-Section($msg) {
@@ -60,7 +80,7 @@ function Invoke-LocalCmdWithTimeout {
 
   $tempRoot = $env:TEMP
   if ([string]::IsNullOrWhiteSpace($tempRoot)) { $tempRoot = $script:RepoRoot }
-  $tmp = Join-Path $tempRoot ("base2-{0}.log" -f ([guid]::NewGuid().ToString('n')))
+  $tmp = Join-Path $tempRoot ("deploy-{0}.log" -f ([guid]::NewGuid().ToString('n')))
   $wrapped = "$CmdLine > `"$tmp`" 2>&1"
 
   $p = Start-Process -FilePath 'cmd.exe' -ArgumentList @('/c', $wrapped) -WorkingDirectory $WorkingDirectory -NoNewWindow -PassThru
@@ -216,7 +236,7 @@ function Invoke-RollbackOnFailureIfEnabled([string]$ip, [string]$keyPath) {
 
   $remote = @'
 set -eu
-cd /opt/apps/base2
+cd __REMOTE_APP_DIR__
 PREV_FILE=/root/logs/build/pre-deploy-head.txt
 if [ ! -f "$PREV_FILE" ]; then
   echo "No pre-deploy head recorded at $PREV_FILE" >&2
@@ -236,6 +256,8 @@ docker compose -f local.docker.yml up -d --build --remove-orphans postgres djang
 
 echo "Rollback completed. Current HEAD: $(git rev-parse HEAD 2>/dev/null || true)"
 '@
+
+  $remote = $remote.Replace('__REMOTE_APP_DIR__', $script:RemoteAppDir)
 
   $prevEap = $ErrorActionPreference
   try {
@@ -409,7 +431,7 @@ function Finalize-ArtifactDirRename {
     }
     Move-Item -Path $script:ArtifactDir -Destination $script:PendingArtifactRenameTo -Force
     $script:ArtifactDir = (Resolve-Path $script:PendingArtifactRenameTo).Path
-    try { $env:BASE2_ARTIFACT_DIR = $script:ArtifactDir } catch {}
+    try { $env:DEPLOY_ARTIFACT_DIR = $script:ArtifactDir } catch {}
   } catch {}
   finally {
     $script:PendingArtifactRenameTo = ''
@@ -560,13 +582,13 @@ function Ensure-ArtifactDir([string]$ip = '') {
         }
       }
     } catch {}
-    try { $env:BASE2_ARTIFACT_DIR = [string]$script:ArtifactDir } catch {}
+    try { $env:DEPLOY_ARTIFACT_DIR = [string]$script:ArtifactDir } catch {}
     return $script:ArtifactDir
   }
 
   if (-not (Test-Path $targetDir)) { New-Item -ItemType Directory -Path $targetDir -Force | Out-Null }
   $script:ArtifactDir = (Resolve-Path $targetDir).Path
-  try { $env:BASE2_ARTIFACT_DIR = [string]$script:ArtifactDir } catch {}
+  try { $env:DEPLOY_ARTIFACT_DIR = [string]$script:ArtifactDir } catch {}
   return $script:ArtifactDir
 }
 
@@ -584,7 +606,7 @@ function Write-FailureArtifacts([string]$context, [string]$message) {
     Set-Content -Path (Join-Path $dest 'deploy-error.txt') -Value $message -Encoding UTF8
   } catch {}
   # Ensure the orchestrator knows where to write per-run artifacts.
-  try { $env:BASE2_ARTIFACT_DIR = $dest } catch {}
+  try { $env:DEPLOY_ARTIFACT_DIR = $dest } catch {}
   try {
     & docker compose -f ./local.docker.yml config > (Join-Path $dest 'compose-config-local.yml') 2>$null
   } catch {}
@@ -693,14 +715,14 @@ function Get-DropletIp {
   # Prefer per-run artifacts over workspace-root files.
   $artifactDir = ''
   try {
-    if ($env:BASE2_ARTIFACT_DIR) { $artifactDir = [string]$env:BASE2_ARTIFACT_DIR }
+    if ($env:DEPLOY_ARTIFACT_DIR) { $artifactDir = [string]$env:DEPLOY_ARTIFACT_DIR }
     elseif ($script:ArtifactDir) { $artifactDir = [string]$script:ArtifactDir }
     else { $artifactDir = Ensure-ArtifactDir }
   } catch {}
 
   if ($artifactDir) {
     $udFile = Resolve-ArtifactFilePath -artifactDir $artifactDir -fileName 'DO_userdata.json'
-    if ($udFile -and (Test-Path $udFile)) {
+      if ($udFile -and (Test-Path $udFile)) {
       try {
         $json = Get-Content $udFile -Raw | ConvertFrom-Json
         if ($json.ip_address) { return [string]$json.ip_address }
@@ -710,12 +732,12 @@ function Get-DropletIp {
 
   # Fallback: query DigitalOcean API via pydo using DO_DROPLET_NAME
   $tmpPy = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), 'get_do_ip.py')
-  $pyCode = @'
+   $pyCode = @'
 import os, sys
 from pydo import Client
 
 token = os.environ.get('DO_API_TOKEN')
-project = (os.environ.get('PROJECT_NAME') or 'base2').strip() or 'base2'
+project = (os.environ.get('PROJECT_NAME') or 'app').strip() or 'app'
 raw_name = os.environ.get('DO_DROPLET_NAME')
 
 def resolve_name(value: str) -> str:
@@ -728,7 +750,7 @@ def resolve_name(value: str) -> str:
 
 name = resolve_name(raw_name) if raw_name else ''
 if not name:
-  name = f'{project}-droplet' if project else 'base2-droplet'
+  name = f'{project}-droplet' if project else 'app-droplet'
 if not token:
     print('')
     sys.exit(0)
@@ -757,7 +779,7 @@ except Exception:
 
 function Run-Orchestrator {
   Write-Section "Running orchestrator"
-  $cliArgs = @()
+    $cliArgs = @()
   if (-not $Full -and $UpdateOnly) { $cliArgs += '--update-only' }
   & .\.venv\Scripts\python.exe .\digital_ocean\scripts\python\orchestrate_deploy.py @cliArgs
 }
@@ -766,6 +788,7 @@ function Remote-Verify($ip, $keyPath) {
   Write-Section "Remote verification on $ip"
   $null = Ensure-ArtifactDir -ip $ip
   $dest = Ensure-ArtifactDir
+  $remoteAppDir = $script:RemoteAppDir
   $sshExe = "ssh"
   $scpExe = "scp"
   # Be resilient to transient SSH/SCP handshake slowness; OpenSSH on Windows sometimes hits
@@ -794,12 +817,12 @@ function Remote-Verify($ip, $keyPath) {
   # Ensure repo directory exists (user_data should create it, but be defensive)
   $sshMkdirOut = Join-Path $dest 'ssh-mkdir.stdout.txt'
   $sshMkdirErr = Join-Path $dest 'ssh-mkdir.stderr.txt'
-  $code = Invoke-NativeWithTimeout -FilePath $sshExe -ArgumentList ($sshArgs + @('mkdir -p /opt/apps/base2')) -Label 'SSH mkdir /opt/apps/base2' -TimeoutSec 120 -StdoutPath $sshMkdirOut -StderrPath $sshMkdirErr -HeartbeatSec 9999
-  if ($code -ne 0) { throw "Failed to create /opt/apps/base2 on droplet (ssh exit $code)" }
+  $code = Invoke-NativeWithTimeout -FilePath $sshExe -ArgumentList ($sshArgs + @("mkdir -p $remoteAppDir")) -Label "SSH mkdir $remoteAppDir" -TimeoutSec 120 -StdoutPath $sshMkdirOut -StderrPath $sshMkdirErr -HeartbeatSec 9999
+  if ($code -ne 0) { throw "Failed to create $remoteAppDir on droplet (ssh exit $code)" }
   # Upload .env (secrets) to droplet repo root
   $scpEnvOut = Join-Path $dest 'scp-env.stdout.txt'
   $scpEnvErr = Join-Path $dest 'scp-env.stderr.txt'
-  $code = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @($localEnvPath, "root@${ip}:/opt/apps/base2/.env")) -Label 'SCP upload .env' -TimeoutSec 300 -StdoutPath $scpEnvOut -StderrPath $scpEnvErr -HeartbeatSec 60
+  $code = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @($localEnvPath, "root@${ip}:${remoteAppDir}/.env")) -Label 'SCP upload .env' -TimeoutSec 300 -StdoutPath $scpEnvOut -StderrPath $scpEnvErr -HeartbeatSec 60
   if ($code -ne 0) { throw "Failed to upload .env to droplet (scp exit $code). See scp-env.stderr.txt in artifacts." }
 
   # Create a remote verification script to avoid quoting pitfalls
@@ -807,8 +830,8 @@ function Remote-Verify($ip, $keyPath) {
   $scriptContent = @'
 set -eu
 mkdir -p /root/logs
-if [ -d /opt/apps/base2 ]; then
-  cd /opt/apps/base2
+if [ -d __REMOTE_APP_DIR__ ]; then
+  cd __REMOTE_APP_DIR__
   # Prepare log directories; clear stale artifacts from previous runs.
   rm -rf /root/logs/* || true
   mkdir -p /root/logs/build /root/logs/services /root/logs/meta || true
@@ -890,9 +913,10 @@ if [ -d /opt/apps/base2 ]; then
 import re
 from pathlib import Path
 
-p = Path('/opt/apps/base2/.env')
+p = Path('.env')
 raw = p.read_text(encoding='utf-8', errors='replace')
 keys = ['TRAEFIK_DASH_BASIC_USERS', 'FLOWER_BASIC_USERS']
+
 
 def get_val(key: str):
     for line in raw.splitlines():
@@ -1188,7 +1212,7 @@ PY
   else
     echo "MISSING_CID" | tee /root/logs/traefik-env.txt /root/logs/traefik-static.yml /root/logs/traefik-dynamic.yml /root/logs/traefik-ls.txt /root/logs/traefik-acme-perms.txt /root/logs/traefik-logs.txt /root/logs/api-logs.txt >/dev/null
   fi
-  DOMAIN=$(grep -E '^WEBSITE_DOMAIN=' /opt/apps/base2/.env | cut -d'=' -f2 | tr -d '\r')
+  DOMAIN=$(grep -E '^WEBSITE_DOMAIN=' .env | cut -d'=' -f2 | tr -d '\r')
   if [ -n "$DOMAIN" ]; then
     status "curl" "probing https://$DOMAIN (local resolve)"
     # Ensure expected curl artifacts exist even if curl/DNS/TLS fails
@@ -1222,11 +1246,11 @@ PY
     # Ensure Traefik has obtained real TLS certs for the apex + key subdomains.
     # If ACME storage is missing or cert issuance is still in progress, Traefik serves a default/staging cert,
     # which makes browsers show TLS errors (often misreported as "blocked").
-    PG_LABEL=$(grep -E '^PGADMIN_DNS_LABEL=' /opt/apps/base2/.env 2>/dev/null | cut -d'=' -f2 | tr -d '\r' || true)
+    PG_LABEL=$(grep -E '^PGADMIN_DNS_LABEL=' .env 2>/dev/null | cut -d'=' -f2 | tr -d '\r' || true)
     if [ -z "$PG_LABEL" ]; then PG_LABEL=pgadmin; fi
-    FLOWER_LABEL=$(grep -E '^FLOWER_DNS_LABEL=' /opt/apps/base2/.env 2>/dev/null | cut -d'=' -f2 | tr -d '\r' || true)
+    FLOWER_LABEL=$(grep -E '^FLOWER_DNS_LABEL=' .env 2>/dev/null | cut -d'=' -f2 | tr -d '\r' || true)
     if [ -z "$FLOWER_LABEL" ]; then FLOWER_LABEL=flower; fi
-    TRAEFIK_LABEL=$(grep -E '^TRAEFIK_DNS_LABEL=' /opt/apps/base2/.env 2>/dev/null | cut -d'=' -f2 | tr -d '\r' || true)
+    TRAEFIK_LABEL=$(grep -E '^TRAEFIK_DNS_LABEL=' .env 2>/dev/null | cut -d'=' -f2 | tr -d '\r' || true)
     if [ -z "$TRAEFIK_LABEL" ]; then TRAEFIK_LABEL=traefik; fi
 
     TLS_HOSTS="$DOMAIN www.$DOMAIN swagger.$DOMAIN admin.$DOMAIN ${PG_LABEL}.$DOMAIN ${FLOWER_LABEL}.$DOMAIN ${TRAEFIK_LABEL}.$DOMAIN"
@@ -1423,7 +1447,7 @@ rid = "${RID}"
 
 try:
     from project.celery import app
-    res = app.send_task("base2.ping", kwargs={"request_id": rid})
+  res = app.send_task("app.ping", kwargs={"request_id": rid})
     print(f"enqueued_task_id={res.id}")
 except Exception as e:
     print(f"enqueue_failed={e}")
@@ -1516,14 +1540,14 @@ print(json.dumps(payload))" > /root/logs/request-id-log-propagation.json 2> /roo
     fi
 
     # Flower 401 check via Traefik (no credentials) -> expect 401 if guarded
-    FL_LABEL=$(grep -E '^FLOWER_DNS_LABEL=' /opt/apps/base2/.env | cut -d'=' -f2 | tr -d '\r')
+    FL_LABEL=$(grep -E '^FLOWER_DNS_LABEL=' .env | cut -d'=' -f2 | tr -d '\r')
     if [ -n "$FL_LABEL" ]; then
       FHOST="$FL_LABEL.$DOMAIN"
       curl -skI --resolve "$FHOST:443:127.0.0.1" "https://$FHOST/" -o /root/logs/curl-flower.txt || true
     fi
 
     # Django admin HEAD (no credentials) -> expect 401/403 when guarded
-    ADM_LABEL=$(grep -E '^DJANGO_ADMIN_DNS_LABEL=' /opt/apps/base2/.env | cut -d'=' -f2 | tr -d '\r')
+    ADM_LABEL=$(grep -E '^DJANGO_ADMIN_DNS_LABEL=' .env | cut -d'=' -f2 | tr -d '\r')
     if [ -n "$ADM_LABEL" ]; then
       AHOST="$ADM_LABEL.$DOMAIN"
       curl -skI --resolve "$AHOST:443:127.0.0.1" "https://$AHOST/" -o /root/logs/curl-admin-head.txt || true
@@ -1553,9 +1577,9 @@ except Exception:\
   fi
     # Ensure contract file available inside API container for contract tests
     AID=$(docker compose -f local.docker.yml ps -q api 2>/dev/null || true)
-    if [ -n "$AID" ] && [ -f "/opt/apps/base2/specs/001-django-fastapi-react/contracts/openapi.yaml" ]; then
+    if [ -n "$AID" ] && [ -f "./specs/001-django-fastapi-react/contracts/openapi.yaml" ]; then
       docker compose -f local.docker.yml exec -T api sh -lc 'mkdir -p /app/specs/001-django-fastapi-react/contracts' >/dev/null 2>&1 || true
-      docker cp "/opt/apps/base2/specs/001-django-fastapi-react/contracts/openapi.yaml" "$AID":/app/specs/001-django-fastapi-react/contracts/openapi.yaml >/dev/null 2>&1 || true
+      docker cp "./specs/001-django-fastapi-react/contracts/openapi.yaml" "$AID":/app/specs/001-django-fastapi-react/contracts/openapi.yaml >/dev/null 2>&1 || true
     fi
 
   # Run service test suites inside containers and capture outputs.
@@ -1592,6 +1616,8 @@ except Exception:\
   date -u +"%Y-%m-%dT%H:%M:%SZ" > /root/logs/remote_verify.done || true
 fi
 '@
+
+  $scriptContent = $scriptContent.Replace('__REMOTE_APP_DIR__', $remoteAppDir)
   # Ensure Unix LF endings and no BOM for remote bash
   $unixScript = $scriptContent -replace "`r`n","`n"
   Set-Content -Path $tmpScript -Value $unixScript -Encoding Ascii -NoNewline
@@ -1854,12 +1880,12 @@ fi
 }
 
 
-Write-Section "Base2 Deploy"
+Write-Section "Deploy"
 try {
   $null = Ensure-ArtifactDir
   # Provide the orchestrator a per-run artifact directory. It will write DO_userdata.json
   # into this folder during the same run (even before the droplet IP is known).
-  try { $env:BASE2_ARTIFACT_DIR = (Ensure-ArtifactDir) } catch {}
+  try { $env:DEPLOY_ARTIFACT_DIR = (Ensure-ArtifactDir) } catch {}
 
   # Start capturing console output early.
   Start-DeployTranscript
@@ -1949,7 +1975,7 @@ try {
     Write-Warning "Could not determine droplet IP. Skipping remote verification."
     Write-Section "Remote verify unavailable - saving local artifacts"
     $dest = Ensure-ArtifactDir
-    try { $env:BASE2_ARTIFACT_DIR = $dest } catch {}
+    try { $env:DEPLOY_ARTIFACT_DIR = $dest } catch {}
 
     # Capture minimal local Compose artifacts for troubleshooting
     try { & docker compose -f ./local.docker.yml ps > (Join-Path $dest 'compose-ps-local.txt') 2>$null } catch {}

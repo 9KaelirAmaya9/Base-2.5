@@ -11,7 +11,7 @@ from contextlib import suppress
 logger = logging.getLogger("api.email_tasks")
 
 
-@app.task(bind=True, name="base2.send_email_outbox")
+@app.task(bind=True, name="app.send_email_outbox")
 def send_email_outbox(self, outbox_id: str, request_id: str | None = None) -> str:
     with suppress(Exception):
         logger.info(

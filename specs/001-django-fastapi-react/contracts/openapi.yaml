@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Base2 API (External Contract)
+  title: API (External Contract)
   version: 0.1.0
   description: |
     External API contract for the Full-stack Baseline feature.
@@ -18,7 +18,7 @@ components:
     SessionCookie:
       type: apiKey
       in: cookie
-      name: base2_session
+      name: app_session
       description: HttpOnly cookie carrying the primary session credential.
     CsrfToken:
       type: apiKey

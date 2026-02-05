@@ -1,6 +1,6 @@
-# Base2 Constitution
+# Project Constitution
 
-This document defines the **governing principles and development guidelines** for Base2.  
+This document defines the **governing principles and development guidelines** for this project.  
 All contributions (human or AI) MUST comply.
 
 ---

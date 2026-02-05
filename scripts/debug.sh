@@ -9,7 +9,25 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_DIR"
 
-echo "🐛 Debugging Base2 Docker Environment..."
+# Derive values from .env when present
+get_env_var() {
+    local key="$1"
+    local line
+    line=$(grep -E "^${key}=" .env 2>/dev/null | head -n1 || true)
+    if [ -n "$line" ]; then
+        line=$(echo "$line" | sed 's/ *#.*//' | sed 's/[[:space:]]*$//')
+        echo "$line" | cut -d'=' -f2-
+    fi
+}
+
+COMPOSE_PROJECT_NAME="$(get_env_var COMPOSE_PROJECT_NAME)"
+if [ -z "$COMPOSE_PROJECT_NAME" ]; then COMPOSE_PROJECT_NAME="$(get_env_var PROJECT_NAME)"; fi
+if [ -z "$COMPOSE_PROJECT_NAME" ]; then COMPOSE_PROJECT_NAME="app"; fi
+
+NETWORK_NAME="$(get_env_var NETWORK_NAME)"
+if [ -z "$NETWORK_NAME" ]; then NETWORK_NAME="${COMPOSE_PROJECT_NAME}_network"; fi
+
+echo "🐛 Debugging Docker Environment..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Parse command line arguments
@@ -37,7 +55,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ -n "$SERVICE" ]; then
-    container_name="base2_${SERVICE}"
+    container_name="${COMPOSE_PROJECT_NAME}_${SERVICE}"
     
     echo "🔍 Debugging service: $SERVICE"
     echo ""
@@ -101,7 +119,7 @@ else
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "🔗 Network Information:"
-    docker network inspect base2_network --format='
+    docker network inspect "$NETWORK_NAME" --format='
 Network: {{.Name}}
 Driver: {{.Driver}}
 Subnet: {{range .IPAM.Config}}{{.Subnet}}{{end}}
@@ -114,7 +132,7 @@ Connected Containers:
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "💾 Volume Information:"
-    docker volume ls --filter "name=base2" --format "table {{.Name}}\t{{.Driver}}\t{{.Mountpoint}}"
+    docker volume ls --filter "name=${COMPOSE_PROJECT_NAME}" --format "table {{.Name}}\t{{.Driver}}\t{{.Mountpoint}}"
     
     # Resource usage
     echo ""

@@ -9,7 +9,7 @@ trap 'err "Script failed at line $LINENO"' ERR
 
 DEPLOY_USER="deploy"
 DEPLOY_HOME="/home/$DEPLOY_USER"
-PROJECT_NAME_SAFE="${PROJECT_NAME:-base2}"
+PROJECT_NAME_SAFE="${PROJECT_NAME:-app}"
 REPO_DIR_OPT="/opt/apps/${PROJECT_NAME_SAFE}"
 if [ -d "$REPO_DIR_OPT" ]; then
 	REPO_DIR="$REPO_DIR_OPT"

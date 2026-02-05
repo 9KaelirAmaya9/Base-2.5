@@ -32,17 +32,6 @@ def ping(self, request_id: str | None = None):
     return "pong"
 
 
-# Deploy-time probes also enqueue `base2.ping` (legacy Celery app name).
-@shared_task(name="base2.ping")
-def ping_base2(request_id: str | None = None):
-    # Keep this task signature permissive: deploy-time probes may pass request_id.
-    try:
-        logger.info("ping_base2", extra={"request_id": request_id})
-    except Exception:
-        pass
-    return "pong"
-
-
 @shared_task(bind=True)
 def send_verification_email(
     self,

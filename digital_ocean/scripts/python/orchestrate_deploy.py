@@ -42,10 +42,10 @@ def _find_env_path() -> str:
     """Locate repo-root .env file.
 
     After script relocation to digital_ocean/scripts/python, we can't assume
-    ../.env exists. Prefer BASE2_ENV_PATH/ENV_PATH if provided, else walk up
+    ../.env exists. Prefer APP_ENV_PATH/ENV_PATH if provided, else walk up
     parent directories looking for '.env'.
     """
-    for key in ("BASE2_ENV_PATH", "ENV_PATH"):
+    for key in ("APP_ENV_PATH", "ENV_PATH"):
         p = os.environ.get(key)
         if p and os.path.isfile(p):
             return os.path.abspath(p)
@@ -90,7 +90,7 @@ REBOOT_MARKERS = [
 ]
 COMPLETION_MARKER = "User data script completed at"
 SUMMARY = []
-PROJECT_NAME = os.getenv("PROJECT_NAME", "base2")
+PROJECT_NAME = os.getenv("PROJECT_NAME", "app")
 _EXPANSION_ENV = {**os.environ, "PROJECT_NAME": PROJECT_NAME}
 ssh_dir = os.path.expanduser("~/.ssh")
 ssh_key_path = os.path.join(ssh_dir, PROJECT_NAME)
@@ -171,7 +171,7 @@ def recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path):
         print(f"[RECOVERY] SSH recovery failed: {e}")
 DO_API_TOKEN = os.getenv("DO_API_TOKEN")
 DO_DOMAIN = _expand_env_templates(os.getenv("DO_DOMAIN"), _EXPANSION_ENV)  # e.g. example.com
-DO_DROPLET_NAME = _expand_env_templates(os.getenv("DO_DROPLET_NAME", "base2-droplet"), _EXPANSION_ENV)
+DO_DROPLET_NAME = _expand_env_templates(os.getenv("DO_DROPLET_NAME", "${PROJECT_NAME}-droplet"), _EXPANSION_ENV)
 DO_API_REGION = os.getenv("DO_API_REGION", "nyc3")
 DO_API_SIZE = os.getenv("DO_API_SIZE", "s-1vcpu-1gb")
 DO_API_IMAGE = os.getenv("DO_API_IMAGE", "ubuntu-22-04-x64")
@@ -464,7 +464,10 @@ else:
 log(f"Using SSH keys for droplet: {ssh_keys}")
 LOCAL_ENV_PATH = os.getenv("LOCAL_ENV_PATH", os.path.abspath(os.path.join(os.path.dirname(__file__), "../.env")))
 # Remote repo path is controlled via DEPLOY_PATH/PROJECT_NAME (defaults align with deploy.ps1 remote verification)
-REMOTE_ENV_PATH = os.getenv("REMOTE_ENV_PATH", "/opt/apps/base2/.env")
+REMOTE_ENV_PATH = _expand_env_templates(
+    os.getenv("REMOTE_ENV_PATH", "/opt/apps/${PROJECT_NAME}/.env"),
+    _EXPANSION_ENV,
+)
 SSH_USER = os.getenv("SSH_USER", "root")
 
 client = Client(token=DO_API_TOKEN)
@@ -501,20 +504,20 @@ print("--- user_data script ---\n" + user_data_script_sub + "\n--- end user_data
 
 """DO_userdata.json location
 
-When run via scripts/deploy.ps1, we set BASE2_ARTIFACT_DIR to a per-run folder
+When run via scripts/powershell/deploy.ps1, we set DEPLOY_ARTIFACT_DIR to a per-run folder
 local_run_logs/<ip>-<timestamp>/ (initially unknown-<timestamp> and later renamed).
 
 In that flow we ONLY write DO_userdata.json into the artifact folder.
 """
 
-artifact_dir = os.getenv("BASE2_ARTIFACT_DIR", "").strip()
+artifact_dir = os.getenv("DEPLOY_ARTIFACT_DIR", "").strip()
 if artifact_dir:
     try:
         artifact_dir_path = Path(artifact_dir)
         artifact_dir_path.mkdir(parents=True, exist_ok=True)
         do_userdata_json_path = str(artifact_dir_path / "DO_userdata.json")
     except Exception as e:
-        err(f"Failed to initialize BASE2_ARTIFACT_DIR '{artifact_dir}': {e}")
+        err(f"Failed to initialize DEPLOY_ARTIFACT_DIR '{artifact_dir}': {e}")
         # Avoid writing into the workspace root by default.
         do_userdata_json_path = str(Path(__file__).resolve().parent / "DO_userdata.json")
 else:
@@ -547,7 +550,7 @@ droplet_spec = {
     "size": DO_API_SIZE,
     "image": DO_API_IMAGE,
     "ssh_keys": ssh_keys,
-    "tags": ["base2"],
+    "tags": [PROJECT_NAME],
     "user_data": user_data_script_sub,
     "ipv6": True,
 }
@@ -738,7 +741,7 @@ else:
     try:
         SSH_USER = os.getenv("SSH_USER", "root")
         deploy_root = str(env_dict.get('DEPLOY_PATH', '/opt/apps')).rstrip('/')
-        project_name = str(env_dict.get('PROJECT_NAME', 'base2')).strip('/')
+        project_name = str(env_dict.get('PROJECT_NAME', PROJECT_NAME)).strip('/')
         repo_path = f"{deploy_root}/{project_name}"
         log(f"Connecting via SSH to {ip_address} for post-reboot configuration...")
         ssh_client = paramiko.SSHClient()

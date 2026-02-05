@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test';
 
 test('home page loads', async ({ page }) => {
   await page.goto('/');
-  await expect(page).toHaveTitle(/Base2|React|Home/i);
+  await expect(page).toHaveTitle(/React|Home|App/i);
 });
 
 test('login page renders and can submit', async ({ page }) => {

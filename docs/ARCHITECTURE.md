@@ -1,6 +1,6 @@
 # Multi-Tenant Context & Isolation
 
-This document outlines the tenant context propagation and isolation patterns adopted for the Base2 stack.
+This document outlines the tenant context propagation and isolation patterns adopted for the stack.
 
 - Context carrier: header `X-Tenant-Id`. Traefik forwards headers unchanged; FastAPI attaches tenant id to `request.state.tenant_id` via middleware.
 - Enforcement: routes requiring tenant semantics call `require_tenant(request)`; routes with path tenants call `ensure_path_tenant_matches(request, path_tenant)` to block cross-tenant access.

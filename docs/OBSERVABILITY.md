@@ -5,7 +5,7 @@
 The API supports optional OpenTelemetry tracing.
 
 - Enable: set `OTEL_ENABLED=true`
-- Service name: `OTEL_SERVICE_NAME=base2-api`
+- Service name: `OTEL_SERVICE_NAME=api`
 - Exporter:
   - If `OTEL_EXPORTER_OTLP_ENDPOINT` is set, traces are exported via OTLP/HTTP.
   - Otherwise, traces are exported to console (dev-friendly).

@@ -7,13 +7,13 @@
 # NOTE: Keep this minimal and treat it as documentation unless you actively
 # use App Platform.
 
-name: base2-app
+name: change-me-app
 region: nyc3
 services:
   - name: web
     # Placeholder; update with your own repo/image strategy if using App Platform.
     github:
-      repo: woodkill00/base2
+      repo: your-org/your-repo
       branch: main
       deploy_on_push: false
     envs:

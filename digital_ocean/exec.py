@@ -14,6 +14,7 @@ Exits nonzero on error. Requires .env to be configured.
 import os
 import sys
 import argparse
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -35,6 +36,12 @@ except ImportError:
 
 REQUIRED_ENV_VARS = ["DO_API_TOKEN"]
 def validate_env():
+	# Pytest safety: avoid accidentally using a globally-set real token.
+	if os.getenv("PYTEST_CURRENT_TEST"):
+		token = os.getenv("DO_API_TOKEN")
+		if token and token not in ("dummy", "test-token"):
+			os.environ.pop("DO_API_TOKEN", None)
+
 	missing = [v for v in REQUIRED_ENV_VARS if not os.getenv(v)]
 	if missing:
 		print(f"Missing environment variables: {', '.join(missing)}", file=sys.stderr)
@@ -63,7 +70,14 @@ def exec_on_app_service(client, app_id, service_name, command):
 
 def main():
 	# Load .env at runtime so unit tests can patch os.environ before calling main().
-	load_dotenv(override=False)
+	# Constrain dotenv loading to the current working directory only (no parent search).
+	load_dotenv(dotenv_path=Path.cwd() / ".env", override=False)
+
+	# Pytest safety: avoid accidentally using a globally-set real token.
+	if os.getenv("PYTEST_CURRENT_TEST"):
+		token = os.getenv("DO_API_TOKEN")
+		if token and token not in ("dummy", "test-token"):
+			os.environ.pop("DO_API_TOKEN", None)
 
 	parser = argparse.ArgumentParser(description="Run commands in Digital Ocean containers.")
 	group = parser.add_mutually_exclusive_group(required=True)

@@ -9,6 +9,25 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_DIR"
 
+# Derive container prefix from .env (fallback to PROJECT_NAME/app)
+get_env_var() {
+    local key="$1"
+    local line
+    line=$(grep -E "^${key}=" .env 2>/dev/null | head -n1 || true)
+    if [ -n "$line" ]; then
+        line=$(echo "$line" | sed 's/ *#.*//' | sed 's/[[:space:]]*$//')
+        echo "$line" | cut -d'=' -f2-
+    fi
+}
+
+COMPOSE_PROJECT_NAME="$(get_env_var COMPOSE_PROJECT_NAME)"
+if [ -z "$COMPOSE_PROJECT_NAME" ]; then
+    COMPOSE_PROJECT_NAME="$(get_env_var PROJECT_NAME)"
+fi
+if [ -z "$COMPOSE_PROJECT_NAME" ]; then
+    COMPOSE_PROJECT_NAME="app"
+fi
+
 # Parse command line arguments
 SERVICE=""
 SHELL_TYPE="sh"
@@ -48,7 +67,7 @@ if [ -z "$SERVICE" ]; then
     exit 1
 fi
 
-container_name="base2_${SERVICE}"
+container_name="${COMPOSE_PROJECT_NAME}_${SERVICE}"
 
 echo "🐚 Accessing shell for: $SERVICE"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

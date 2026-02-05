@@ -194,8 +194,8 @@ function Check-OpenApi([string]$artifactDir, [string]$domain) {
       $payload.sessionCookieName = $cookieName
       if (-not $cookieName) {
         $fail += 'OpenAPI missing components.securitySchemes.SessionCookie.name'
-      } elseif ($cookieName -ne 'base2_session') {
-        $fail += "OpenAPI session cookie name mismatch: expected base2_session, got $cookieName"
+      } elseif ($cookieName -notmatch '^[a-z0-9_-]+_session$') {
+        $fail += "OpenAPI session cookie name mismatch: expected <project>_session, got $cookieName"
       }
     } catch { $fail += 'Failed to validate OpenAPI session cookie name' }
 
@@ -498,7 +498,6 @@ function Verify-StagingCert([string]$staticPath, [string]$dynamicPath) {
   $envMode = ''
   try {
     if ($env:ENV) { $envMode = [string]$env:ENV }
-    elseif ($env:BASE2_ENV) { $envMode = [string]$env:BASE2_ENV }
   } catch {}
   $envMode = ($envMode + '').Trim().ToLower()
   $isProd = ($envMode -eq 'prod' -or $envMode -eq 'production')
@@ -548,7 +547,6 @@ function Check-TlsAcmeGuard([string]$artifactDir, [string]$staticPath, [string]$
   $envMode = ''
   try {
     if ($env:ENV) { $envMode = [string]$env:ENV }
-    elseif ($env:BASE2_ENV) { $envMode = [string]$env:BASE2_ENV }
   } catch {}
   $envMode = ($envMode + '').Trim().ToLower()
   $isProd = ($envMode -eq 'prod' -or $envMode -eq 'production')
@@ -1118,8 +1116,8 @@ $artifactDir = $LogsDir
 
 # Prefer explicit per-run artifact directory if provided by deploy.ps1.
 try {
-  if ($env:BASE2_ARTIFACT_DIR) {
-    $cand = [string]$env:BASE2_ARTIFACT_DIR
+  if ($env:DEPLOY_ARTIFACT_DIR) {
+    $cand = [string]$env:DEPLOY_ARTIFACT_DIR
     if ($cand -and (Test-Path $cand)) { $artifactDir = $cand }
   }
 } catch {}
@@ -1187,7 +1185,7 @@ function Check-ApiMetrics([string]$artifactDir, [string]$domain) {
       $fail += "Metrics expected 200, got $($payload.status) ($u)"
     }
 
-    $expected = @('base2_api_requests_total', 'base2_api_uptime_seconds')
+    $expected = @('api_requests_total', 'api_uptime_seconds')
     foreach ($m in $expected) {
       if ($text -notmatch [regex]::Escape($m)) {
         $fail += "Metrics missing expected name: $m"

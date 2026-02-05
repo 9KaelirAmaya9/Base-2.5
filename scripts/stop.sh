@@ -10,7 +10,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_DIR"
 
 # ==========================================
-# Base2 Stop Script
+# Stop Script
 # Usage: ./stop.sh [OPTIONS]
 # Options:
 #   -v, --volumes     Remove volumes (WARNING: deletes data)
@@ -18,7 +18,7 @@ cd "$PROJECT_DIR"
 #   --self-test       Run script self-test and exit
 # ==========================================
 
-echo "🛑 Stopping Base2 Docker Environment..."
+echo "🛑 Stopping Docker Environment..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Parse command line arguments

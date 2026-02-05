@@ -22,7 +22,7 @@ def configure_otel(app) -> None:
         from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-        service_name = os.getenv("OTEL_SERVICE_NAME", "base2-api")
+        service_name = os.getenv("OTEL_SERVICE_NAME", "api")
         resource = Resource.create({"service.name": service_name})
 
         provider = TracerProvider(resource=resource)

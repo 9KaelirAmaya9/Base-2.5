@@ -11,7 +11,12 @@ local_run_logs/
 
 # Speckit generated output (do not commit)
 .specify/prereq_run.json
+.specify/prereq.json
 .specify/memory/
+
+# Speckit/ad-hoc prereq outputs (do not commit)
+.specify_prereq_*.json
+.speckit_*prereq*.json
 
 # Platform-specific binaries (do not commit)
 /docker-compose
@@ -26,6 +31,13 @@ local_run_logs/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.pre-complete.*
+
+# Timestamped backups created by setup tooling
+.env.bak
+.env.bak.*
+.env.backup.*
+.env.pre-setup.*
 
 # SSL Certificates & Private Keys
 *.pem
@@ -256,6 +268,7 @@ $RECYCLE.BIN/
 __pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
 .venv/
 venv/
 

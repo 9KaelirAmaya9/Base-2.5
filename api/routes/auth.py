@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import hashlib
+import re
 import secrets
 from urllib.parse import urlparse
 
@@ -11,6 +12,12 @@ from pydantic import BaseModel
 
 from api.security import rate_limit
 from api.settings import settings
+
+
+def _project_slug() -> str:
+    raw = (os.getenv("PROJECT_NAME") or os.getenv("COMPOSE_PROJECT_NAME") or "").strip().lower()
+    raw = re.sub(r"[^a-z0-9_-]+", "-", raw).strip("-_")
+    return raw or "app"
 
 def _client_ip(request: Request) -> str:
     xff = request.headers.get("x-forwarded-for")
@@ -43,11 +50,15 @@ class _RegisterRequest(BaseModel):
 
 
 def _refresh_cookie_name() -> str:
-    return "base2_refresh"
+    session_name = str(getattr(settings, "SESSION_COOKIE_NAME", "") or "")
+    if session_name.endswith("_session"):
+        return session_name[: -len("_session")] + "_refresh"
+    return f"{_project_slug()}_refresh"
 
 
 def _csrf_cookie_name() -> str:
-    return str(getattr(settings, "CSRF_COOKIE_NAME", "base2_csrf") or "base2_csrf")
+    configured = str(getattr(settings, "CSRF_COOKIE_NAME", "") or "").strip()
+    return configured or f"{_project_slug()}_csrf"
 
 
 def _ensure_csrf_cookie(request: Request, response: Response) -> None:
