@@ -9,9 +9,21 @@ function uniqueEmail(prefix = 'e2e') {
   return `${prefix}-${ts}-${Math.random().toString(16).slice(2)}@example.com`;
 }
 
+function normalizeSetCookieHeaders(setCookieHeader) {
+  if (!setCookieHeader) return [];
+  if (Array.isArray(setCookieHeader)) return setCookieHeader;
+  // Playwright's request.headers() may return a single comma-joined string for repeated headers.
+  // Split on commas that look like they start a new cookie (avoids splitting Expires=... values).
+  return String(setCookieHeader)
+    .split(/\r?\n/)
+    .flatMap((line) => String(line).split(/,(?=\s*[A-Za-z0-9_.-]+=)/))
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 function parseCookieValue(setCookieHeader, cookieName) {
   if (!setCookieHeader) return null;
-  const headers = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader];
+  const headers = normalizeSetCookieHeaders(setCookieHeader);
   for (const h of headers) {
     const m = String(h).match(new RegExp(`(?:^|\\s)${escapeRegex(cookieName)}=([^;]+)`));
     if (m) return m[1];
@@ -21,7 +33,7 @@ function parseCookieValue(setCookieHeader, cookieName) {
 
 function detectCookieNameBySuffix(setCookieHeader, suffix) {
   if (!setCookieHeader) return null;
-  const headers = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader];
+  const headers = normalizeSetCookieHeaders(setCookieHeader);
   for (const h of headers) {
     const first = String(h || '').split(';')[0] || '';
     const eq = first.indexOf('=');
