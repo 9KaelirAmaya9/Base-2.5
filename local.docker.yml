@@ -13,7 +13,7 @@ services:
       - NODE_ENV=production
       - REACT_APP_API_URL=https://${WEBSITE_DOMAIN:-localhost}/api
       - REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID}
-    networks: [base2_network]
+    networks: [app_network]
     restart: unless-stopped
     security_opt: [no-new-privileges:true]
     tmpfs:
@@ -47,7 +47,7 @@ services:
       - JWT_EXPIRE=${JWT_EXPIRE}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
-    networks: [base2_network]
+    networks: [app_network]
     depends_on:
       postgres:
         condition: service_healthy
@@ -92,7 +92,7 @@ services:
       - PORT=${DJANGO_PORT}
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
-    networks: [base2_network]
+    networks: [app_network]
     depends_on:
       postgres:
         condition: service_healthy
@@ -121,7 +121,7 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME}_nginx
     environment:
       - NGINX_PORT=${NGINX_PORT}
-    networks: [base2_network]
+    networks: [app_network]
     restart: unless-stopped
     security_opt: [no-new-privileges:true]
     tmpfs:
@@ -140,7 +140,7 @@ services:
     volumes:
       - ./nginx/nginx-django-static.conf:/etc/nginx/nginx.conf:ro
       - django_static:/app/static:ro
-    networks: [base2_network]
+    networks: [app_network]
     restart: unless-stopped
     security_opt: [no-new-privileges:true]
     tmpfs:
@@ -161,7 +161,7 @@ services:
     ports:
       - '80:80'
       - '443:443'
-    networks: [base2_network]
+    networks: [app_network]
     volumes:
       - ./letsencrypt:/etc/traefik/acme
       - traefik_logs:/var/log/traefik
@@ -191,7 +191,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    networks: [base2_network]
+    networks: [app_network]
     restart: unless-stopped
     security_opt: [no-new-privileges:true]
     healthcheck:
@@ -211,7 +211,7 @@ services:
       - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
       - PGADMIN_CONFIG_SERVER_MODE=${PGADMIN_CONFIG_SERVER_MODE}
       - PGADMIN_LISTEN_PORT=${PGADMIN_PORT}
-    networks: [base2_network]
+    networks: [app_network]
     depends_on:
       postgres:
         condition: service_healthy
@@ -236,7 +236,7 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME}_redis
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD:?REDIS_PASSWORD is required}
-    networks: [base2_network]
+    networks: [app_network]
     restart: unless-stopped
     security_opt: [no-new-privileges:true]
     command:
@@ -275,7 +275,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
       - CELERY_LOG_LEVEL=${CELERY_LOG_LEVEL}
       - CELERY_CONCURRENCY=${CELERY_CONCURRENCY}
-    networks: [base2_network]
+    networks: [app_network]
     depends_on:
       redis:
         condition: service_healthy
@@ -320,7 +320,7 @@ services:
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
       - CELERY_LOG_LEVEL=${CELERY_LOG_LEVEL}
-    networks: [base2_network]
+    networks: [app_network]
     depends_on:
       redis:
         condition: service_healthy
@@ -355,7 +355,7 @@ services:
     environment:
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - FLOWER_PORT=5555
-    networks: [base2_network]
+    networks: [app_network]
     depends_on:
       redis:
         condition: service_healthy
@@ -383,7 +383,7 @@ services:
     cpus: '0.25'
 
 networks:
-  base2_network:
+  app_network:
     name: ${NETWORK_NAME}
 
 volumes:

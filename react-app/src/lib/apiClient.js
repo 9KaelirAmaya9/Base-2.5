@@ -21,6 +21,30 @@ const _getCookie = (name) => {
   }
 };
 
+const _detectCookieNameBySuffix = (suffix) => {
+  try {
+    const parts = String(document.cookie || '').split(';');
+    for (const part of parts) {
+      const trimmed = String(part || '').trim();
+      if (!trimmed) continue;
+      const eq = trimmed.indexOf('=');
+      if (eq <= 0) continue;
+      const name = decodeURIComponent(trimmed.slice(0, eq));
+      if (name && name.endsWith(suffix)) {
+        return name;
+      }
+    }
+    return null;
+  } catch (_) {
+    return null;
+  }
+};
+
+const _getCsrfToken = () => {
+  const name = _detectCookieNameBySuffix('_csrf');
+  return name ? _getCookie(name) : null;
+};
+
 const _getAccessToken = () => {
   try {
     return window.localStorage.getItem('token');
@@ -83,7 +107,7 @@ const _refreshAccessTokenSingleFlight = async () => {
     const refreshToken = _getRefreshToken();
     const body = refreshToken ? { refresh_token: refreshToken } : {};
 
-    const csrf = _getCookie('base2_csrf');
+    const csrf = _getCsrfToken();
     const headers = { 'Content-Type': 'application/json' };
     if (csrf) {
       headers['X-CSRF-Token'] = csrf;
@@ -113,8 +137,6 @@ const _refreshAccessTokenSingleFlight = async () => {
 const apiClient = axios.create({
   baseURL: API_URL,
   withCredentials: true,
-  xsrfCookieName: 'base2_csrf',
-  xsrfHeaderName: 'X-CSRF-Token',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -122,6 +144,11 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
+    const csrf = _getCsrfToken();
+    if (csrf) {
+      config.headers = config.headers || {};
+      config.headers['X-CSRF-Token'] = csrf;
+    }
     const token = _getAccessToken();
     if (token) {
       config.headers = config.headers || {};

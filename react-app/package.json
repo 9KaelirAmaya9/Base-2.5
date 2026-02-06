@@ -1,7 +1,7 @@
 {
-  "name": "base2-react-app",
+  "name": "app-react-app",
   "version": "1.0.0",
-  "description": "Base2 React Application",
+  "description": "React application",
   "private": true,
   "dependencies": {
     "@emotion/is-prop-valid": "^1.4.0",

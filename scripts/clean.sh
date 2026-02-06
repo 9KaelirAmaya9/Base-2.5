@@ -9,7 +9,22 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_DIR"
 
-echo "🧹 Cleaning Base2 Docker Environment..."
+# Derive values from .env when present
+get_env_var() {
+    local key="$1"
+    local line
+    line=$(grep -E "^${key}=" .env 2>/dev/null | head -n1 || true)
+    if [ -n "$line" ]; then
+        line=$(echo "$line" | sed 's/ *#.*//' | sed 's/[[:space:]]*$//')
+        echo "$line" | cut -d'=' -f2-
+    fi
+}
+
+COMPOSE_PROJECT_NAME="$(get_env_var COMPOSE_PROJECT_NAME)"
+if [ -z "$COMPOSE_PROJECT_NAME" ]; then COMPOSE_PROJECT_NAME="$(get_env_var PROJECT_NAME)"; fi
+if [ -z "$COMPOSE_PROJECT_NAME" ]; then COMPOSE_PROJECT_NAME="app"; fi
+
+echo "🧹 Cleaning Docker Environment..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Parse command line arguments
@@ -84,14 +99,17 @@ if [ "$CLEAN_IMAGES" = true ]; then
     echo ""
     echo "🗑️  Removing images..."
     
-    # Get all images for this project
-    IMAGES=$(docker images --filter=reference='base2*' -q)
+    # Get images that match the current compose project name
+    IMAGES=$(docker images --filter=reference="${COMPOSE_PROJECT_NAME}*" -q)
+    if [ -z "$IMAGES" ]; then
+        IMAGES=$(docker images --filter=reference="*${COMPOSE_PROJECT_NAME}*" -q)
+    fi
     
     if [ -z "$IMAGES" ]; then
-        echo "ℹ️  No base2 images found"
+        echo "ℹ️  No matching images found"
     else
         echo "Found images:"
-        docker images --filter=reference='base2*'
+        docker images --filter=reference="*${COMPOSE_PROJECT_NAME}*"
         echo ""
         read -p "Remove these images? (yes/no): " -r
         echo

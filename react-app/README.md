@@ -1,4 +1,4 @@
-# Base2 React App with Google OAuth
+# React App with Google OAuth
 
 A modern React application featuring Google OAuth authentication, protected routes, and a complete user management system.
 
@@ -333,7 +333,7 @@ npm run build
 
 ## 📝 License
 
-This project is part of the Base2 Docker Environment.
+This project is part of the Docker Environment.
 
 ---
 

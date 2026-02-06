@@ -1,31 +1,37 @@
 # Research: Digital Ocean API Integration
 
 ## Decision
+
 - Use Digital Ocean REST API to automate container deployment and management.
 - Scripts will be written in Bash and/or Node.js for compatibility with existing project scripts.
 - Store all Digital Ocean API scripts in `digital_ocean/` folder.
 
 ## Rationale
+
 - REST API is well-documented and supports all required operations (droplet/container creation, management, etc.).
 - Bash/Node.js aligns with current project tech stack and script conventions.
 - Isolated folder ensures maintainability and separation of concerns.
 
 ## Alternatives Considered
+
 - Terraform/Ansible: More complex, not required for direct API calls.
 - Python scripts: Would add another language dependency.
 
 ## Key API Endpoints
+
 - [Droplets](https://docs.digitalocean.com/reference/api/api-reference/#operation/create_droplet)
 - [Container Registry](https://docs.digitalocean.com/reference/api/api-reference/#tag/Container-Registry)
 - [Apps](https://docs.digitalocean.com/reference/api/api-reference/#tag/Apps)
 
 ## Environment Variables Needed
+
 - `DO_API_TOKEN`: Digital Ocean API token (required)
 - `DO_REGION`: Region for deployment (optional, defaults to `nyc3`)
 - `DO_IMAGE`: Container image to deploy
 - `DO_APP_NAME`: Name for the deployed app/container
 
 ## References
+
 - [Digital Ocean API Docs](https://docs.digitalocean.com/reference/api/api-reference/)
 - [Apps API](https://docs.digitalocean.com/reference/api/api-reference/#tag/Apps)
 - [Droplets API](https://docs.digitalocean.com/reference/api/api-reference/#tag/Droplets)
@@ -34,7 +40,8 @@
 - [Metadata API](https://docs.digitalocean.com/reference/api/metadata/)
 - [PyDo Python Client](https://github.com/digitalocean/pydo)
 
-## Using PyDo in Base2
+## Using PyDo
+
 - PyDo is the official Python client for Digital Ocean's API, supporting all major endpoints.
 - **Authentication:**
   ```python
@@ -56,6 +63,7 @@
   - See [PyDo documentation](https://docs.digitalocean.com/reference/pydo/) for full API coverage.
 
 ## Next Steps
+
 - Design data model for API requests/responses
 - Write scripts for authentication, container launch, status, and teardown
 - Document usage and error handling

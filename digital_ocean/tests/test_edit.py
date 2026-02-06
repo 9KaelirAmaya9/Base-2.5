@@ -6,7 +6,7 @@ from digital_ocean import edit
 
 def test_edit_env_missing(monkeypatch):
     monkeypatch.delenv("DO_API_TOKEN", raising=False)
-    monkeypatch.setenv("DO_APP_NAME", "base2-app")
+    monkeypatch.setenv("DO_APP_NAME", "app")
     monkeypatch.setenv("DO_API_REGION", "nyc3")
     monkeypatch.setenv("DO_API_IMAGE", "docker-20-04")
     with pytest.raises(SystemExit) as e:
@@ -15,7 +15,7 @@ def test_edit_env_missing(monkeypatch):
 
 def test_edit_droplet_not_found(monkeypatch):
     monkeypatch.setenv("DO_API_TOKEN", "dummy")
-    monkeypatch.setenv("DO_APP_NAME", "base2-app")
+    monkeypatch.setenv("DO_APP_NAME", "app")
     monkeypatch.setenv("DO_API_REGION", "nyc3")
     monkeypatch.setenv("DO_API_IMAGE", "docker-20-04")
     with mock.patch("digital_ocean.edit.Client") as MockClient:
@@ -27,12 +27,12 @@ def test_edit_droplet_not_found(monkeypatch):
 
 def test_edit_dry_run(monkeypatch, capsys):
     monkeypatch.setenv("DO_API_TOKEN", "dummy")
-    monkeypatch.setenv("DO_APP_NAME", "base2-app")
+    monkeypatch.setenv("DO_APP_NAME", "app")
     monkeypatch.setenv("DO_API_REGION", "nyc3")
     monkeypatch.setenv("DO_API_IMAGE", "docker-20-04")
     with mock.patch("digital_ocean.edit.Client") as MockClient:
         mock_client = MockClient.return_value
-        mock_client.droplets.list.return_value = {"droplets": [{"id": 12345, "name": "base2-app"}]}
+        mock_client.droplets.list.return_value = {"droplets": [{"id": 12345, "name": "app"}]}
         test_args = ["edit.py", "--dry-run"]
         with mock.patch.object(sys, 'argv', test_args):
             with pytest.raises(SystemExit) as e:
@@ -43,12 +43,12 @@ def test_edit_dry_run(monkeypatch, capsys):
 
 def test_edit_update(monkeypatch, capsys):
     monkeypatch.setenv("DO_API_TOKEN", "dummy")
-    monkeypatch.setenv("DO_APP_NAME", "base2-app")
+    monkeypatch.setenv("DO_APP_NAME", "app")
     monkeypatch.setenv("DO_API_REGION", "nyc3")
     monkeypatch.setenv("DO_API_IMAGE", "docker-20-04")
     with mock.patch("digital_ocean.edit.Client") as MockClient:
         mock_client = MockClient.return_value
-        mock_client.droplets.list.return_value = {"droplets": [{"id": 12345, "name": "base2-app"}]}
+        mock_client.droplets.list.return_value = {"droplets": [{"id": 12345, "name": "app"}]}
         mock_client.tags.create.return_value = None
         mock_client.tags.tag_resource.return_value = None
         test_args = ["edit.py"]
@@ -61,7 +61,7 @@ def test_edit_update(monkeypatch, capsys):
 
 def test_edit_api_error(monkeypatch):
     monkeypatch.setenv("DO_API_TOKEN", "dummy")
-    monkeypatch.setenv("DO_APP_NAME", "base2-app")
+    monkeypatch.setenv("DO_APP_NAME", "app")
     monkeypatch.setenv("DO_API_REGION", "nyc3")
     monkeypatch.setenv("DO_API_IMAGE", "docker-20-04")
     with mock.patch("digital_ocean.edit.Client") as MockClient:
@@ -72,12 +72,12 @@ def test_edit_api_error(monkeypatch):
 
 def test_edit_rollback(monkeypatch, capsys):
     monkeypatch.setenv("DO_API_TOKEN", "dummy")
-    monkeypatch.setenv("DO_APP_NAME", "base2-app")
+    monkeypatch.setenv("DO_APP_NAME", "app")
     monkeypatch.setenv("DO_API_REGION", "nyc3")
     monkeypatch.setenv("DO_API_IMAGE", "docker-20-04")
     with mock.patch("digital_ocean.edit.Client") as MockClient:
         mock_client = MockClient.return_value
-        mock_client.droplets.list.return_value = {"droplets": [{"id": 12345, "name": "base2-app"}]}
+        mock_client.droplets.list.return_value = {"droplets": [{"id": 12345, "name": "app"}]}
         mock_client.tags.create.side_effect = Exception("Update failed")
         test_args = ["edit.py"]
         with mock.patch.object(sys, 'argv', test_args):

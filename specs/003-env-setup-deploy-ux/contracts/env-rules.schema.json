@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/contracts/env-rules.schema.json",
+  "title": "Env Rules Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["categories", "deployModes", "environments"],
+  "properties": {
+    "deployModes": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["local", "digitalocean"] }
+    },
+    "environments": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["development", "staging", "production"] }
+    },
+    "categories": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Core", "Secrets", "Admin", "Access", "TLS", "SMTP", "OAuth"],
+      "properties": {
+        "Core": { "$ref": "#/$defs/category" },
+        "Secrets": { "$ref": "#/$defs/category" },
+        "Admin": { "$ref": "#/$defs/category" },
+        "Access": { "$ref": "#/$defs/category" },
+        "TLS": { "$ref": "#/$defs/category" },
+        "SMTP": { "$ref": "#/$defs/category" },
+        "OAuth": { "$ref": "#/$defs/category" }
+      }
+    }
+  },
+  "$defs": {
+    "category": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requiredByDefault", "keys"],
+      "properties": {
+        "requiredByDefault": { "type": "boolean" },
+        "keys": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        }
+      }
+    }
+  }
+}

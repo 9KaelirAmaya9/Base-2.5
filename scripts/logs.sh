@@ -74,7 +74,7 @@ if [ "$SELF_TEST" = true ]; then
     exit 0
 fi
 
-echo "📋 Viewing logs for Base2 Docker Environment"
+echo "📋 Viewing logs for Docker Environment"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Build docker-compose logs command

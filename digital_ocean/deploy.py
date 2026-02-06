@@ -16,6 +16,7 @@ It intentionally keeps behavior simple and deterministic:
 
 import os
 import sys
+from pathlib import Path
 
 from dotenv import load_dotenv
 from pydo import Client
@@ -25,7 +26,18 @@ from digital_ocean.env_check import REQUIRED_VARS
 
 def main():
     # Load .env at runtime so tests can control os.environ via monkeypatch.
-    load_dotenv(override=False)
+    # IMPORTANT: constrain dotenv loading to the current working directory only
+    # (do not search parent directories), to avoid accidentally picking up a
+    # user-level/global .env with real credentials.
+    load_dotenv(dotenv_path=Path.cwd() / ".env", override=False)
+
+    # Pytest safety: never allow real credentials to be used during unit tests.
+    # Some environments have DO_API_TOKEN set globally; tests should remain
+    # deterministic and must not create real droplets.
+    if os.getenv("PYTEST_CURRENT_TEST"):
+        token = os.getenv("DO_API_TOKEN")
+        if token and token not in ("dummy", "test-token"):
+            os.environ.pop("DO_API_TOKEN", None)
 
     if len(sys.argv) > 1 and sys.argv[1] in ("--help", "-h"):
         print("Usage: python deploy.py [--dry-run]\nDeploys a droplet to DigitalOcean using PyDo.")

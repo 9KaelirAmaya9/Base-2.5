@@ -9,7 +9,7 @@ if ! command -v docker >/dev/null; then
   exit 1
 fi
 
-PROJECT=${COMPOSE_PROJECT_NAME:-base2}
+PROJECT=${COMPOSE_PROJECT_NAME:-app}
 
 echo "[INFO] Restarting postgres and redis containers for chaos smoke..."
 docker compose restart postgres redis

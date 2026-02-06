@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
@@ -11,6 +12,12 @@ import jwt
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _default_project_claim() -> str:
+    raw = (os.getenv("PROJECT_NAME") or os.getenv("COMPOSE_PROJECT_NAME") or "").strip().lower()
+    raw = re.sub(r"[^a-z0-9_-]+", "-", raw).strip("-_")
+    return raw or "app"
 
 
 def get_token_pepper() -> str:
@@ -37,8 +44,9 @@ def create_access_token(*, subject: str, email: str, ttl_minutes: int) -> str:
     if not secret:
         raise RuntimeError("Missing JWT_SECRET")
 
-    issuer = (os.getenv("JWT_ISSUER") or "base2").strip() or "base2"
-    audience = (os.getenv("JWT_AUDIENCE") or "base2").strip() or "base2"
+    default_claim = _default_project_claim()
+    issuer = (os.getenv("JWT_ISSUER") or default_claim).strip() or default_claim
+    audience = (os.getenv("JWT_AUDIENCE") or default_claim).strip() or default_claim
 
     now = _utcnow()
     exp = now + timedelta(minutes=ttl_minutes)
@@ -59,6 +67,7 @@ def decode_access_token(token: str) -> Dict[str, Any]:
     if not secret:
         raise RuntimeError("Missing JWT_SECRET")
 
-    issuer = (os.getenv("JWT_ISSUER") or "base2").strip() or "base2"
-    audience = (os.getenv("JWT_AUDIENCE") or "base2").strip() or "base2"
+    default_claim = _default_project_claim()
+    issuer = (os.getenv("JWT_ISSUER") or default_claim).strip() or default_claim
+    audience = (os.getenv("JWT_AUDIENCE") or default_claim).strip() or default_claim
     return jwt.decode(token, secret, algorithms=["HS256"], issuer=issuer, audience=audience)

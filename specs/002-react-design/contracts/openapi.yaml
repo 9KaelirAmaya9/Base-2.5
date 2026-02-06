@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Base2 UI Feature — No API Changes
+  title: UI Feature — No API Changes
   version: 1.0.0
   description: |
     This frontend-only feature introduces a glassmorphism design system and App Shell.

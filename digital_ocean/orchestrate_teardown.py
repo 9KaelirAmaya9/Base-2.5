@@ -33,10 +33,10 @@ def _expand_env_templates(value: str, env: dict | None = None) -> str:
     return current
 
 DO_API_TOKEN = os.getenv("DO_API_TOKEN")
-PROJECT_NAME = os.getenv("PROJECT_NAME", "base2")
+PROJECT_NAME = os.getenv("PROJECT_NAME", "app")
 _EXPANSION_ENV = {**os.environ, "PROJECT_NAME": PROJECT_NAME}
 DO_DOMAIN = _expand_env_templates(os.getenv("DO_DOMAIN"), _EXPANSION_ENV)
-DO_DROPLET_NAME = _expand_env_templates(os.getenv("DO_DROPLET_NAME", "base2-droplet"), _EXPANSION_ENV)
+DO_DROPLET_NAME = _expand_env_templates(os.getenv("DO_DROPLET_NAME", "${PROJECT_NAME}-droplet"), _EXPANSION_ENV)
 CLEAN_DNS = "--clean-dns" in sys.argv
 
 client = Client(token=DO_API_TOKEN)

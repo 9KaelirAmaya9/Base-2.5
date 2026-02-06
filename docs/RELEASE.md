@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the lightweight release process for Base2.
+This document describes the lightweight release process for the stack.
 
 ## Steps
 

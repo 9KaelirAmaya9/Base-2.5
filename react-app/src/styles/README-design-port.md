@@ -1,4 +1,4 @@
-# Design Port Map (junk/idea → base2 react-app)
+# Design Port Map (junk/idea → react-app)
 
 This file documents how the reference design system under `./junk/idea/` maps into the production React app under `./react-app/`.
 
@@ -19,7 +19,7 @@ Components (layout/content intent):
 - `junk/idea/src/app/components/trust-section.tsx`
 - `junk/idea/src/app/components/footer.tsx`
 
-## Base2 targets
+## React app targets
 
 ### Global style import order
 
@@ -27,15 +27,15 @@ Reference order:
 
 - fonts → tailwind → theme → glass (see `junk/idea/src/styles/index.css`)
 
-Base2 order (see `react-app/src/App.css`):
+App order (see `react-app/src/App.css`):
 
 - tokens → background → glass → app/global styles
 
 ### Token mapping
 
-`junk/idea/src/styles/theme.css` is Tailwind-oriented and uses OKLCH variables. Base2 uses a smaller, app-specific set of CSS custom properties.
+`junk/idea/src/styles/theme.css` is Tailwind-oriented and uses OKLCH variables. The app uses a smaller, app-specific set of CSS custom properties.
 
-| Intent               | Reference (junk/idea)                          | Base2 (react-app)                                  |
+| Intent               | Reference (junk/idea)                          | react-app                                          |
 | -------------------- | ---------------------------------------------- | -------------------------------------------------- |
 | Theme surface colors | `--background`, `--foreground`, `--card`, etc. | `--glass-bg-*`, `--glass-border`, `--glass-shadow` |
 | Focus ring / outline | `--ring` and Tailwind `outline-ring`           | `--focus-glow` (3px neon ring)                     |
@@ -47,7 +47,7 @@ Base2 order (see `react-app/src/App.css`):
 
 Reference background lives in `junk/idea/src/styles/glass.css` via `.gradient-background`.
 
-Base2 ports that into:
+The app ports that into:
 
 - `react-app/src/styles/background.css` (`.gradient-background`, light/dark variants, reduced-motion guards)
 
@@ -57,7 +57,7 @@ Reference behavior is implemented in:
 
 - `junk/idea/src/app/components/side-menu.tsx`
 
-Base2 implements the required primitives via:
+The app implements the required primitives via:
 
 - CSS: `react-app/src/styles/glass.css` (`.glass-drawer-*` primitives)
 - Components/tests: `react-app/src/components/glass/GlassSidebar.tsx` + tests

@@ -17,7 +17,7 @@ if git ls-files --error-unmatch docker-compose >/dev/null 2>&1; then
 fi
 
 # 2) Forbidden tracked extensions
-if git ls-files | grep -E -i '\\.exe$' >/dev/null 2>&1; then
+if git ls-files | grep -E -i '\.exe$' >/dev/null 2>&1; then
   fail "Tracked forbidden executable(s): *.exe"
 fi
 

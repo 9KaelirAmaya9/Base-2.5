@@ -58,7 +58,7 @@ Recommended: set `DO_APP_BRANCH=main` in `.env` for stable deployments.
 - Deploy verification also enforces:
   - ACME email is set (`TRAEFIK_CERT_EMAIL`)
   - ACME storage files are not world-readable
-  - If the production Let's Encrypt directory is referenced, `ENV=prod` (or `BASE2_ENV=prod`) must be explicitly set
+  - If the production Let's Encrypt directory is referenced, `ENV=prod` must be explicitly set
 
 Flag interaction:
 

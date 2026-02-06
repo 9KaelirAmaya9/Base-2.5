@@ -59,7 +59,7 @@ configure_logging(service="api")
 logger = logging.getLogger("api.http")
 
 app = FastAPI(
-    title="Base2 API",
+    title=(os.getenv("API_TITLE") or "API"),
     docs_url=(_docs_url if _docs_enabled else None),
     redoc_url=(_redoc_url if _docs_enabled else None),
     openapi_url=(_openapi_url if _docs_enabled else None),
@@ -198,10 +198,11 @@ try:
     from fastapi.openapi.utils import get_openapi
 
     def custom_openapi():
+        session_cookie_name = str(getattr(settings, "SESSION_COOKIE_NAME", "") or "") or "session"
         openapi_schema = get_openapi(
             title=app.title,
             version="0.1.0",
-            description="External API contract surface for Base2",
+            description="External API contract surface",
             routes=app.routes,
         )
         comps = openapi_schema.setdefault("components", {})
@@ -210,7 +211,7 @@ try:
         sec["SessionCookie"] = {
             "type": "apiKey",
             "in": "cookie",
-            "name": "base2_session",
+            "name": session_cookie_name,
             "description": "HttpOnly cookie carrying the primary session credential.",
         }
         # CSRF token header scheme required by contract

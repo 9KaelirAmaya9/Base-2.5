@@ -160,7 +160,7 @@ def queue_email(
         from api.tasks import app as celery_app
 
         celery_app.send_task(
-            "base2.send_email_outbox",
+            "app.send_email_outbox",
             args=[str(outbox.id)],
             kwargs={"request_id": request_id},
         )

@@ -49,7 +49,8 @@ mkdir -p "$DEPLOY_PATH$PROJECT_NAME"
 if [ -d "$DEPLOY_PATH$PROJECT_NAME" ] && [ "$(ls -A "$DEPLOY_PATH$PROJECT_NAME")" ]; then
   log "$DEPLOY_PATH$PROJECT_NAME already exists and is not empty, skipping git clone."
 else
-  git clone https://github.com/woodkill00/base2.git "$DEPLOY_PATH$PROJECT_NAME"
+  REPO_URL="${REPO_URL:-https://github.com/your-org/your-repo.git}"
+  git clone "$REPO_URL" "$DEPLOY_PATH$PROJECT_NAME"
 fi
 
 # --- Python Virtual Environment Setup ---

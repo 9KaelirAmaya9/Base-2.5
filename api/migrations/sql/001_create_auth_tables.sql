@@ -1,4 +1,4 @@
--- Base2 FastAPI-owned auth schema (Phase 14 Option A)
+-- FastAPI-owned auth schema (Phase 14 Option A)
 -- Idempotent by design: uses IF NOT EXISTS.
 
 CREATE TABLE IF NOT EXISTS api_schema_migrations (

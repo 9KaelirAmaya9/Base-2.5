@@ -38,7 +38,7 @@ const Navigation = () => {
                 <span className="text-xl" aria-hidden="true">
                   🚀
                 </span>
-                <span className="text-sm font-semibold tracking-tight">Base2</span>
+                <span className="text-sm font-semibold tracking-tight">App</span>
               </Link>
             </div>
 

@@ -70,18 +70,23 @@ CHANGES_MADE=false
 # ============================================
 echo "🔍 Checking .env consistency..."
 echo "   - NETWORK_NAME will override TRAEFIK_DOCKER_NETWORK"
-CURRENT_TRAEFIK_NETWORK=$(grep "^TRAEFIK_DOCKER_NETWORK=" .env | cut -d'=' -f2)
+CURRENT_TRAEFIK_NETWORK="$TRAEFIK_DOCKER_NETWORK"
 
 if [ "$CURRENT_TRAEFIK_NETWORK" != "$NETWORK_NAME" ]; then
-    echo -e "${YELLOW}⚙️  Syncing TRAEFIK_DOCKER_NETWORK: $CURRENT_TRAEFIK_NETWORK → $NETWORK_NAME${NC}"
-    
-    # macOS compatible sed
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s/^TRAEFIK_DOCKER_NETWORK=.*/TRAEFIK_DOCKER_NETWORK=$NETWORK_NAME/" .env
+    if grep -q "^TRAEFIK_DOCKER_NETWORK=" .env; then
+        echo -e "${YELLOW}⚙️  Syncing TRAEFIK_DOCKER_NETWORK: $CURRENT_TRAEFIK_NETWORK → $NETWORK_NAME${NC}"
+
+        # macOS compatible sed
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s/^TRAEFIK_DOCKER_NETWORK=.*/TRAEFIK_DOCKER_NETWORK=$NETWORK_NAME/" .env
+        else
+            sed -i "s/^TRAEFIK_DOCKER_NETWORK=.*/TRAEFIK_DOCKER_NETWORK=$NETWORK_NAME/" .env
+        fi
     else
-        sed -i "s/^TRAEFIK_DOCKER_NETWORK=.*/TRAEFIK_DOCKER_NETWORK=$NETWORK_NAME/" .env
+        echo -e "${YELLOW}⚙️  Setting TRAEFIK_DOCKER_NETWORK: (missing) → $NETWORK_NAME${NC}"
+        printf "\nTRAEFIK_DOCKER_NETWORK=%s\n" "$NETWORK_NAME" >> .env
     fi
-    
+
     echo -e "${GREEN}✅ Updated .env${NC}"
     CHANGES_MADE=true
 else
@@ -94,35 +99,76 @@ echo ""
 # ============================================
 echo "🔍 Checking local.docker.yml network configuration..."
 
-# Detect current network key in networks definition
-CURRENT_NETWORK=$(grep -A 1 "^networks:" local.docker.yml | tail -1 | sed 's/^[[:space:]]*//' | sed 's/:.*$//')
+# The Compose network *key* is an internal identifier in local.docker.yml.
+# The Compose network *name* should be driven by NETWORK_NAME via: name: ${NETWORK_NAME}
+TARGET_NETWORK_KEY="app_network"
 
-if [ "$CURRENT_NETWORK" != "$NETWORK_NAME" ]; then
-    echo -e "${YELLOW}⚙️  Updating network configuration: $CURRENT_NETWORK → $NETWORK_NAME${NC}"
-    
+# Detect the first network key under networks:
+CURRENT_NETWORK=$(
+  awk '
+    /^networks:/{in_n=1; next}
+    in_n && $0 ~ /^[[:space:]]{2}[A-Za-z0-9_-]+:/{
+      line=$0
+      sub(/^[[:space:]]+/, "", line)
+      sub(/:.*/, "", line)
+      print line
+      exit
+    }
+  ' local.docker.yml
+)
+
+if [ -z "$CURRENT_NETWORK" ]; then
+    echo -e "${YELLOW}⚠️  Warning: Could not detect a networks key in local.docker.yml${NC}"
+elif [ "$CURRENT_NETWORK" != "$TARGET_NETWORK_KEY" ]; then
+    echo -e "${YELLOW}⚙️  Updating network key: $CURRENT_NETWORK → $TARGET_NETWORK_KEY${NC}"
+
     # Create backup
     cp local.docker.yml local.docker.yml.bak
-    
-    # Update network definition key
+
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s/^  $CURRENT_NETWORK:/  $NETWORK_NAME:/" local.docker.yml
-        # Update all service network references
-        sed -i '' "s/- $CURRENT_NETWORK\$/- $NETWORK_NAME/" local.docker.yml
+        sed -i '' "s/^  $CURRENT_NETWORK:/  $TARGET_NETWORK_KEY:/" local.docker.yml
+        sed -i '' "s/- $CURRENT_NETWORK\$/- $TARGET_NETWORK_KEY/" local.docker.yml
     else
-        sed -i "s/^  $CURRENT_NETWORK:/  $NETWORK_NAME:/" local.docker.yml
-        # Update all service network references
-        sed -i "s/- $CURRENT_NETWORK\$/- $NETWORK_NAME/" local.docker.yml
+        sed -i "s/^  $CURRENT_NETWORK:/  $TARGET_NETWORK_KEY:/" local.docker.yml
+        sed -i "s/- $CURRENT_NETWORK\$/- $TARGET_NETWORK_KEY/" local.docker.yml
     fi
-    
-    echo -e "${GREEN}✅ Updated local.docker.yml${NC}"
-    echo "   - Network definition key: $CURRENT_NETWORK → $NETWORK_NAME"
-    echo "   - All service network references updated"
+
+    echo -e "${GREEN}✅ Updated local.docker.yml network key${NC}"
     CHANGES_MADE=true
-    
+
     rm -f local.docker.yml.bak
 else
-    echo "✓ local.docker.yml network is correct"
+    echo "✓ local.docker.yml network key is correct ($TARGET_NETWORK_KEY)"
 fi
+
+# Ensure the network's name is driven by NETWORK_NAME
+if ! grep -qE "^    name: \$\{NETWORK_NAME\}\s*$" local.docker.yml; then
+    echo -e "${YELLOW}⚙️  Ensuring networks.$TARGET_NETWORK_KEY uses name: \${NETWORK_NAME}${NC}"
+    cp local.docker.yml local.docker.yml.bak
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "/^  ${TARGET_NETWORK_KEY}:/,/^[^ ]/ s/^    name: .*/    name: \${NETWORK_NAME}/" local.docker.yml
+    else
+        sed -i "/^  ${TARGET_NETWORK_KEY}:/,/^[^ ]/ s/^    name: .*/    name: \${NETWORK_NAME}/" local.docker.yml
+    fi
+
+    # If the block had no name: line to begin with, insert one immediately after the key.
+    if ! grep -qE "^    name: \$\{NETWORK_NAME\}\s*$" local.docker.yml; then
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "/^  ${TARGET_NETWORK_KEY}:/a\\
+    name: \${NETWORK_NAME}
+" local.docker.yml
+        else
+            sed -i "/^  ${TARGET_NETWORK_KEY}:/a\\
+    name: \${NETWORK_NAME}
+" local.docker.yml
+        fi
+    fi
+
+    CHANGES_MADE=true
+    rm -f local.docker.yml.bak
+fi
+
+echo "✓ local.docker.yml network name is driven by NETWORK_NAME"
 echo ""
 
 # Note: Removed automatic mutation of traefik/traefik.yml entrypoints.

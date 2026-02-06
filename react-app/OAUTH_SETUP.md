@@ -1,6 +1,6 @@
 # Google OAuth Setup Guide
 
-Complete guide to setting up Google OAuth authentication for the Base2 React app.
+Complete guide to setting up Google OAuth authentication for the React app.
 
 ---
 
@@ -17,7 +17,7 @@ Complete guide to setting up Google OAuth authentication for the Base2 React app
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Click on the project dropdown at the top
 3. Click "New Project"
-4. Enter project name (e.g., "Base2 App")
+4. Enter project name (e.g., "My App")
 5. Click "Create"
 6. Wait for the project to be created, then select it
 
@@ -42,7 +42,7 @@ Complete guide to setting up Google OAuth authentication for the Base2 React app
 
 **Required Fields:**
 
-- **App name:** Base2 App (or your preferred name)
+- **App name:** My App (or your preferred name)
 - **User support email:** Your email address
 - **Developer contact information:** Your email address
 
@@ -81,7 +81,7 @@ Complete guide to setting up Google OAuth authentication for the Base2 React app
 
 ### Configure the OAuth Client:
 
-**Name:** Base2 React App
+**Name:** React App
 
 **Authorized JavaScript origins:**
 

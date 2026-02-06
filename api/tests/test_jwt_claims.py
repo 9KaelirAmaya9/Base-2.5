@@ -8,13 +8,13 @@ import jwt
 
 def test_access_token_includes_and_validates_iss_aud(monkeypatch):
     monkeypatch.setenv("JWT_SECRET", "test-secret")
-    monkeypatch.setenv("JWT_ISSUER", "base2")
-    monkeypatch.setenv("JWT_AUDIENCE", "base2")
+    monkeypatch.setenv("JWT_ISSUER", "app")
+    monkeypatch.setenv("JWT_AUDIENCE", "app")
 
     token = create_access_token(subject="123", email="a@b.com", ttl_minutes=5)
     payload = decode_access_token(token)
-    assert payload["iss"] == "base2"
-    assert payload["aud"] == "base2"
+    assert payload["iss"] == "app"
+    assert payload["aud"] == "app"
 
 
 def test_decode_rejects_wrong_issuer(monkeypatch):

@@ -13,6 +13,7 @@ import os
 import sys
 import logging
 from dotenv import load_dotenv
+from pathlib import Path
 try:
 	from pydo import Client
 except ImportError:
@@ -32,6 +33,12 @@ except ImportError:
 # Environment variable validation
 REQUIRED_ENV_VARS = ["DO_API_TOKEN"]
 def validate_env():
+	# Pytest safety: avoid accidentally using a globally-set real token.
+	if os.getenv("PYTEST_CURRENT_TEST"):
+		token = os.getenv("DO_API_TOKEN")
+		if token and token not in ("dummy", "test-token"):
+			os.environ.pop("DO_API_TOKEN", None)
+
 	missing = [v for v in REQUIRED_ENV_VARS if not os.getenv(v)]
 	if missing:
 		print(f"Missing environment variables: {', '.join(missing)}", file=sys.stderr)
@@ -65,7 +72,14 @@ def main():
 		print("Usage: python info.py [options]\nLists Digital Ocean namespaces, domain names, and resource metadata.")
 		sys.exit(0)
 	# Load .env at runtime so unit tests can patch os.environ before calling validate_env().
-	load_dotenv(override=False)
+	# Constrain dotenv loading to the current working directory only (no parent search).
+	load_dotenv(dotenv_path=Path.cwd() / ".env", override=False)
+
+	# Pytest safety: avoid accidentally using a globally-set real token.
+	if os.getenv("PYTEST_CURRENT_TEST"):
+		token = os.getenv("DO_API_TOKEN")
+		if token and token not in ("dummy", "test-token"):
+			os.environ.pop("DO_API_TOKEN", None)
 	validate_env()
 	logger = get_logger("digital_ocean.info")
 	client = get_client()

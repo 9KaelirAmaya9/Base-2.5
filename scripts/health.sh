@@ -9,7 +9,22 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_DIR"
 
-echo "🏥 Health Check for Base2 Docker Environment"
+# Derive values from .env when present
+get_env_var() {
+    local key="$1"
+    local line
+    line=$(grep -E "^${key}=" .env 2>/dev/null | head -n1 || true)
+    if [ -n "$line" ]; then
+        line=$(echo "$line" | sed 's/ *#.*//' | sed 's/[[:space:]]*$//')
+        echo "$line" | cut -d'=' -f2-
+    fi
+}
+
+COMPOSE_PROJECT_NAME="$(get_env_var COMPOSE_PROJECT_NAME)"
+if [ -z "$COMPOSE_PROJECT_NAME" ]; then COMPOSE_PROJECT_NAME="$(get_env_var PROJECT_NAME)"; fi
+if [ -z "$COMPOSE_PROJECT_NAME" ]; then COMPOSE_PROJECT_NAME="app"; fi
+
+echo "🏥 Health Check for Docker Environment"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
@@ -24,7 +39,7 @@ fi
 # Function to check service health
 check_health() {
     local service=$1
-    local container_name="base2_${service}"
+    local container_name="${COMPOSE_PROJECT_NAME}_${service}"
     
     if docker ps --filter "name=${container_name}" --format "{{.Names}}" | grep -q "${container_name}"; then
         health=$(docker inspect --format='{{.State.Health.Status}}' "${container_name}" 2>/dev/null || echo "no healthcheck")

@@ -1,4 +1,4 @@
-# Base2 Docker Environment
+# Docker Environment
 
 A robust, production-ready Docker setup with enhanced security, health checks, and comprehensive environment variable management.
 
@@ -49,17 +49,39 @@ This Docker environment includes the following services:
 
 ## 🔧 Setup Instructions
 
-### 1. Environment Configuration
+### 1. Install root tooling dependencies
 
-Copy the example environment file and customize it:
+The guided environment setup commands live in the repository root.
 
 ```bash
-cp .env.example .env
+npm install
 ```
 
-Edit `.env` to configure your services with custom values. All environment variables are documented in the file.
+### 2. Generate `.env` (guided)
 
-### 2. Build and Start Services
+```bash
+npm run setup
+```
+
+This creates (or overwrites, with confirmation) `.env` based on `.env.example`, derives identifiers from `PROJECT_NAME`, and prints a categorized next-steps checklist.
+
+### 3. Validate + fill required config (recommended)
+
+```bash
+npm run setup:complete -- --no-print
+```
+
+This validates required categories, generates missing credentials, fills IP allowlists when placeholders remain, and is safe to re-run.
+
+### 4. Readiness check (read-only)
+
+```bash
+npm run doctor -- --strict
+```
+
+Use `--json` if you want machine-readable output.
+
+### 5. Build and Start Services
 
 ```bash
 # Build all services
@@ -72,7 +94,7 @@ docker compose -f local.docker.yml up -d
 docker compose -f local.docker.yml logs -f
 ```
 
-### 2b. (Recommended) Use the Makefile shortcuts
+### 5b. (Recommended) Use the Makefile shortcuts
 
 If you have `make` available (Mac/Linux, or Windows via WSL/Git Bash), you can use:
 
@@ -194,7 +216,7 @@ To enable web access to pgAdmin:
 
 ### Traefik
 
-- `TRAEFIK_DOCKER_NETWORK`: Docker network to monitor (default: base2_network)
+- `TRAEFIK_DOCKER_NETWORK`: Docker network to monitor (default: `${NETWORK_NAME}`)
 - `TRAEFIK_EXPOSED_BY_DEFAULT`: Auto-expose containers (default: false)
 - `TRAEFIK_DNS_LABEL`: Subdomain label for Traefik dashboard host rule and DNS (default: `traefik`). Final FQDN: `${TRAEFIK_DNS_LABEL}.${WEBSITE_DOMAIN}`.
 
@@ -390,10 +412,10 @@ Access a container's shell for direct interaction.
 
 This script will permanently delete:
 
-- All containers (base2\_\*)
-- All volumes (base2\_\*) - **ALL DATA WILL BE LOST**
-- All images (base2\_\*)
-- All networks (base2\_\*)
+- All containers (`${COMPOSE_PROJECT_NAME}_*`)
+- All volumes (`${COMPOSE_PROJECT_NAME}_*`) - **ALL DATA WILL BE LOST**
+- All images (`*${COMPOSE_PROJECT_NAME}*`)
+- Network: `${NETWORK_NAME}` (and any network matching `*${COMPOSE_PROJECT_NAME}*`)
 
 ⚠️ **This action CANNOT be undone!** Use only when you want to completely reset the environment.
 

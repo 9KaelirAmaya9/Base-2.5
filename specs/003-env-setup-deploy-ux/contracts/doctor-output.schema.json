@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/contracts/doctor-output.schema.json",
+  "title": "Doctor Output Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "timestamp",
+    "ok",
+    "strict",
+    "deployMode",
+    "env",
+    "findings",
+    "recommendation"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Contract version for the JSON output format"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ok": {
+      "type": "boolean",
+      "description": "True when no required findings exist"
+    },
+    "strict": {
+      "type": "boolean",
+      "description": "Whether strict mode evaluation was applied"
+    },
+    "deployMode": {
+      "type": "string",
+      "enum": ["local", "digitalocean", "unknown"]
+    },
+    "env": {
+      "type": "string",
+      "enum": ["development", "staging", "production", "unknown"]
+    },
+    "findings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["placeholders", "missing", "invalid", "hardcodedIdentifiers", "prerequisites"],
+      "properties": {
+        "placeholders": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/finding" }
+        },
+        "missing": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/finding" }
+        },
+        "invalid": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/finding" }
+        },
+        "hardcodedIdentifiers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/identifierFinding" }
+        },
+        "prerequisites": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/finding" }
+        }
+      }
+    },
+    "recommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "reason"],
+      "properties": {
+        "command": { "type": "string" },
+        "reason": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "key", "message", "required"],
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": ["Core", "Secrets", "Admin", "Access", "TLS", "SMTP", "OAuth", "Other"]
+        },
+        "key": { "type": "string" },
+        "message": { "type": "string" },
+        "required": { "type": "boolean" }
+      }
+    },
+    "identifierFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "line", "match"],
+      "properties": {
+        "path": { "type": "string" },
+        "line": { "type": "integer", "minimum": 1 },
+        "match": { "type": "string" }
+      }
+    }
+  }
+}

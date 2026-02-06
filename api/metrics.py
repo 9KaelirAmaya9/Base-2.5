@@ -47,31 +47,31 @@ class ApiMetrics:
         p95 = self._p95_ms(recent)
 
         lines: list[str] = []
-        lines.append("# HELP base2_api_uptime_seconds Uptime of the API process in seconds")
-        lines.append("# TYPE base2_api_uptime_seconds gauge")
-        lines.append(f"base2_api_uptime_seconds {uptime:.3f}")
+        lines.append("# HELP api_uptime_seconds Uptime of the API process in seconds")
+        lines.append("# TYPE api_uptime_seconds gauge")
+        lines.append(f"api_uptime_seconds {uptime:.3f}")
 
-        lines.append("# HELP base2_api_requests_total Total number of HTTP requests observed")
-        lines.append("# TYPE base2_api_requests_total counter")
-        lines.append(f"base2_api_requests_total {requests_total}")
+        lines.append("# HELP api_requests_total Total number of HTTP requests observed")
+        lines.append("# TYPE api_requests_total counter")
+        lines.append(f"api_requests_total {requests_total}")
 
-        lines.append("# HELP base2_api_responses_total Total number of HTTP responses by status class")
-        lines.append("# TYPE base2_api_responses_total counter")
+        lines.append("# HELP api_responses_total Total number of HTTP responses by status class")
+        lines.append("# TYPE api_responses_total counter")
         for k in ["1xx", "2xx", "3xx", "4xx", "5xx"]:
-            lines.append(f"base2_api_responses_total{{status_class=\"{k}\"}} {int(responses_by_class.get(k, 0))}")
+            lines.append(f"api_responses_total{{status_class=\"{k}\"}} {int(responses_by_class.get(k, 0))}")
 
-        lines.append("# HELP base2_api_request_latency_ms_sum Sum of request latencies in milliseconds")
-        lines.append("# TYPE base2_api_request_latency_ms_sum counter")
-        lines.append(f"base2_api_request_latency_ms_sum {latency_sum}")
+        lines.append("# HELP api_request_latency_ms_sum Sum of request latencies in milliseconds")
+        lines.append("# TYPE api_request_latency_ms_sum counter")
+        lines.append(f"api_request_latency_ms_sum {latency_sum}")
 
-        lines.append("# HELP base2_api_request_latency_ms_count Count of request latencies observed")
-        lines.append("# TYPE base2_api_request_latency_ms_count counter")
-        lines.append(f"base2_api_request_latency_ms_count {latency_count}")
+        lines.append("# HELP api_request_latency_ms_count Count of request latencies observed")
+        lines.append("# TYPE api_request_latency_ms_count counter")
+        lines.append(f"api_request_latency_ms_count {latency_count}")
 
         if p95 is not None:
-            lines.append("# HELP base2_api_request_latency_ms_p95 P95 request latency in milliseconds (rolling window)")
-            lines.append("# TYPE base2_api_request_latency_ms_p95 gauge")
-            lines.append(f"base2_api_request_latency_ms_p95 {p95:.3f}")
+            lines.append("# HELP api_request_latency_ms_p95 P95 request latency in milliseconds (rolling window)")
+            lines.append("# TYPE api_request_latency_ms_p95 gauge")
+            lines.append(f"api_request_latency_ms_p95 {p95:.3f}")
 
         return "\n".join(lines) + "\n"
 

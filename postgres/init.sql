@@ -1,4 +1,4 @@
--- Base2 Authentication Database Schema
+-- Authentication Database Schema
 -- This script runs automatically when PostgreSQL container starts for the first time
 
 -- Users table
@@ -59,5 +59,5 @@ FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 -- Log successful initialization
 DO $$
 BEGIN
-    RAISE NOTICE '✅ Base2 authentication tables created successfully';
+    RAISE NOTICE '✅ Authentication tables created successfully';
 END $$;

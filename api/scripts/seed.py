@@ -91,8 +91,8 @@ def main() -> int:
 
     users = [
         SeedUser(email=admin_email, password=admin_password, verified=True),
-        SeedUser(email="demo1@base2.local", password=demo_password, verified=True),
-        SeedUser(email="demo2@base2.local", password=demo_password, verified=True),
+        SeedUser(email="demo1@local.test", password=demo_password, verified=True),
+        SeedUser(email="demo2@local.test", password=demo_password, verified=True),
     ]
 
     for u in users:

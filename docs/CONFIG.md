@@ -1,4 +1,4 @@
-# Configuration (Base2)
+# Configuration
 
 This repo uses a single `.env` file (see `.env.example`) that feeds Docker Compose, Django, FastAPI, and deploy/test tooling.
 

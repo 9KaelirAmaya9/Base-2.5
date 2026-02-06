@@ -1,0 +1,291 @@
+'use strict';
+
+const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
+
+const { fileExists, readText, parseEnv, applyToTemplate, backupFile } = require('./lib/envFile');
+const { detectPublicIpv4 } = require('./lib/ipDetect');
+const { redactEnvMap } = require('./lib/redact');
+const { validateEnv, requiredCategories, normalizeEnv, normalizeDeployMode } = require('./envRules');
+const { isPlaceholder } = require('./lib/placeholders');
+
+function printHelp() {
+  console.log('Usage: npm run setup:complete -- [--dry-run] [--no-print]');
+  console.log('');
+  console.log('Validate required configuration, generate missing credentials, and apply safe defaults.');
+  console.log('');
+  console.log('Options:');
+  console.log('  --dry-run   Validate and print planned changes without writing files');
+  console.log('  --no-print  Do not print any secrets to console');
+  console.log('  --help      Show this help');
+}
+
+function repoRoot() {
+  return path.resolve(__dirname, '..');
+}
+
+function envPath(rootDir) {
+  return path.join(rootDir, '.env');
+}
+
+function envExamplePath(rootDir) {
+  return path.join(rootDir, '.env.example');
+}
+
+function parseArgs(argv) {
+  const args = new Set(argv);
+  return {
+    dryRun: args.has('--dry-run'),
+    noPrint: args.has('--no-print'),
+    help: args.has('--help') || args.has('-h'),
+  };
+}
+
+function escapeDollarsPreserveDoubles(value) {
+  const s = String(value ?? '');
+  let out = '';
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch !== '$') {
+      out += ch;
+      continue;
+    }
+
+    if (s[i + 1] === '$') {
+      out += '$$';
+      i++;
+      continue;
+    }
+
+    out += '$$';
+  }
+  return out;
+}
+
+function makeRandomPassword(randomBytes, lengthBytes = 18) {
+  // base64url => URL-safe and reasonably user-friendly
+  return randomBytes(lengthBytes).toString('base64url');
+}
+
+function createHtpasswdLine({ username, hash }) {
+  return `${username}:${escapeDollarsPreserveDoubles(hash)}`;
+}
+
+function formatValidationReport(validation) {
+  /** @type {Record<string, Array<{key: string, message: string}>>} */
+  const byCategory = {};
+  for (const it of [...validation.missing, ...validation.placeholders, ...validation.invalid]) {
+    byCategory[it.category] = byCategory[it.category] ?? [];
+    byCategory[it.category].push({ key: it.key, message: it.message });
+  }
+  return byCategory;
+}
+
+async function ensureAllowlists({ envMap, ipDetector, plannedChanges }) {
+  const allowlistKeys = ['DJANGO_ADMIN_ALLOWLIST', 'FLOWER_ALLOWLIST', 'PGADMIN_ALLOWLIST'];
+  const needs = allowlistKeys.filter((k) => isPlaceholder(envMap[k], k));
+  if (needs.length === 0) return;
+
+  let ip;
+  try {
+    const res = await ipDetector();
+    ip = res && res.ip ? String(res.ip).trim() : '';
+  } catch (e) {
+    plannedChanges.push({ key: 'PUBLIC_IPV4', action: `ip-detect-failed:${e && e.message ? e.message : String(e)}` });
+    return;
+  }
+  if (!ip) {
+    plannedChanges.push({ key: 'PUBLIC_IPV4', action: 'ip-detect-failed:empty-result' });
+    return;
+  }
+  for (const k of needs) {
+    envMap[k] = `${ip}/32`;
+    plannedChanges.push({ key: k, action: 'fill-allowlist' });
+  }
+}
+
+async function ensureBasicAuth({ envMap, hashPassword, randomBytes, plannedChanges }) {
+  const primaryKey = 'TRAEFIK_DASH_BASIC_USERS';
+  const flowerKey = 'FLOWER_BASIC_USERS';
+  const pwKey = 'TRAEFIK_ACTUAL_PW';
+
+  const username = 'admin';
+
+  let primary = envMap[primaryKey];
+  if (isPlaceholder(primary, primaryKey)) {
+    const password = makeRandomPassword(randomBytes);
+    const hash = await hashPassword(password);
+    primary = createHtpasswdLine({ username, hash });
+    envMap[primaryKey] = primary;
+    plannedChanges.push({ key: primaryKey, action: 'generate-basic-auth' });
+
+    if (isPlaceholder(envMap[pwKey], pwKey)) {
+      envMap[pwKey] = password;
+      plannedChanges.push({ key: pwKey, action: 'store-generated-password' });
+    }
+  } else {
+    // Ensure $ is properly escaped for Compose without breaking already-escaped values.
+    const escaped = escapeDollarsPreserveDoubles(primary);
+    if (escaped !== primary) {
+      envMap[primaryKey] = escaped;
+      plannedChanges.push({ key: primaryKey, action: 'escape-dollars' });
+      primary = escaped;
+    }
+  }
+
+  if (isPlaceholder(envMap[flowerKey], flowerKey) && !isPlaceholder(primary, primaryKey)) {
+    envMap[flowerKey] = primary;
+    plannedChanges.push({ key: flowerKey, action: 'inherit-basic-auth' });
+  }
+}
+
+function applySafeDevDefaults({ envMap, plannedChanges }) {
+  const env = normalizeEnv(envMap.ENV);
+  const optedIn = String(envMap.APPLY_DEV_DEFAULTS ?? '').trim().toLowerCase() === 'true';
+  if (env !== 'development' || !optedIn) return;
+
+  // Keep this list intentionally small and explicitly safe.
+  if (String(envMap.DJANGO_DEBUG ?? '').trim().toLowerCase() !== 'true') {
+    envMap.DJANGO_DEBUG = 'true';
+    plannedChanges.push({ key: 'DJANGO_DEBUG', action: 'apply-dev-default' });
+  }
+}
+
+async function defaultHashPassword(password) {
+  let bcrypt;
+  try {
+    bcrypt = require('bcryptjs');
+  } catch (e) {
+    const err = new Error('Missing dependency: bcryptjs. Run: npm install');
+    err.cause = e;
+    throw err;
+  }
+  return bcrypt.hash(password, 10);
+}
+
+/**
+ * @param {{
+ *  rootDir?: string,
+ *  argv?: string[],
+ *  stdout?: Function,
+ *  stderr?: Function,
+ *  ipDetector?: Function,
+ *  hashPassword?: (password: string) => Promise<string>,
+ *  randomBytes?: (n: number) => Buffer,
+ * }} options
+ */
+async function runCompleteSetup(options = {}) {
+  const rootDir = options.rootDir ?? repoRoot();
+  const argv = options.argv ?? process.argv.slice(2);
+  const stdout = options.stdout ?? console.log;
+  const stderr = options.stderr ?? console.error;
+  const ipDetector = options.ipDetector ?? (() => detectPublicIpv4());
+  const hashPassword = options.hashPassword ?? defaultHashPassword;
+  const randomBytes = options.randomBytes ?? crypto.randomBytes;
+
+  const args = parseArgs(argv);
+  if (args.help) {
+    printHelp();
+    return { changed: false, help: true };
+  }
+
+  const example = envExamplePath(rootDir);
+  if (!fileExists(example)) {
+    throw new Error('Missing .env.example (required).');
+  }
+  const envFile = envPath(rootDir);
+  if (!fileExists(envFile)) {
+    throw new Error('Missing .env. Run: npm run setup');
+  }
+
+  const template = readText(example);
+  const envText = readText(envFile);
+  const envMap = parseEnv(envText);
+
+  /** @type {Array<{key: string, action: string}>} */
+  const plannedChanges = [];
+
+  // 1) Apply safe dev defaults (only if explicitly opted in)
+  applySafeDevDefaults({ envMap, plannedChanges });
+
+  // 2) Fill allowlists from public IP when placeholders remain
+  await ensureAllowlists({ envMap, ipDetector, plannedChanges });
+
+  // 3) Generate basic-auth + apply fallback behavior
+  await ensureBasicAuth({ envMap, hashPassword, randomBytes, plannedChanges });
+
+  // 4) Validate required categories
+  const validation = validateEnv(envMap);
+  const report = formatValidationReport(validation);
+
+  const required = requiredCategories({ env: envMap.ENV, deployMode: envMap.DEPLOY_MODE });
+  const requiredIssues = Object.entries(report).filter(([category, items]) => required.has(category) && items.length > 0);
+
+  // Output summary
+  stdout('setup:complete report');
+  stdout(`- dry-run: ${args.dryRun ? 'true' : 'false'}`);
+  stdout(`- no-print: ${args.noPrint ? 'true' : 'false'}`);
+  stdout(`- planned changes: ${plannedChanges.length}`);
+
+  if (!args.noPrint && plannedChanges.length > 0) {
+    const safe = redactEnvMap(envMap);
+    stdout('');
+    stdout('Updated values (redacted):');
+    for (const ch of plannedChanges) stdout(`- ${ch.key}=${safe[ch.key] ?? ''}`);
+  }
+
+  if (requiredIssues.length > 0) {
+    stdout('');
+    stdout('Validation failed (required categories):');
+    for (const [category, items] of requiredIssues) {
+      stdout(`- ${category}:`);
+      for (const it of items) stdout(`  - ${it.key}: ${it.message}`);
+    }
+  }
+
+  // 5) Write .env (unless dry-run)
+  const nextEnvText = applyToTemplate(template, envMap);
+  const changed = nextEnvText !== envText;
+
+  if (!args.dryRun && changed) {
+    backupFile(envFile, 'pre-complete');
+    fs.writeFileSync(envFile, nextEnvText, 'utf8');
+    stdout('');
+    stdout('✅ Updated .env');
+  } else if (args.dryRun && changed) {
+    stdout('');
+    stdout('ℹ dry-run: .env would be updated');
+  } else {
+    stdout('');
+    stdout('✅ No changes needed');
+  }
+
+  const exitCode = requiredIssues.length > 0 ? 2 : 0;
+  return { changed, plannedChanges, validation: { report, exitCode } };
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+  if (args.includes('--help') || args.includes('-h')) {
+    printHelp();
+    return;
+  }
+
+  const res = await runCompleteSetup({ argv: args });
+  if (res && res.validation && typeof res.validation.exitCode === 'number') {
+    process.exitCode = res.validation.exitCode;
+  }
+}
+
+if (require.main === module) {
+  main().catch((e) => {
+    console.error('ERROR:', e && e.message ? e.message : e);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  runCompleteSetup,
+  escapeDollarsPreserveDoubles,
+};

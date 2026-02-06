@@ -39,7 +39,7 @@ def test_refresh_cookie_mode_requires_double_submit_csrf(monkeypatch):
     monkeypatch.setattr("api.auth.service.refresh_tokens", fake_refresh_tokens)
 
     client = TestClient(app)
-    client.cookies.set("base2_refresh", "refresh")
+    client.cookies.set("app_refresh", "refresh")
 
     r = client.post("/api/auth/refresh", json={})
     assert r.status_code == 403, r.text
@@ -78,8 +78,8 @@ def test_refresh_cookie_mode_accepts_double_submit_csrf(monkeypatch):
     monkeypatch.setattr("api.auth.service.refresh_tokens", fake_refresh_tokens)
 
     client = TestClient(app)
-    client.cookies.set("base2_refresh", "refresh")
-    client.cookies.set("base2_csrf", "csrf123")
+    client.cookies.set("app_refresh", "refresh")
+    client.cookies.set("app_csrf", "csrf123")
 
     r = client.post("/api/auth/refresh", json={}, headers={"X-CSRF-Token": "csrf123"})
     assert r.status_code == 200, r.text

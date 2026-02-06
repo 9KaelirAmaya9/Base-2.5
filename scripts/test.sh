@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==========================================
-# Base2 Test Script
+# Test Script
 # Usage: ./scripts/test.sh [--coverage] [--watch] [--self-test]
 # Options:
 #   --coverage        Run tests with coverage

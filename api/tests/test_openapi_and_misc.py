@@ -36,8 +36,8 @@ def test_metrics_endpoint_exposes_prometheus_text():
     ct = r.headers.get("content-type", "")
     assert ct.startswith("text/plain")
     body = r.text
-    assert "# TYPE base2_api_requests_total counter" in body
-    assert "base2_api_uptime_seconds" in body
+    assert "# TYPE api_requests_total counter" in body
+    assert "api_uptime_seconds" in body
 
 
 def test_privacy_endpoints_require_tenant_header_and_succeed():
