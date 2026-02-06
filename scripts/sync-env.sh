@@ -142,32 +142,92 @@ else
 fi
 
 # Ensure the network's name is driven by NETWORK_NAME
-# Note: grep -E does not support "\s"; use POSIX character classes.
-if ! grep -qE "^    name: \$\{NETWORK_NAME\}[[:space:]]*$" local.docker.yml; then
-    echo -e "${YELLOW}⚙️  Ensuring networks.$TARGET_NETWORK_KEY uses name: \${NETWORK_NAME}${NC}"
-    cp local.docker.yml local.docker.yml.bak
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "/^  ${TARGET_NETWORK_KEY}:/,/^[^ ]/ s/^    name: .*/    name: \${NETWORK_NAME}/" local.docker.yml
+ensure_network_name_driven_by_env() {
+    local file="local.docker.yml"
+    local tmp
+
+    tmp="$(mktemp "${TMPDIR:-/tmp}/sync-env.local-docker.XXXXXX")"
+
+    # Rewrite ONLY the root-level networks: -> TARGET_NETWORK_KEY: block to ensure
+    # exactly one normalized `name: ${NETWORK_NAME}` line (idempotent, no duplicates).
+    awk -v target="$TARGET_NETWORK_KEY" '
+        BEGIN { in_root=0; in_target=0; name_written=0 }
+
+        function emit_name() {
+            if (!name_written) {
+                print "    name: ${NETWORK_NAME}"
+                name_written=1
+            }
+        }
+
+        {
+            # Enter/exit root-level networks block
+            if (!in_root) {
+                print $0
+                if ($0 ~ /^networks:[[:space:]]*$/) { in_root=1 }
+                next
+            }
+
+            # If we hit a new top-level key, root networks is over.
+            if (!in_target && $0 ~ /^[A-Za-z0-9_-]+:[[:space:]]*$/ && $0 !~ /^networks:/) {
+                in_root=0
+                print $0
+                next
+            }
+
+            # Not in target network yet
+            if (!in_target) {
+                print $0
+                if ($0 ~ ("^  " target ":[[:space:]]*$")) {
+                    in_target=1
+                    name_written=0
+                }
+                next
+            }
+
+            # In target block: if we hit the next network entry or a new top-level key,
+            # ensure name exists before leaving the block.
+            if ($0 ~ /^  [A-Za-z0-9_-]+:[[:space:]]*$/ && $0 !~ ("^  " target ":")) {
+                emit_name()
+                in_target=0
+                print $0
+                next
+            }
+            if ($0 ~ /^[A-Za-z0-9_-]+:[[:space:]]*$/ && $0 !~ /^networks:/) {
+                emit_name()
+                in_target=0
+                in_root=0
+                print $0
+                next
+            }
+
+            # Normalize and dedupe any name: lines inside the target network block.
+            if ($0 ~ /^[[:space:]]+name:[[:space:]]*/) {
+                emit_name()
+                next
+            }
+
+            print $0
+        }
+
+        END {
+            if (in_target) {
+                emit_name()
+            }
+        }
+    ' "$file" > "$tmp"
+
+    if ! cmp -s "$file" "$tmp"; then
+        cp "$file" "${file}.bak"
+        mv "$tmp" "$file"
+        rm -f "${file}.bak"
+        CHANGES_MADE=true
     else
-        sed -i "/^  ${TARGET_NETWORK_KEY}:/,/^[^ ]/ s/^    name: .*/    name: \${NETWORK_NAME}/" local.docker.yml
+        rm -f "$tmp"
     fi
+}
 
-    # If the block had no name: line to begin with, insert one immediately after the key.
-    if ! grep -qE "^    name: \$\{NETWORK_NAME\}[[:space:]]*$" local.docker.yml; then
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' "/^  ${TARGET_NETWORK_KEY}:/a\\
-    name: \${NETWORK_NAME}
-" local.docker.yml
-        else
-            sed -i "/^  ${TARGET_NETWORK_KEY}:/a\\
-    name: \${NETWORK_NAME}
-" local.docker.yml
-        fi
-    fi
-
-    CHANGES_MADE=true
-    rm -f local.docker.yml.bak
-fi
+ensure_network_name_driven_by_env
 
 echo "✓ local.docker.yml network name is driven by NETWORK_NAME"
 echo ""
