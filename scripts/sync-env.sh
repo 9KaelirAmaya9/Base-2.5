@@ -142,7 +142,8 @@ else
 fi
 
 # Ensure the network's name is driven by NETWORK_NAME
-if ! grep -qE "^    name: \$\{NETWORK_NAME\}\s*$" local.docker.yml; then
+# Note: grep -E does not support "\s"; use POSIX character classes.
+if ! grep -qE "^    name: \$\{NETWORK_NAME\}[[:space:]]*$" local.docker.yml; then
     echo -e "${YELLOW}⚙️  Ensuring networks.$TARGET_NETWORK_KEY uses name: \${NETWORK_NAME}${NC}"
     cp local.docker.yml local.docker.yml.bak
     if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -152,7 +153,7 @@ if ! grep -qE "^    name: \$\{NETWORK_NAME\}\s*$" local.docker.yml; then
     fi
 
     # If the block had no name: line to begin with, insert one immediately after the key.
-    if ! grep -qE "^    name: \$\{NETWORK_NAME\}\s*$" local.docker.yml; then
+    if ! grep -qE "^    name: \$\{NETWORK_NAME\}[[:space:]]*$" local.docker.yml; then
         if [[ "$OSTYPE" == "darwin"* ]]; then
             sed -i '' "/^  ${TARGET_NETWORK_KEY}:/a\\
     name: \${NETWORK_NAME}
