@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import GlassSidebar from '../components/glass/GlassSidebar';
 
@@ -154,8 +154,6 @@ describe('GlassSidebar', () => {
       configurable: true,
       get: () => null,
     });
-
-    expect(document.activeElement).toBeNull();
 
     const prevOverflow = document.body.style.overflow;
     const { unmount } = render(<GlassSidebar isOpen onClose={() => {}} />);

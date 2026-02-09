@@ -192,6 +192,7 @@ export const GlassSidebar: React.FC<Props> = ({
               transition={{ duration: 0.3, ease: 'easeOut' }}
               onClick={() => setEdgeOpen(false)}
               className="fixed inset-0 z-30 backdrop-blur-sm bg-black/20 dark:bg-black/40"
+              data-testid="public-menu-backdrop"
             />
           ) : null}
         </AnimatePresence>

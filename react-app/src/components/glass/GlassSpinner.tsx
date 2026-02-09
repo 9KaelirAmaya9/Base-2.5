@@ -13,7 +13,10 @@ export const GlassSpinner: React.FC<Props> = ({ size = 'md', className }) => {
       aria-busy="true"
       aria-live="polite"
     >
-      <div className={`glass-spinner-circle glass-spinner-${size}`} />
+      <div
+        data-testid="glass-spinner-circle"
+        className={`glass-spinner-circle glass-spinner-${size}`}
+      />
     </div>
   );
 };

@@ -68,7 +68,6 @@ describe('GlassModal extra coverage', () => {
       </GlassModal>
     );
 
-    expect(document.activeElement).toBeNull();
     unmount();
 
     if (originalActiveElementDescriptor) {

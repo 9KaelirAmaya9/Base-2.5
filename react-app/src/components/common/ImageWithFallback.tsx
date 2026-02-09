@@ -16,7 +16,7 @@ const ImageWithFallback: React.FC<ImageWithFallbackProps> = ({ src, alt, classNa
       setCurrentSrc(onErrorSrc);
     }
   };
-  return <img src={currentSrc} alt={alt} className={className} onError={handleError} role="img" aria-label={alt} />;
+  return <img src={currentSrc} alt={alt} className={className} onError={handleError} />;
 };
 
 export default ImageWithFallback;

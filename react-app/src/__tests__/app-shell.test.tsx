@@ -9,7 +9,7 @@ describe('AppShell', () => {
     const user = userEvent.setup();
     render(
       <TestMemoryRouter>
-        <AppShell headerTitle="Title" sidebarItems={["One", "Two", "Three", "Four", "Five"]}>
+        <AppShell headerTitle="Title" sidebarItems={['One', 'Two', 'Three', 'Four', 'Five']}>
           <div>Content</div>
         </AppShell>
       </TestMemoryRouter>

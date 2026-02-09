@@ -10,9 +10,7 @@ describe('GlassSidebar (public variant)', () => {
     const user = userEvent.setup();
     const onMenuItemClick = jest.fn();
 
-    const { container } = render(
-      <GlassSidebar variant="public" onMenuItemClick={onMenuItemClick} />
-    );
+    render(<GlassSidebar variant="public" onMenuItemClick={onMenuItemClick} />);
 
     // Default: closed edge button.
     expect(screen.getByLabelText(/open menu/i)).toBeInTheDocument();
@@ -46,7 +44,7 @@ describe('GlassSidebar (public variant)', () => {
       await user.click(screen.getByRole('button', { name: /features/i }));
     });
     expect(onMenuItemClick).toHaveBeenCalledWith('features');
-    await waitForElementToBeRemoved(() => screen.getByText('Menu'));
+    await waitForElementToBeRemoved(() => screen.queryByText('Menu'));
     expect(screen.getByLabelText(/open menu/i)).toBeInTheDocument();
 
     // Re-open and close via backdrop click.
@@ -55,12 +53,11 @@ describe('GlassSidebar (public variant)', () => {
     });
     expect(await screen.findByText('Menu')).toBeInTheDocument();
 
-    const backdrop = container.querySelector('.fixed.inset-0');
-    expect(backdrop).toBeTruthy();
+    const backdrop = screen.getByTestId('public-menu-backdrop');
     await act(async () => {
-      await user.click(backdrop as Element);
+      await user.click(backdrop);
     });
-    await waitForElementToBeRemoved(() => screen.getByText('Menu'));
+    await waitForElementToBeRemoved(() => screen.queryByText('Menu'));
   });
 
   test('closes even when onMenuItemClick is not provided', async () => {
@@ -76,6 +73,6 @@ describe('GlassSidebar (public variant)', () => {
     await act(async () => {
       await user.click(screen.getByRole('button', { name: /documentation/i }));
     });
-    await waitForElementToBeRemoved(() => screen.getByText('Menu'));
+    await waitForElementToBeRemoved(() => screen.queryByText('Menu'));
   });
 });

@@ -1,5 +1,3 @@
-import React from 'react';
-
 describe('Theme Persistence', () => {
   test('no localStorage is used for theme', () => {
     const getItem = jest.spyOn(window.localStorage, 'getItem');
