@@ -10,10 +10,11 @@ Usage:
 - If no record type is specified, checks all records for the domain.
 - Requires .env with DO_API_TOKEN and (optionally) DO_APP_DOMAIN.
 """
-import os
-import sys
 import argparse
 import json
+import os
+import sys
+
 from pydo import Client
 
 REQUIRED_ENV_VARS = ["DO_API_TOKEN"]
@@ -149,7 +150,7 @@ def main():
                 flower_label = os.getenv('FLOWER_DNS_LABEL', 'flower')
                 swagger_label = os.getenv('SWAGGER_DNS_LABEL', 'swagger')
                 required = ['@', 'www', traefik_label, pgadmin_label, admin_label, flower_label, swagger_label]
-                print(f"\n[Required record presence checks]")
+                print("\n[Required record presence checks]")
                 for name in required:
                     has_a = any(r['type']=='A' and r['name']==name for r in records)
                     has_aaaa = any(r['type']=='AAAA' and r['name']==name for r in records)

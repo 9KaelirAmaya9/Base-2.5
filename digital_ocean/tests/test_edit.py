@@ -1,8 +1,10 @@
-import os
 import sys
-import pytest
 from unittest import mock
+
+import pytest
+
 from digital_ocean import edit
+
 
 def test_edit_env_missing(monkeypatch):
     monkeypatch.delenv("DO_API_TOKEN", raising=False)

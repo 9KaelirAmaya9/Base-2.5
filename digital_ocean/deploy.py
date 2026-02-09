@@ -24,6 +24,7 @@ from pydo import Client
 from digital_ocean.do_logging import logger
 from digital_ocean.env_check import REQUIRED_VARS
 
+
 def main():
     # Load .env at runtime so tests can control os.environ via monkeypatch.
     # IMPORTANT: constrain dotenv loading to the current working directory only

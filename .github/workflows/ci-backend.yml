@@ -34,12 +34,8 @@ jobs:
           python -m pip install ruff mypy
 
       - name: Ruff (lint)
-        run: |
-          if [ "${{ matrix.service }}" = "api" ]; then
-            ruff check api
-          else
-            ruff check django
-          fi
+        if: matrix.service == 'api'
+        run: ruff check .
 
       - name: Mypy (typecheck)
         run: |

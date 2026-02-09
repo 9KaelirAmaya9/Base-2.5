@@ -6,13 +6,17 @@ Orchestrate Digital Ocean Droplet deployment, DNS update, .env generation, and s
 """
 
 
-import os
+import argparse
 import json
-from pathlib import Path
-import subprocess
-from dotenv import load_dotenv
+import os
 import re
+import subprocess
+import time
+from pathlib import Path
 
+import paramiko
+from dotenv import dotenv_values, load_dotenv
+from pydo import Client
 
 _ENV_VAR_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
@@ -114,13 +118,13 @@ else:
 
 
 log(f"Reading public key from {pub_key_path}")
-with open(pub_key_path, "r") as f:
+with open(pub_key_path) as f:
     pubkey = f.read().strip()
 print(f"[public key]: {pubkey}")
 
 
 log(f"Updating DO_API_SSH_KEYS in .env at {env_path}")
-with open(env_path, "r") as f:
+with open(env_path) as f:
     lines = f.readlines()
 found = False
 for i, line in enumerate(lines):
@@ -133,17 +137,6 @@ if not found:
 with open(env_path, "w") as f:
     f.writelines(lines)
 log(".env updated with public key.")
-import time
-from pydo import Client
-import paramiko
-from dotenv import dotenv_values, set_key
-from typing import Dict, Tuple
-
-def log(msg):
-    print(f"\033[1;32m[INFO]\033[0m {msg}")
-
-def err(msg):
-    print(f"\033[1;31m[ERROR]\033[0m {msg}", flush=True)
 
 # --- Recovery routine, now only called explicitly ---
 def recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path):
@@ -180,8 +173,6 @@ TRAEFIK_DNS_LABEL = os.getenv("TRAEFIK_DNS_LABEL", "traefik").strip() or "traefi
 DJANGO_ADMIN_DNS_LABEL = os.getenv("DJANGO_ADMIN_DNS_LABEL", "admin").strip() or "admin"
 FLOWER_DNS_LABEL = os.getenv("FLOWER_DNS_LABEL", "flower").strip() or "flower"
 SWAGGER_DNS_LABEL = os.getenv("SWAGGER_DNS_LABEL", "swagger").strip() or "swagger"
-import sys
-import argparse
 
 
 def ensure_dns_records_for_droplet(*, client: Client, droplet_id: int, ipv4_address: str) -> None:
@@ -227,31 +218,31 @@ def ensure_dns_records_for_droplet(*, client: Client, droplet_id: int, ipv4_addr
             "A_swagger": None,
             "AAAA_swagger": None,
         }
-        updated = {k: False for k in found.keys()}
+        updated = {k: False for k in found}
 
         for record in records:
             # Update all A records for this domain (root, www, subdomains, wildcard)
             if record.get("type") == "A":
                 name = record.get("name")
-                match_a = (
-                    name == "@"
-                    or name == DO_DOMAIN
-                    or name == ""
-                    or name == "www"
-                    or name == f"www.{DO_DOMAIN}"
-                    or (isinstance(name, str) and DO_DOMAIN in name)
-                    or (isinstance(name, str) and name.startswith("*"))
-                    or name == TRAEFIK_DNS_LABEL
-                    or name == f"{TRAEFIK_DNS_LABEL}.{DO_DOMAIN}"
-                    or name == PGADMIN_DNS_LABEL
-                    or name == f"{PGADMIN_DNS_LABEL}.{DO_DOMAIN}"
-                    or name == DJANGO_ADMIN_DNS_LABEL
-                    or name == f"{DJANGO_ADMIN_DNS_LABEL}.{DO_DOMAIN}"
-                    or name == FLOWER_DNS_LABEL
-                    or name == f"{FLOWER_DNS_LABEL}.{DO_DOMAIN}"
-                    or name == SWAGGER_DNS_LABEL
-                    or name == f"{SWAGGER_DNS_LABEL}.{DO_DOMAIN}"
+                match_a = name in (
+                    "@",
+                    DO_DOMAIN,
+                    "",
+                    "www",
+                    f"www.{DO_DOMAIN}",
+                    TRAEFIK_DNS_LABEL,
+                    f"{TRAEFIK_DNS_LABEL}.{DO_DOMAIN}",
+                    PGADMIN_DNS_LABEL,
+                    f"{PGADMIN_DNS_LABEL}.{DO_DOMAIN}",
+                    DJANGO_ADMIN_DNS_LABEL,
+                    f"{DJANGO_ADMIN_DNS_LABEL}.{DO_DOMAIN}",
+                    FLOWER_DNS_LABEL,
+                    f"{FLOWER_DNS_LABEL}.{DO_DOMAIN}",
+                    SWAGGER_DNS_LABEL,
+                    f"{SWAGGER_DNS_LABEL}.{DO_DOMAIN}",
                 )
+                if isinstance(name, str):
+                    match_a = match_a or DO_DOMAIN in name or name.startswith("*")
                 if match_a:
                     if name in ("@", DO_DOMAIN, ""):
                         found["A_root"] = record
@@ -290,23 +281,23 @@ def ensure_dns_records_for_droplet(*, client: Client, droplet_id: int, ipv4_addr
             # Update all AAAA records for this domain (root, subdomains, wildcard)
             if record.get("type") == "AAAA":
                 name = record.get("name")
-                match_aaaa = (
-                    name == "@"
-                    or name == DO_DOMAIN
-                    or name == ""
-                    or (isinstance(name, str) and DO_DOMAIN in name)
-                    or (isinstance(name, str) and name.startswith("*"))
-                    or name == TRAEFIK_DNS_LABEL
-                    or name == f"{TRAEFIK_DNS_LABEL}.{DO_DOMAIN}"
-                    or name == PGADMIN_DNS_LABEL
-                    or name == f"{PGADMIN_DNS_LABEL}.{DO_DOMAIN}"
-                    or name == DJANGO_ADMIN_DNS_LABEL
-                    or name == f"{DJANGO_ADMIN_DNS_LABEL}.{DO_DOMAIN}"
-                    or name == FLOWER_DNS_LABEL
-                    or name == f"{FLOWER_DNS_LABEL}.{DO_DOMAIN}"
-                    or name == SWAGGER_DNS_LABEL
-                    or name == f"{SWAGGER_DNS_LABEL}.{DO_DOMAIN}"
+                match_aaaa = name in (
+                    "@",
+                    DO_DOMAIN,
+                    "",
+                    TRAEFIK_DNS_LABEL,
+                    f"{TRAEFIK_DNS_LABEL}.{DO_DOMAIN}",
+                    PGADMIN_DNS_LABEL,
+                    f"{PGADMIN_DNS_LABEL}.{DO_DOMAIN}",
+                    DJANGO_ADMIN_DNS_LABEL,
+                    f"{DJANGO_ADMIN_DNS_LABEL}.{DO_DOMAIN}",
+                    FLOWER_DNS_LABEL,
+                    f"{FLOWER_DNS_LABEL}.{DO_DOMAIN}",
+                    SWAGGER_DNS_LABEL,
+                    f"{SWAGGER_DNS_LABEL}.{DO_DOMAIN}",
                 )
+                if isinstance(name, str):
+                    match_aaaa = match_aaaa or DO_DOMAIN in name or name.startswith("*")
                 if match_aaaa:
                     if name in ("@", DO_DOMAIN, ""):
                         found["AAAA_root"] = record
@@ -418,7 +409,7 @@ def _get_public_ipv6(droplet: dict) -> str:
     return (v6_list[0] if v6_list else {}).get("ip_address")
 
 
-def wait_for_public_ipv6(client: Client, droplet_id: int, timeout_sec: int, interval_sec: int = 5) -> Tuple[str, dict]:
+def wait_for_public_ipv6(client: Client, droplet_id: int, timeout_sec: int, interval_sec: int = 5) -> tuple[str, dict]:
     """Poll the Droplet until a public IPv6 address is assigned.
 
     Returns: (ipv6_address, droplet_info)
@@ -474,7 +465,6 @@ client = Client(token=DO_API_TOKEN)
 
 
 
-from dotenv import dotenv_values
 
 
 
@@ -482,7 +472,7 @@ from dotenv import dotenv_values
 repo_root = Path(env_path).resolve().parent if env_path else Path(__file__).resolve().parents[3]
 base_script_path = str((repo_root / "digital_ocean" / "scripts" / "digital_ocean_base.sh").resolve())
 log(f"Loading user_data script from {base_script_path}")
-with open(base_script_path, "r") as f:
+with open(base_script_path) as f:
     user_data_script = f.read()
 
 # Load .env as dict
@@ -536,7 +526,7 @@ def write_do_userdata(payload: dict):
 try:
     existing_userdata = {}
     if os.path.exists(do_userdata_json_path):
-        with open(do_userdata_json_path, "r", encoding="utf-8") as f:
+        with open(do_userdata_json_path, encoding="utf-8") as f:
             existing_userdata = json.load(f) or {}
 except Exception:
     existing_userdata = {}
@@ -592,7 +582,7 @@ if UPDATE_ONLY:
         try:
             do_userdata = {}
             if os.path.exists(do_userdata_json_path):
-                with open(do_userdata_json_path, "r", encoding="utf-8") as f:
+                with open(do_userdata_json_path, encoding="utf-8") as f:
                     do_userdata = json.load(f) or {}
             do_userdata["droplet_id"] = droplet_id
             do_userdata["ip_address"] = ip_address
@@ -631,7 +621,7 @@ else:
         print(f"Droplet created! IP address: {ip_address}")
         # Update DO_userdata.json
         try:
-            with open(do_userdata_json_path, "r", encoding="utf-8") as f:
+            with open(do_userdata_json_path, encoding="utf-8") as f:
                 do_userdata = json.load(f)
             do_userdata["droplet_id"] = droplet_id
             do_userdata["ip_address"] = ip_address
@@ -691,7 +681,6 @@ else:
         "cat /var/log/cloud-init-output.log"
     ]
     log(f"Polling /var/log/cloud-init-output.log until completion marker '{COMPLETION_MARKER}' is found...")
-    import re
     completion_found = False
     cloud_init_pattern = re.compile(r"^Cloud-init v\\. .+ finished at")
     # Updated pattern: match any line containing 'Cloud-init v.' and 'finished at' (version, timestamp, and details are variable)
@@ -839,7 +828,7 @@ else:
             err(f"Post-reboot exec encountered an error: {e}. Reconnecting and retrying once...")
             ssh_client.close()
             if not ssh_connect_with_retry():
-                raise RuntimeError("SSH reconnect failed after post-reboot error")
+                raise RuntimeError("SSH reconnect failed after post-reboot error") from e
             stdin, stdout, stderr = ssh_client.exec_command(f"bash {post_reboot_path}")
             print(stdout.read().decode())
             err_out = stderr.read().decode()
@@ -863,7 +852,7 @@ else:
             err(f"Start services encountered an error: {e}. Reconnecting and retrying once...")
             ssh_client.close()
             if not ssh_connect_with_retry():
-                raise RuntimeError("SSH reconnect failed after start error")
+                raise RuntimeError("SSH reconnect failed after start error") from e
             stdin, stdout, stderr = ssh_client.exec_command(start_cmd)
             print(stdout.read().decode())
             err_out = stderr.read().decode()
@@ -890,7 +879,7 @@ else:
             err(f"Test run encountered an error: {e}. Reconnecting and retrying once...")
             ssh_client.close()
             if not ssh_connect_with_retry():
-                raise RuntimeError("SSH reconnect failed after test error")
+                raise RuntimeError("SSH reconnect failed after test error") from e
             stdin, stdout, stderr = ssh_client.exec_command(test_cmd)
             print(stdout.read().decode())
             err_out = stderr.read().decode()
@@ -898,8 +887,8 @@ else:
                 print(err_out)
 
         # Check status and logs
-        def parse_ps_health(ps_text: str) -> Dict[str, str]:
-            summary: Dict[str, str] = {}
+        def parse_ps_health(ps_text: str) -> dict[str, str]:
+            summary: dict[str, str] = {}
             for line in ps_text.splitlines():
                 if not line or line.startswith("NAME"):
                     continue
@@ -925,10 +914,10 @@ else:
             print(err_out)
         health_summary = parse_ps_health(ps_output)
 
-        def detect_http_errors(log_text: str) -> Tuple[int, int, Dict[str, int]]:
+        def detect_http_errors(log_text: str) -> tuple[int, int, dict[str, int]]:
             errors_4xx = 0
             errors_5xx = 0
-            paths: Dict[str, int] = {}
+            paths: dict[str, int] = {}
             for raw_line in log_text.splitlines():
                 line = raw_line.strip()
                 if not line:
@@ -973,7 +962,7 @@ else:
             return errors_4xx, errors_5xx, paths
 
         log("Fetching key service logs (last 100 lines) and summarizing...")
-        svc_errors: Dict[str, Dict[str, object]] = {}
+        svc_errors: dict[str, dict[str, object]] = {}
         for svc in ["traefik", "nginx", "api", "django", "postgres", "pgadmin", "nginx-static"]:
             log(f"Logs for {svc}:")
             stdin, stdout, stderr = ssh_client.exec_command(f"cd {repo_path} && docker compose -f development.docker.yml logs --tail=100 {svc}")

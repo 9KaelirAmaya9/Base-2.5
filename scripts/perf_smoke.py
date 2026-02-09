@@ -1,8 +1,8 @@
+import contextlib
 import os
 import statistics
 import sys
 import time
-from typing import List
 
 import requests
 
@@ -14,15 +14,13 @@ def main() -> int:
     budget_ms = float(os.getenv("PERF_P95_BUDGET_MS", "5000"))
     insecure = os.getenv("PERF_INSECURE", "0") == "1"
 
-    latencies: List[float] = []
+    latencies: list[float] = []
     sess = requests.Session()
     # Verification flag applied per request for clarity
     verify_flag = (not insecure)
     # simple warmup to prime DNS/TLS
-    try:
+    with contextlib.suppress(requests.RequestException):
         sess.head(base, timeout=10, verify=verify_flag)
-    except requests.RequestException:
-        pass
 
     for _ in range(samples):
         attempts = 0

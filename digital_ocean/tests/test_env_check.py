@@ -3,12 +3,10 @@
 Pytest self-tests for env_check.py
 Checks that missing required variables cause failure and all set variables pass.
 """
-import os
-import sys
 import pytest
-from importlib import reload
 
 from digital_ocean import env_check
+
 
 @pytest.mark.parametrize("missing_var", env_check.REQUIRED_VARS)
 def test_missing_env_var(monkeypatch, missing_var):

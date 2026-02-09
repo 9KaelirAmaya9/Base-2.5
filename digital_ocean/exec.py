@@ -11,9 +11,9 @@ Usage:
 
 Exits nonzero on error. Requires .env to be configured.
 """
+import argparse
 import os
 import sys
-import argparse
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -27,9 +27,8 @@ except ImportError:
 
 # Import shared logging infrastructure
 try:
-	from .do_logging import get_logger, log_exec_start, log_exec_success, log_exec_error
+	from .do_logging import log_exec_error, log_exec_start, log_exec_success
 except ImportError:
-	from logging import getLogger as get_logger
 	def log_exec_start(*a, **kw): pass
 	def log_exec_success(*a, **kw): pass
 	def log_exec_error(*a, **kw): pass
@@ -55,7 +54,7 @@ def exec_on_droplet(client, droplet_id, command):
 	# Digital Ocean does not support direct exec into droplets via API
 	# This is a placeholder for SSH-based execution (user must have SSH key configured)
 	log_exec_start(f"droplet:{droplet_id}", command)
-	print(f"[INFO] Digital Ocean API does not support direct exec into droplets. Use SSH:")
+	print("[INFO] Digital Ocean API does not support direct exec into droplets. Use SSH:")
 	print(f"ssh root@<droplet_ip> '{command}'")
 	log_exec_error(f"droplet:{droplet_id}", command, "API does not support exec; use SSH")
 	return 127
@@ -64,7 +63,7 @@ def exec_on_app_service(client, app_id, service_name, command):
 	# Digital Ocean App Platform supports command execution via API (limited)
 	# This is a placeholder for the actual API call (PyDo may not support this directly)
 	log_exec_start(f"app:{app_id}:{service_name}", command)
-	print(f"[INFO] Digital Ocean App Platform exec is not yet supported via PyDo. Use 'doctl' CLI or dashboard.")
+	print("[INFO] Digital Ocean App Platform exec is not yet supported via PyDo. Use 'doctl' CLI or dashboard.")
 	log_exec_error(f"app:{app_id}:{service_name}", command, "API not supported; use doctl/dashboard")
 	return 127
 
@@ -88,7 +87,6 @@ def main():
 	args = parser.parse_args()
 
 	validate_env()
-	logger = get_logger()
 	client = get_client()
 	try:
 		if args.droplet:

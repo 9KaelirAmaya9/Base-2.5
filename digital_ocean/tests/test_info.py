@@ -3,9 +3,10 @@ pytest for info/query script (digital_ocean/info.py)
 Validates listing of namespaces, domains, and resource metadata.
 """
 import os
-import sys
-import pytest
 from unittest import mock
+
+import pytest
+
 
 # Patch environment for tests
 @mock.patch.dict(os.environ, {"DO_API_TOKEN": "test-token"})

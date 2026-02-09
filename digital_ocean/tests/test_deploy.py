@@ -1,9 +1,11 @@
 
-import os
 import sys
-import pytest
 from unittest import mock
+
+import pytest
+
 from digital_ocean import deploy
+
 
 def test_deploy_env_missing(monkeypatch):
     monkeypatch.delenv("DO_API_TOKEN", raising=False)
@@ -55,7 +57,7 @@ def test_deploy_rollback(monkeypatch, capsys):
         with mock.patch("digital_ocean.deploy.post_creation_hook", side_effect=Exception("Simulated failure after droplet creation")):
             test_args = ["deploy.py"]
             with mock.patch.object(sys, 'argv', test_args):
-                with pytest.raises(SystemExit) as e:
+                with pytest.raises(SystemExit):
                     deploy.main()
                 # Should attempt rollback (delete)
                 assert mock_client.droplets.delete.called

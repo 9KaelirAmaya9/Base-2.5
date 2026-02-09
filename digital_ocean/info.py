@@ -11,9 +11,10 @@ Exits nonzero on error. Requires .env to be configured.
 """
 import os
 import sys
-import logging
-from dotenv import load_dotenv
 from pathlib import Path
+
+from dotenv import load_dotenv
+
 try:
 	from pydo import Client
 except ImportError:
@@ -23,9 +24,12 @@ except ImportError:
 
 # Import shared logging infrastructure
 try:
-	from .do_logging import get_logger, log_info_query_start, log_info_query_success, log_info_query_error
+	from .do_logging import (
+		log_info_query_error,
+		log_info_query_start,
+		log_info_query_success,
+	)
 except ImportError:
-	from logging import getLogger as get_logger
 	def log_info_query_start(): pass
 	def log_info_query_success(*a, **kw): pass
 	def log_info_query_error(*a, **kw): pass
@@ -81,7 +85,6 @@ def main():
 		if token and token not in ("dummy", "test-token"):
 			os.environ.pop("DO_API_TOKEN", None)
 	validate_env()
-	logger = get_logger("digital_ocean.info")
 	client = get_client()
 	log_info_query_start()
 	try:

@@ -4,11 +4,14 @@ Destroy a DigitalOcean droplet by ID.
 Usage: python destroy_droplet.py <droplet_id>
 Requires: pydo
 """
-from dotenv import load_dotenv
-load_dotenv()
-import sys
-from pydo import Client
 import os
+import sys
+
+from dotenv import load_dotenv
+from pydo import Client
+
+load_dotenv()
+
 
 def log(msg):
     print(f"\033[1;31m[DO DESTROY]\033[0m {msg}")

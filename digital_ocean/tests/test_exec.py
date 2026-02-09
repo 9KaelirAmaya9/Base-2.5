@@ -4,8 +4,10 @@ Validates argument parsing, error handling, and logging for exec operations.
 """
 import os
 import sys
-import pytest
 from unittest import mock
+
+import pytest
+
 
 # Patch environment for tests
 @mock.patch.dict(os.environ, {"DO_API_TOKEN": "test-token"})

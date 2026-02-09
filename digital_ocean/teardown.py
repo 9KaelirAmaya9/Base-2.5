@@ -12,12 +12,16 @@ Requires .env to be configured with all required Digital Ocean variables.
 Exits nonzero on error.
 """
 import os
-from dotenv import load_dotenv
-load_dotenv()
 import sys
+
+from dotenv import load_dotenv
 from pydo import Client
+
 from digital_ocean.do_logging import logger
 from digital_ocean.env_check import REQUIRED_VARS
+
+load_dotenv()
+
 
 def main():
     """
@@ -44,8 +48,8 @@ def main():
     # Initialize Digital Ocean API client
     client = Client(token=DO_API_TOKEN)
 
-    import time
     import random
+    import time
     max_retries = 3
     for attempt in range(1, max_retries + 1):
         try:

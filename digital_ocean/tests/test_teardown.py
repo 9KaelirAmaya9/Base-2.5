@@ -1,3 +1,11 @@
+import sys
+from unittest import mock
+
+import pytest
+
+from digital_ocean import teardown
+
+
 def test_teardown_rollback(monkeypatch, capsys):
     monkeypatch.setenv("DO_API_TOKEN", "dummy")
     monkeypatch.setenv("DO_APP_NAME", "app")
@@ -8,17 +16,13 @@ def test_teardown_rollback(monkeypatch, capsys):
         mock_client.droplets.list.return_value = {"droplets": [{"id": 12345, "name": "app"}]}
         mock_client.droplets.delete.side_effect = Exception("Delete failed")
         test_args = ["teardown.py"]
-        with mock.patch.object(sys, 'argv', test_args):
+        with mock.patch.object(sys, "argv", test_args):
             with pytest.raises(SystemExit) as e:
                 teardown.main()
             assert e.value.code == 4
             captured = capsys.readouterr()
             assert "ROLLBACK ERROR" in captured.err
-import os
-import sys
-import pytest
-from unittest import mock
-from digital_ocean import teardown
+
 
 def test_teardown_env_missing(monkeypatch):
     monkeypatch.delenv("DO_API_TOKEN", raising=False)

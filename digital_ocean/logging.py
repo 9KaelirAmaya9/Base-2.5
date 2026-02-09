@@ -15,7 +15,6 @@ import importlib
 import os
 import sys
 
-
 if __name__ == "logging":
     # We were imported as top-level `logging` (shadowing stdlib). Fix by
     # temporarily removing this directory from sys.path, then importing stdlib.
@@ -35,13 +34,13 @@ else:
         LEVELS,
         LOG_LEVEL,
         get_logger,
-        logger,
         log_exec_error,
         log_exec_start,
         log_exec_success,
         log_info_query_error,
         log_info_query_start,
         log_info_query_success,
+        logger,
     )
 
     __all__ = [

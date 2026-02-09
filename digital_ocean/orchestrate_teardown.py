@@ -8,9 +8,10 @@ Usage:
   python digital_ocean/orchestrate_teardown.py [--clean-dns]
 """
 import os
+import re
 import sys
 import time
-import re
+
 from dotenv import load_dotenv
 from pydo import Client
 

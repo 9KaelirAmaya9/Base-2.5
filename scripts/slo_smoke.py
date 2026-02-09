@@ -1,15 +1,14 @@
 import os
 import sys
 import time
-from typing import Dict, List, Tuple
 
 import requests
 
 
-def sample_endpoints(base: str, endpoints: List[str], samples: int, timeout: int = 10) -> Tuple[int, int, Dict[str, int]]:
+def sample_endpoints(base: str, endpoints: list[str], samples: int, timeout: int = 10) -> tuple[int, int, dict[str, int]]:
     total = 0
     errors = 0
-    status_counts: Dict[str, int] = {}
+    status_counts: dict[str, int] = {}
     sess = requests.Session()
     for _ in range(samples):
         for ep in endpoints:
