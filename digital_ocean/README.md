@@ -34,6 +34,10 @@ Run the edit/maintain script to update deployed resources (always activate `.ven
 
 - All scripts work in containerized environments.
 
+## Experimental tools
+
+Experimental or stubbed scripts live in [digital_ocean/experimental](experimental/README.md). These are not part of the supported automation path and may change without notice.
+
 ## Teardown
 
 Run the teardown script to remove deployed resources:

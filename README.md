@@ -2,6 +2,15 @@
 
 A robust, production-ready Docker setup with enhanced security, health checks, and comprehensive environment variable management.
 
+## Quickstart (Docker-first)
+
+1. `./scripts/first-start.ps1`
+2. `./scripts/start.ps1`
+3. `./scripts/test.ps1`
+4. Open `https://${WEBSITE_DOMAIN}` (staging cert warnings are expected)
+5. For a deeper setup flow, see [quickstart.md](quickstart.md)
+6. Architecture overview: [project_overview.md](project_overview.md)
+
 ## CI Status
 
 - [![CI (backend)](https://github.com/woodkill00/base2/actions/workflows/ci-backend.yml/badge.svg?branch=main)](https://github.com/woodkill00/base2/actions/workflows/ci-backend.yml)
@@ -60,11 +69,27 @@ This Docker environment includes the following services:
 - **React**: Public frontend; calls `https://${WEBSITE_DOMAIN}/api/...`.
 - **Traefik**: Routes `/api/*` to FastAPI as pass-through (no prefix stripping).
 
+### Architecture (Option 1)
+
+```
+          [ Traefik :80/:443 ]
+               |
+      +--------------+--------------+
+      |                             |
+   /api/* -> [ FastAPI ]         / -> [ Nginx -> React ]
+      |
+      v
+   [ PostgreSQL ] <- [ Django (schema + admin) ]
+```
+
+More detail in [project_overview.md](project_overview.md).
+
 ## Contents
 
 - [Services](#-services)
 - [Prerequisites](#-prerequisites)
 - [Setup Instructions](#-setup-instructions)
+- [Testing](#-testing)
 - [DigitalOcean Deploy (Optional)](#digitalocean-deploy-optional)
 
 ## 📋 Prerequisites
@@ -240,6 +265,12 @@ Integration/perf tests are opt-in:
 make test-integration
 make test-perf
 ```
+
+## 🧪 Testing
+
+- Default unit-only runs: `./scripts/test.ps1` or `./scripts/test.sh`
+- Integration/perf (opt-in): `make test-integration`, `make test-perf`
+- Local compose override: `./scripts/test.ps1 -ComposeFile local.docker.yml -EnvFile .env.local`
 
 ### Lint (frontend)
 

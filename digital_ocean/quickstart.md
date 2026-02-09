@@ -90,6 +90,10 @@ Run the teardown script to remove deployed resources:
    - `scripts/install-node-deps.ps1`
    - `scripts/setup.ps1`
 
+## Experimental tools
+
+Experimental or stubbed scripts live in [digital_ocean/experimental](experimental/README.md). These are not part of the supported automation path and may change without notice.
+
 ### DigitalOcean SSH key sync (runs during setup)
 
 This step runs inside [scripts/setup.ps1](../scripts/setup.ps1) after .env is written. It calls [scripts/powershell/add-ssh-key.ps1](scripts/powershell/add-ssh-key.ps1) and uses [DO_ssh_keys.py](DO_ssh_keys.py).
