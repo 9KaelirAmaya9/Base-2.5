@@ -90,6 +90,12 @@ jspm_packages/
 # Build Outputs & Generated Files
 # ==========================================
 
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
 # React build outputs
 build/
 dist/

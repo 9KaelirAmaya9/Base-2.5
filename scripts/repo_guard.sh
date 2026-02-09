@@ -21,6 +21,11 @@ if git ls-files | grep -E -i '\.exe$' >/dev/null 2>&1; then
   fail "Tracked forbidden executable(s): *.exe"
 fi
 
+# 2b) Forbidden tracked Python artifacts
+if git ls-files | grep -E -i '(\.pyc$|/__pycache__/)' >/dev/null 2>&1; then
+  fail "Tracked Python bytecode artifacts (*.pyc or __pycache__)."
+fi
+
 # 3) Large tracked blobs (>5MB)
 while IFS= read -r -d '' f; do
   [ -f "$f" ] || continue
