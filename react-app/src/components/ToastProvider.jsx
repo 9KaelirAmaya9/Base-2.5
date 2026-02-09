@@ -57,11 +57,12 @@ const ToastProvider = ({ children }) => {
   );
 
   useEffect(() => {
+    const timeouts = timeoutRefs.current;
     return () => {
-      timeoutRefs.current.forEach((timeoutId) => {
+      timeouts.forEach((timeoutId) => {
         window.clearTimeout(timeoutId);
       });
-      timeoutRefs.current.clear();
+      timeouts.clear();
     };
   }, []);
 
