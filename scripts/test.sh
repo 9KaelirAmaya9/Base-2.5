@@ -75,6 +75,10 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 COMPOSE_CMD="docker compose --env-file $ENV_FILE -f $COMPOSE_FILE"
+USE_LOCAL_COVERAGE=false
+if [ "$(basename "$COMPOSE_FILE")" = "local.docker.yml" ] && [ "$(basename "$ENV_FILE")" = ".env.local" ]; then
+    USE_LOCAL_COVERAGE=true
+fi
 
 require_compose_running() {
     if ! command -v docker >/dev/null 2>&1; then
@@ -138,9 +142,9 @@ echo -e "${BLUE}Running backend tests inside Docker compose...${NC}"
 require_compose_running
 
 set +e
-$COMPOSE_CMD exec -T api pytest
+$COMPOSE_CMD exec -T ${USE_LOCAL_COVERAGE:+-e COVERAGE_FILE=/tmp/.coverage} api pytest
 API_EXIT_CODE=$?
-$COMPOSE_CMD exec -T django pytest
+$COMPOSE_CMD exec -T ${USE_LOCAL_COVERAGE:+-e COVERAGE_FILE=/tmp/.coverage} django pytest
 DJANGO_EXIT_CODE=$?
 set -e
 
