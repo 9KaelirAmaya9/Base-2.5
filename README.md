@@ -159,6 +159,14 @@ See the full end-to-end sequence in [docs/GOLDEN_PATH.md](docs/GOLDEN_PATH.md).
 
 Keep the environment active for every Python-related command (pip installs, Django/DO scripts, tests). Re-run `./scripts/first-start.ps1` anytime you need to refresh dependencies.
 
+If you prefer a manual venv flow (no guided setup), install Python deps per service with:
+
+```bash
+python -m pip install -r requirements-dev-api.txt
+# or
+python -m pip install -r requirements-dev-django.txt
+```
+
 ### 1. Install root tooling dependencies
 
 The guided environment setup commands live in the repository root.

@@ -1,0 +1,4 @@
+# Local dev/test dependencies for the Django service
+# Uses the compiled Django requirements.
+
+-r django/requirements.txt

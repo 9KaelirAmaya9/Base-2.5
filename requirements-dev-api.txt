@@ -1,0 +1,4 @@
+# Local dev/test dependencies for the API service
+# Uses the compiled API requirements.
+
+-r api/requirements.txt

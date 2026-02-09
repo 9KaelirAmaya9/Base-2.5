@@ -12,6 +12,9 @@ Thank you for contributing!
 ## Development Flow
 
 - Install pre-commit hooks: `pip install pre-commit && pre-commit install`
+- Install Python deps (local venv):
+  - API: `python -m pip install -r requirements-dev-api.txt`
+  - Django: `python -m pip install -r requirements-dev-django.txt`
 - Lint/format: `pre-commit run --all-files`
 - Backend tests: run via deploy script or locally with `pytest`
 - Frontend tests: `cd react-app && npm run test:ci`

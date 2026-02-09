@@ -5,6 +5,16 @@
 - Python: 3.12 (see .python-version)
 - Node.js: 18.x (see react-app/.nvmrc)
 
+## Python Dependencies (local venv)
+
+Install per-service dependencies when running Python tooling locally:
+
+```
+python -m pip install -r requirements-dev-api.txt
+# or
+python -m pip install -r requirements-dev-django.txt
+```
+
 ## Pre-commit Hooks
 
 Pre-commit runs formatting and lint checks before commits.

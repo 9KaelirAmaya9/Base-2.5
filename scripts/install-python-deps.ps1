@@ -1,6 +1,9 @@
 [CmdletBinding()]
 param(
-    [switch]$SkipPipUpgrade
+    [switch]$SkipPipUpgrade,
+    [switch]$Api,
+    [switch]$Django,
+    [switch]$DigitalOcean
 )
 
 Set-StrictMode -Version Latest
@@ -52,9 +55,19 @@ if (-not $SkipPipUpgrade) {
     }
 }
 
-$requirements = @(
-    'digital_ocean/requirements.txt'
-)
+$requirements = @()
+$apiReq = 'requirements-dev-api.txt'
+$djangoReq = 'requirements-dev-django.txt'
+$doReq = 'digital_ocean/requirements.txt'
+
+if ($Api -or $Django -or $DigitalOcean) {
+    if ($Api) { $requirements += $apiReq }
+    if ($Django) { $requirements += $djangoReq }
+    if ($DigitalOcean) { $requirements += $doReq }
+} else {
+    # Default to DigitalOcean automation deps for first-start.
+    $requirements += $doReq
+}
 
 foreach ($req in $requirements) {
     $reqPath = Join-Path $repoRoot $req
@@ -64,6 +77,8 @@ foreach ($req in $requirements) {
         if ($LASTEXITCODE -ne 0) {
             throw "pip install -r $req failed with exit code $LASTEXITCODE"
         }
+    } else {
+        throw "Requirements file not found: $req"
     }
 }
 

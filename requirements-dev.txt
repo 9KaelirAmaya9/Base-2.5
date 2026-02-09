@@ -1,0 +1,6 @@
+# Local dev/test dependencies (Docker optional)
+# Uses compiled requirements from each subproject.
+
+-r api/requirements.txt
+-r django/requirements.txt
+-r digital_ocean/requirements.txt

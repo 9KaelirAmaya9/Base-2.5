@@ -1,4 +1,4 @@
-.PHONY: up down restart logs logs-api logs-web ps build test lint fmt migrate seed reset
+.PHONY: up down restart logs logs-api logs-web ps build test lint fmt migrate seed reset dev-install dev-install-api dev-install-django dev-install-do
 
 # Prefer the repo virtual environment when running Python-based tooling.
 VENV_PY := $(shell if [ -x .venv/Scripts/python.exe ]; then printf '.venv/Scripts/python.exe'; elif [ -x .venv/bin/python ]; then printf '.venv/bin/python'; else printf 'python'; fi)
@@ -33,6 +33,18 @@ logs-web:
 
 test:
 	./scripts/test.sh --compose-file $(COMPOSE_FILE) --env-file $(ENV_FILE)
+
+dev-install:
+	@echo "Choose a service-specific target: dev-install-api, dev-install-django, or dev-install-do"; exit 1
+
+dev-install-api:
+	$(VENV_PY) -m pip install -r requirements-dev-api.txt
+
+dev-install-django:
+	$(VENV_PY) -m pip install -r requirements-dev-django.txt
+
+dev-install-do:
+	$(VENV_PY) -m pip install -r digital_ocean/requirements.txt
 
 lint:
 	cd react-app && npm run lint
