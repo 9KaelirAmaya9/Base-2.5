@@ -75,9 +75,14 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 COMPOSE_CMD="docker compose --env-file $ENV_FILE -f $COMPOSE_FILE"
-USE_LOCAL_COVERAGE=false
+USE_LOCAL_STACK=false
 if [ "$(basename "$COMPOSE_FILE")" = "local.docker.yml" ] && [ "$(basename "$ENV_FILE")" = ".env.local" ]; then
-    USE_LOCAL_COVERAGE=true
+    USE_LOCAL_STACK=true
+fi
+
+COVERAGE_ENV_ARGS=""
+if [ "$USE_LOCAL_STACK" = true ]; then
+    COVERAGE_ENV_ARGS="-e COVERAGE_FILE=/tmp/.coverage"
 fi
 
 require_compose_running() {
@@ -141,10 +146,14 @@ BACKEND_EXIT_CODE=0
 echo -e "${BLUE}Running backend tests inside Docker compose...${NC}"
 require_compose_running
 
+if [ "$USE_LOCAL_STACK" = true ]; then
+    $COMPOSE_CMD exec -T redis sh -lc 'redis-cli -a "$REDIS_PASSWORD" FLUSHALL' >/dev/null 2>&1 || true
+fi
+
 set +e
-$COMPOSE_CMD exec -T ${USE_LOCAL_COVERAGE:+-e COVERAGE_FILE=/tmp/.coverage} api pytest
+$COMPOSE_CMD exec -T $COVERAGE_ENV_ARGS api pytest
 API_EXIT_CODE=$?
-$COMPOSE_CMD exec -T ${USE_LOCAL_COVERAGE:+-e COVERAGE_FILE=/tmp/.coverage} django pytest
+$COMPOSE_CMD exec -T $COVERAGE_ENV_ARGS django pytest
 DJANGO_EXIT_CODE=$?
 set -e
 

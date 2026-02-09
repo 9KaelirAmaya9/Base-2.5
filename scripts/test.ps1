@@ -66,6 +66,9 @@ Push-Location $projectRoot
 try {
     Require-ComposeRunning
     if ($useLocalCoverage) {
+        docker compose --env-file $envFile -f $composeFile exec -T redis sh -lc 'redis-cli -a "$REDIS_PASSWORD" FLUSHALL' 2>$null | Out-Null
+    }
+    if ($useLocalCoverage) {
         docker compose --env-file $envFile -f $composeFile exec -T -e COVERAGE_FILE=/tmp/.coverage api pytest
         docker compose --env-file $envFile -f $composeFile exec -T -e COVERAGE_FILE=/tmp/.coverage django pytest
     } else {
