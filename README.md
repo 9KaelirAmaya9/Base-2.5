@@ -234,6 +234,13 @@ On Windows PowerShell (no Bash/make required), use the equivalent wrappers:
 
 `make test`, `./scripts/test.sh`, and `./scripts/test.ps1` expect the Docker stack to be running; start it first with `make up` or `./scripts/start.ps1`.
 
+Integration/perf tests are opt-in:
+
+```bash
+make test-integration
+make test-perf
+```
+
 ### Lint (frontend)
 
 ```bash

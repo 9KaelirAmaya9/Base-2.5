@@ -1,4 +1,4 @@
-.PHONY: up down restart logs logs-api logs-web ps build test lint fmt migrate seed reset dev-install dev-install-api dev-install-django dev-install-do
+.PHONY: up down restart logs logs-api logs-web ps build test test-integration test-perf lint fmt migrate seed reset dev-install dev-install-api dev-install-django dev-install-do
 
 # Prefer the repo virtual environment when running Python-based tooling.
 VENV_PY := $(shell if [ -x .venv/Scripts/python.exe ]; then printf '.venv/Scripts/python.exe'; elif [ -x .venv/bin/python ]; then printf '.venv/bin/python'; else printf 'python'; fi)
@@ -33,6 +33,13 @@ logs-web:
 
 test:
 	./scripts/test.sh --compose-file $(COMPOSE_FILE) --env-file $(ENV_FILE)
+
+test-integration:
+	$(COMPOSE) exec -T api pytest -m integration -o addopts=
+	$(COMPOSE) exec -T django pytest -m integration -o addopts=
+
+test-perf:
+	$(COMPOSE) exec -T api pytest -m perf -o addopts=
 
 dev-install:
 	@echo "Choose a service-specific target: dev-install-api, dev-install-django, or dev-install-do"; exit 1

@@ -40,9 +40,8 @@ function Resolve-EnvFilePath {
 $composeFile = Resolve-ComposeFilePath -Path $ComposeFile -Root $projectRoot
 $envFile = Resolve-EnvFilePath -Path $EnvFile -Root $projectRoot
 $composeArgs = @('--env-file', $envFile, '-f', $composeFile)
-$isLocalCompose = ((Split-Path -Leaf $composeFile) -ieq 'local.docker.yml')
-$isLocalEnv = ((Split-Path -Leaf $envFile) -ieq '.env.local')
-$useLocalCoverage = $isLocalCompose -and $isLocalEnv
+$coverageArgs = @('-e', 'COVERAGE_FILE=/tmp/.coverage')
+$pytestArgs = @('-m', 'not integration and not perf')
 
 function Require-ComposeRunning {
     $docker = Get-Command docker -ErrorAction SilentlyContinue
@@ -65,16 +64,16 @@ function Require-ComposeRunning {
 Push-Location $projectRoot
 try {
     Require-ComposeRunning
-    if ($useLocalCoverage) {
-        docker compose --env-file $envFile -f $composeFile exec -T redis sh -lc 'redis-cli -a "$REDIS_PASSWORD" FLUSHALL >/dev/null 2>&1' | Out-Null
+    if ($composeFile -and $envFile) {
+        $isLocalCompose = ((Split-Path -Leaf $composeFile) -ieq 'local.docker.yml')
+        $isLocalEnv = ((Split-Path -Leaf $envFile) -ieq '.env.local')
+        if ($isLocalCompose -and $isLocalEnv) {
+            docker compose --env-file $envFile -f $composeFile exec -T redis sh -lc 'redis-cli -a "$REDIS_PASSWORD" FLUSHALL >/dev/null 2>&1' | Out-Null
+        }
     }
-    if ($useLocalCoverage) {
-        docker compose --env-file $envFile -f $composeFile exec -T -e COVERAGE_FILE=/tmp/.coverage api pytest
-        docker compose --env-file $envFile -f $composeFile exec -T -e COVERAGE_FILE=/tmp/.coverage django pytest
-    } else {
-        docker compose --env-file $envFile -f $composeFile exec -T api pytest
-        docker compose --env-file $envFile -f $composeFile exec -T django pytest
-    }
+
+    docker compose --env-file $envFile -f $composeFile exec -T @coverageArgs api pytest @pytestArgs
+    docker compose --env-file $envFile -f $composeFile exec -T @coverageArgs django pytest @pytestArgs
 
     Push-Location (Join-Path $projectRoot 'react-app')
     try {

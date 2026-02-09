@@ -2,7 +2,7 @@
 
 ## Categories
 
-- Unit: default fast tests (`-m "not integration and not contract and not e2e"`)
+- Unit: default fast tests (pytest.ini excludes integration/perf)
 - Integration: require services (Postgres/Redis/Celery), marked `@pytest.mark.integration`
 - Contract: OpenAPI/schema checks, marked `@pytest.mark.contract`
 - E2E: Playwright browser tests (run from `react-app/`)
@@ -26,9 +26,10 @@ These scripts expect Docker Compose to be running (use `./scripts/start.ps1` or 
 
 ## Backend
 
-- API unit: `cd api && pytest -q -m "not integration"`
-- API integration: `cd api && pytest -q -m integration`
-- Django unit: `cd django && pytest -q -m "not integration"`
+- API unit: `cd api && pytest -q`
+- API integration: `cd api && pytest -q -m integration -o addopts=`
+- Django unit: `cd django && pytest -q`
+- Django integration: `cd django && pytest -q -m integration -o addopts=`
 
 Coverage thresholds enforced in CI and deploy gate.
 
