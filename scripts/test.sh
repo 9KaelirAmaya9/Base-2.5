@@ -80,10 +80,11 @@ if [ "$(basename "$COMPOSE_FILE")" = "local.docker.yml" ] && [ "$(basename "$ENV
     USE_LOCAL_STACK=true
 fi
 
-COVERAGE_ENV_ARGS=""
-if [ "$USE_LOCAL_STACK" = true ]; then
-    COVERAGE_ENV_ARGS="-e COVERAGE_FILE=/tmp/.coverage"
-fi
+COVERAGE_ENV_ARGS="-e COVERAGE_FILE=/tmp/.coverage"
+PYTEST_MARKS=(-m "not integration and not perf")
+PYTEST_CACHE_ARGS=(-o "cache_dir=/tmp/pytest-cache")
+API_PYTEST_CONFIG=(-c "api/pytest.ini")
+DJANGO_PYTEST_CONFIG=(-c "pytest.ini")
 
 require_compose_running() {
     if ! command -v docker >/dev/null 2>&1; then
@@ -151,9 +152,9 @@ if [ "$USE_LOCAL_STACK" = true ]; then
 fi
 
 set +e
-$COMPOSE_CMD exec -T $COVERAGE_ENV_ARGS api pytest
+$COMPOSE_CMD exec -T $COVERAGE_ENV_ARGS api pytest "${PYTEST_MARKS[@]}" "${PYTEST_CACHE_ARGS[@]}" "${API_PYTEST_CONFIG[@]}"
 API_EXIT_CODE=$?
-$COMPOSE_CMD exec -T $COVERAGE_ENV_ARGS django pytest
+$COMPOSE_CMD exec -T $COVERAGE_ENV_ARGS django pytest "${PYTEST_MARKS[@]}" "${PYTEST_CACHE_ARGS[@]}" "${DJANGO_PYTEST_CONFIG[@]}"
 DJANGO_EXIT_CODE=$?
 set -e
 

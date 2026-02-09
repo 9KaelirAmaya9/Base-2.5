@@ -44,7 +44,7 @@ $coverageArgs = @('-e', 'COVERAGE_FILE=/tmp/.coverage')
 $pytestArgs = @('-m', 'not integration and not perf')
 $pytestCacheArgs = @('-o', 'cache_dir=/tmp/pytest-cache')
 $apiPytestConfig = @('-c', 'api/pytest.ini')
-$djangoPytestConfig = @('-c', 'django/pytest.ini')
+$djangoPytestConfig = @('-c', 'pytest.ini')
 
 function Require-ComposeRunning {
     $docker = Get-Command docker -ErrorAction SilentlyContinue
