@@ -2,6 +2,7 @@ name: CI (perf-smoke)
 
 on:
   workflow_dispatch:
+  pull_request:
   push:
     branches: ['main']
   schedule:
