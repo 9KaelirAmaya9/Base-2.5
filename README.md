@@ -2,6 +2,21 @@
 
 A robust, production-ready Docker setup with enhanced security, health checks, and comprehensive environment variable management.
 
+## CI Status
+
+- [![CI (backend)](https://github.com/woodkill00/base2/actions/workflows/ci-backend.yml/badge.svg?branch=main)](https://github.com/woodkill00/base2/actions/workflows/ci-backend.yml)
+- [![CI (contract)](https://github.com/woodkill00/base2/actions/workflows/ci-contract.yml/badge.svg?branch=main)](https://github.com/woodkill00/base2/actions/workflows/ci-contract.yml)
+- [![CI (e2e)](https://github.com/woodkill00/base2/actions/workflows/ci-e2e.yml/badge.svg?branch=main)](https://github.com/woodkill00/base2/actions/workflows/ci-e2e.yml)
+- [![CI (frontend)](https://github.com/woodkill00/base2/actions/workflows/ci-frontend.yml/badge.svg?branch=main)](https://github.com/woodkill00/base2/actions/workflows/ci-frontend.yml)
+- [![CI (perf-smoke)](https://github.com/woodkill00/base2/actions/workflows/ci-perf-smoke.yml/badge.svg?branch=main)](https://github.com/woodkill00/base2/actions/workflows/ci-perf-smoke.yml)
+- [![CI (repo guards)](https://github.com/woodkill00/base2/actions/workflows/ci-repo-guards.yml/badge.svg?branch=main)](https://github.com/woodkill00/base2/actions/workflows/ci-repo-guards.yml)
+- [![CI (smoke)](https://github.com/woodkill00/base2/actions/workflows/ci-smoke.yml/badge.svg?branch=main)](https://github.com/woodkill00/base2/actions/workflows/ci-smoke.yml)
+- [![CI (load)](https://github.com/woodkill00/base2/actions/workflows/ci-load.yml/badge.svg?branch=main)](https://github.com/woodkill00/base2/actions/workflows/ci-load.yml)
+- [![CI (chaos)](https://github.com/woodkill00/base2/actions/workflows/ci-chaos.yml/badge.svg?branch=main)](https://github.com/woodkill00/base2/actions/workflows/ci-chaos.yml)
+- [![Option1 Guard](https://github.com/woodkill00/base2/actions/workflows/option1-guard.yml/badge.svg?branch=main)](https://github.com/woodkill00/base2/actions/workflows/option1-guard.yml)
+- [![Sync Environment Configuration](https://github.com/woodkill00/base2/actions/workflows/sync-config.yml/badge.svg?branch=main)](https://github.com/woodkill00/base2/actions/workflows/sync-config.yml)
+- [![security](https://github.com/woodkill00/base2/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/woodkill00/base2/actions/workflows/security.yml)
+
 ## Feature Docs (Current Work)
 
 - Spec: [specs/001-django-fastapi-react/spec.md](specs/001-django-fastapi-react/spec.md)
