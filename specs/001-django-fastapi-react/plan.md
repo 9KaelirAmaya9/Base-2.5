@@ -5,7 +5,7 @@
 
 ## Summary
 
-Deliver a production-like, staging-safe full stack behind Traefik (staging-only ACME) with secure user auth flows (signup/login/logout), CSRF protections for cookie auth, Google sign-in, and deploy/update/test exclusively via `digital_ocean/scripts/powershell/deploy.ps1`.
+Deliver a production-like, staging-safe full stack behind Traefik (staging-only ACME) with secure user auth flows (signup/login/logout), CSRF protections for cookie auth, Google sign-in, and deploy/update/test exclusively via `digital_ocean/scripts/powershell/deploy.ps1` with a strict Django -> FastAPI -> React build/start order.
 
 ## Technical Context
 
@@ -23,7 +23,7 @@ Deliver a production-like, staging-safe full stack behind Traefik (staging-only 
 
 **Performance Goals**: Health probes p95 < 5s in staging-like environment
 
-**Constraints**: deploy/update/test via `deploy.ps1`; staging-only ACME; Traefik is the only published port; cookie auth + CSRF; no sensitive browser token storage
+**Constraints**: deploy/update/test via `deploy.ps1`; staging-only ACME; Traefik is the only published port; cookie auth + CSRF; no sensitive browser token storage; enforce Django -> FastAPI -> React build/start order with readiness gates
 
 **Scale/Scope**: Single droplet, single Postgres, single Redis, low-to-moderate traffic
 
@@ -195,13 +195,23 @@ Internet
 
 - Local runs the same service set as staging-like deploy, including edge, app services, DB, Redis, and admin UIs.
 - Healthchecks are mandatory and used as the primary readiness signal.
-- Dependency ordering uses `depends_on: condition: service_healthy` where applicable.
+- Dependency ordering uses `depends_on: condition: service_healthy` where applicable and must follow Django -> FastAPI -> React.
 
 ### 3.2 Staging-like droplet
 
 - Deployed via `digital_ocean/scripts/powershell/deploy.ps1`.
 - Uses the same compose file (`local.docker.yml`) on the droplet to enforce parity.
 - TLS issuance MUST remain staging-only (`le-staging`), verified in `digital_ocean/scripts/powershell/test.ps1`.
+
+### 3.3 Build/start order (authoritative)
+
+All deploys and update deploys must follow a strict build/start order and block downstream steps until readiness gates are green:
+
+1. Django: migrations + `check --deploy` + health endpoint green.
+2. FastAPI: start only after Django is healthy and reachable.
+3. React: build/serve only after FastAPI health is green.
+
+Readiness gates are enforced in deploy-time verification, not just Compose startup. Any gate failure must halt the deploy and record artifacts.
 
 ---
 
@@ -315,9 +325,11 @@ To satisfy the constitution (no browser token storage) while keeping implementat
 
 - `deploy.ps1 -AllTests` runs the post-deploy verification suite (`test.ps1`).
 - Add/extend checks so the deploy report includes:
+- Add/extend checks so the deploy report includes:
   - OpenAPI snapshot capture
   - auth guarded endpoint checks (401/403 without credentials)
   - explicit confirmation of staging-only ACME resolver
+  - explicit service readiness ordering (Django before FastAPI, FastAPI before React)
 
 ---
 

@@ -1,4 +1,6 @@
 param(
+  [Alias('h')]
+  [switch]$Help,
   [switch]$Full,
   [switch]$UpdateOnly,
   [string]$EnvPath = ".\.env",
@@ -29,6 +31,25 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+if ($Help) {
+  Write-Host 'Usage: ./digital_ocean/scripts/powershell/deploy.ps1 [options]' -ForegroundColor Cyan
+  Write-Host ''
+  Write-Host 'Common options:'
+  Write-Host '  -Full            Provision a droplet if needed (default is update-only)'
+  Write-Host '  -UpdateOnly      Update an existing droplet without provisioning'
+  Write-Host '  -EnvPath <path>  Path to .env (default: .\.env)'
+  Write-Host '  -SshKey <path>   Override SSH key path'
+  Write-Host '  -SshUser <user>  SSH user (default: SSH_USER env or root)'
+  Write-Host '  -DropletIp <ip>  Override droplet IP detection'
+  Write-Host '  -Preflight       Run local validation before deploy'
+  Write-Host '  -RunTests        Run post-deploy tests'
+  Write-Host '  -AllTests        Run full post-deploy + local tests'
+  Write-Host '  -Timestamped     Create per-run log folders under local_run_logs'
+  Write-Host '  -LogsDir <path>  Override artifact directory (default: .\local_run_logs)'
+  Write-Host '  -Help, -h        Show this help'
+  return
+}
 
 # Ensure relative paths work regardless of where the script is invoked from.
 $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path

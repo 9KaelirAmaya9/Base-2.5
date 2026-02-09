@@ -7,6 +7,14 @@
 - Contract: OpenAPI/schema checks, marked `@pytest.mark.contract`
 - E2E: Playwright browser tests (run from `react-app/`)
 
+## All-in-one entrypoint
+
+Run a full deploy verification + tests (DigitalOcean update-only):
+
+`./digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests -Timestamped -LogsDir .\local_run_logs`
+
+Artifacts land under `local_run_logs/<ip>-<timestamp>/` with per-service folders and a meta report.
+
 ## Backend
 
 - API unit: `cd api && pytest -q -m "not integration"`

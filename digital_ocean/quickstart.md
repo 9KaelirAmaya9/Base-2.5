@@ -80,10 +80,70 @@ Run the teardown script to remove deployed resources:
 3. **Run first-start orchestration**:
    - `./scripts/first-start.ps1` (PowerShell) or `pwsh -ExecutionPolicy Bypass -File ./scripts/first-start.ps1`
    - Creates/activates `.venv`, installs Python/Node dependencies, and runs the guided setup.
+   - Guided setup generates `.env` from `.env.example` and may prompt to overwrite `.env` and request required values (DigitalOcean token, domain, emails, etc.).
    - Use `-SkipSetup` if you only need to hydrate dependencies.
    - Keep `.venv` active for all pip installs and DigitalOcean Python commands.
-4. **(Optional) Node.js scripts**:
-   - Additional `npm install` runs are only needed for custom directories beyond the defaults handled by `first-start`.
+
+   Exact scripts invoked by `first-start.ps1` (in order):
+   - `scripts/bootstrap-venv.ps1`
+   - `scripts/install-python-deps.ps1`
+   - `scripts/install-node-deps.ps1`
+   - `scripts/setup.ps1`
+
+### DigitalOcean SSH key sync (runs during setup)
+
+This step runs inside [scripts/setup.ps1](../scripts/setup.ps1) after .env is written. It calls [scripts/powershell/add-ssh-key.ps1](scripts/powershell/add-ssh-key.ps1) and uses [DO_ssh_keys.py](DO_ssh_keys.py).
+
+What it does (ordered):
+
+- Determines the key name from PROJECT_NAME (fallback: do-ssh).
+- Ensures a local SSH key exists at ~/.ssh/<keyName> (creates ED25519 key if missing).
+- Queries DigitalOcean for matching keys (same name and public key).
+- If a mismatch exists, deletes old DO keys and registers the local key.
+- Updates .env with DO_SSH_KEY_ID and DO_API_SSH_KEYS.
+
+Why it exists:
+
+- Droplet provisioning requires a valid DO SSH key; this keeps local and DO keys in sync automatically.
+
+### Setup prompts (interactive)
+
+The interactive questions come from [scripts/setup.js](../scripts/setup.js) (invoked by [scripts/setup.ps1](../scripts/setup.ps1)). These are the exact prompts and choices:
+
+- Overwrite existing .env: yes/no (default no); creates a timestamped backup on yes.
+- Project name: lowercase letters, digits, hyphen only; required.
+- Website domain: required non-empty value.
+- Primary email: optional; if provided you are asked whether to apply it to all default email fields.
+- Primary password: optional (masked); if provided you are asked whether to apply it to all default password fields.
+- Primary username: optional; if provided you are asked whether to apply it to all default username fields.
+- Git repo URL: optional; used for deploy automation defaults.
+- Git repo branch: optional; used for deploy automation defaults.
+- Environment: choice of development, staging, production.
+- Deploy mode: choice of local or digitalocean.
+- Apply safe dev defaults: yes/no, only when environment is development.
+
+Dev defaults summary:
+
+- Selecting "Apply safe dev defaults" sets `APPLY_DEV_DEFAULTS=true` in `.env`.
+- When you later run `npm run setup:complete`, the only change it applies is `DJANGO_DEBUG=true` (only if `ENV=development`).
+
+Non-interactive note:
+
+- `scripts/setup.ps1 -NonInteractive` disables prompts and reads values from args/environment; it will fail fast if required values are missing.
+
+After writing .env, [scripts/setup.js](../scripts/setup.js) prints a checklist of required categories and recommends running:
+
+- npm run setup:complete
+- npm run doctor
+
+Tip: `scripts/first-start.ps1 -Help` and `scripts/setup.ps1 -Help` print usage details.
+
+### Golden path (all-green deploy)
+
+See the full end-to-end sequence in [docs/GOLDEN_PATH.md](../docs/GOLDEN_PATH.md). 4. **(Optional) Node.js scripts**:
+
+- Additional `npm install` runs are only needed for custom directories beyond the defaults handled by `first-start`.
+
 5. **Cross-platform usage**:
    - Windows: Use PowerShell for venv activation and script execution.
    - Mac/Linux: Use Bash or Zsh for venv activation and script execution.

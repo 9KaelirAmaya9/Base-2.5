@@ -2,6 +2,8 @@
 param(
   [Parameter(ValueFromRemainingArguments = $true)]
   [string[]]$Args,
+  [Alias('h')]
+  [switch]$Help,
   [switch]$NonInteractive,
   [switch]$SkipSetupJs,
   [string]$EnvPath,
@@ -11,6 +13,20 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
+
+if ($Help) {
+  Write-Host 'Usage: ./scripts/setup.ps1 [options] [-- <setup.js args>]' -ForegroundColor Cyan
+  Write-Host ''
+  Write-Host 'Options:'
+  Write-Host '  -NonInteractive   Run setup.js without prompts (fails if required values are missing)'
+  Write-Host '  -SkipSetupJs      Skip setup.js and only run secret generation + DO SSH sync'
+  Write-Host '  -EnvPath <path>   Target a different .env file (default: repo root .env)'
+  Write-Host '  -DoSyncDryRun     Dry-run the DigitalOcean SSH key sync step'
+  Write-Host '  -Help, -h         Show this help'
+  Write-Host ''
+  Write-Host 'Extra args after -- are forwarded to scripts/setup.js.'
+  return
+}
 
 if (-not $env:VIRTUAL_ENV) {
   Write-Warning 'Virtual environment not active. For first-time setup, run ./scripts/first-start.ps1.'

@@ -5,7 +5,7 @@
 **Status**: Draft  
 **Input**: User description: "django-fastapi-react, using this file as a base"
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Production-like deploy verification (Priority: P1)
 
@@ -23,6 +23,9 @@ As a maintainer, I can deploy/update the full stack to a staging-like environmen
 4. **Given** verification probes protected operational/admin endpoints without credentials, **When** requests are made, **Then** access is denied.
 5. **Given** the environment is configured for staging-like TLS, **When** certificates are issued/renewed, **Then** production certificate issuance is not attempted.
 6. **Given** the environment is running, **When** health endpoints are probed, **Then** they report healthy status for the edge proxy, web client, API, and core dependencies.
+7. **Given** a deploy is running, **When** services are built/started, **Then** Django is built and healthy before FastAPI starts.
+8. **Given** a deploy is running, **When** services are built/started, **Then** FastAPI is healthy before React is built/served.
+9. **Given** a dependency fails readiness, **When** the next service would start, **Then** the deploy halts and reports the blocking dependency.
 
 ---
 
@@ -81,7 +84,7 @@ As a user, I can sign in with Google so I can access the product without creatin
 - User attempts to reuse an email address that already exists.
 - Brute-force login attempts trigger rate limiting without revealing account existence.
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -107,20 +110,34 @@ As a user, I can sign in with Google so I can access the product without creatin
 - **FR-041**: System MUST produce a structured verification report for each deploy/update run.
 - **FR-042**: System MUST capture deploy/verification artifacts for each run, including enough information to diagnose failures.
 
+- **FR-050**: System MUST enforce the build/start order: Django first, FastAPI second, React last.
+- **FR-051**: System MUST gate each step on readiness: FastAPI must not start until Django is healthy, and React must not build/serve until FastAPI is healthy.
+
+### Build Order & Dependency Guarantees
+
+To keep cross-service features correct, all deploys and update deploys must follow a strict build/start order:
+
+1. Django: run migrations and reach healthy state.
+2. FastAPI: start only after Django is healthy and reachable.
+3. React: build/serve only after FastAPI health is green.
+
+"Healthy" means the service responds to its health endpoint and core dependencies are reachable (database, cache, etc.).
+
 ### Assumptions
 
 - The product initially supports a single user role (end user) plus an administrator role for internal management.
 - Cookie-based sessions are the default authentication mechanism.
 - Staging-like environments prioritize safe defaults over production issuance of certificates.
+- Deploys enforce a Django -> FastAPI -> React build/start order with readiness gates.
 
-### Key Entities *(include if feature involves data)*
+### Key Entities _(include if feature involves data)_
 
 - **User**: Account identity; includes email, status (active/disabled), and timestamps.
 - **Session**: Represents an authenticated login state with an expiration policy.
 - **OAuth Identity**: Link between a User and an external provider identity (Google) used for third-party sign-in.
 - **Audit Event**: Security-relevant event record (e.g., login failures, account changes) with timestamps and a request correlation identifier.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
@@ -129,3 +146,5 @@ As a user, I can sign in with Google so I can access the product without creatin
 - **SC-003**: A new user can complete signup and reach the dashboard in under 2 minutes.
 - **SC-004**: 99% of login attempts under normal conditions complete in under 2 seconds.
 - **SC-005**: 0 successful unauthenticated accesses to protected operational/admin endpoints during verification.
+- **SC-006**: Verification reports show Django healthy before FastAPI starts, and FastAPI healthy before React build/serve begins.
+- **SC-007**: Any failed readiness gate aborts downstream build steps and is recorded in artifacts.

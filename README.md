@@ -10,7 +10,11 @@ A robust, production-ready Docker setup with enhanced security, health checks, a
 
 ## ⚠️ Platform Compatibility
 
-All scripts require Bash and are tested on Mac, Linux, and Windows (WSL/Git Bash). For Windows, use WSL or Git Bash for best results.
+Primary automation scripts are PowerShell (`*.ps1`).
+
+- Windows: run with Windows PowerShell or PowerShell 7.
+- macOS/Linux: use `pwsh` (PowerShell 7) for the `*.ps1` scripts.
+- Bash wrappers exist for local Docker flows (start/logs/test/seed) and work in WSL or Git Bash.
 
 ## ⚠️ Docker Compose Version
 
@@ -41,6 +45,13 @@ This Docker environment includes the following services:
 - **React**: Public frontend; calls `https://${WEBSITE_DOMAIN}/api/...`.
 - **Traefik**: Routes `/api/*` to FastAPI as pass-through (no prefix stripping).
 
+## Contents
+
+- [Services](#-services)
+- [Prerequisites](#-prerequisites)
+- [Setup Instructions](#-setup-instructions)
+- [DigitalOcean Deploy (Optional)](#digitalocean-deploy-optional)
+
 ## 📋 Prerequisites
 
 - Docker Engine 20.10+
@@ -67,8 +78,69 @@ This script:
 - Activates the environment for the current session
 - Installs Python packages (digital_ocean requirements)
 - Installs Node packages in the root, `react-app/`, and `e2e/`
-- Runs `scripts/setup.ps1` to generate `.env`
+- Runs `scripts/setup.ps1` to generate `.env` from `.env.example`
 - Use `-SkipSetup` if you only need dependency hydration without re-running the guided setup.
+
+During `scripts/setup.ps1`, you may be prompted to confirm overwriting `.env` and to provide required values (DigitalOcean token, domain, email, etc.). You can also edit `.env` manually afterward.
+
+### Setup prompts (interactive)
+
+The interactive questions come from [scripts/setup.js](scripts/setup.js) (invoked by [scripts/setup.ps1](scripts/setup.ps1)). These are the exact prompts and choices:
+
+- Overwrite existing .env: yes/no (default no); creates a timestamped backup on yes.
+- Project name: lowercase letters, digits, hyphen only; required.
+- Website domain: required non-empty value.
+- Primary email: optional; if provided you are asked whether to apply it to all default email fields.
+- Primary password: optional (masked); if provided you are asked whether to apply it to all default password fields.
+- Primary username: optional; if provided you are asked whether to apply it to all default username fields.
+- Git repo URL: optional; used for deploy automation defaults.
+- Git repo branch: optional; used for deploy automation defaults.
+- Environment: choice of development, staging, production.
+- Deploy mode: choice of local or digitalocean.
+- Apply safe dev defaults: yes/no, only when environment is development.
+
+Dev defaults summary:
+
+- Selecting "Apply safe dev defaults" sets `APPLY_DEV_DEFAULTS=true` in `.env`.
+- When you later run `npm run setup:complete`, the only change it applies is `DJANGO_DEBUG=true` (only if `ENV=development`).
+
+Non-interactive note:
+
+- `scripts/setup.ps1 -NonInteractive` disables prompts and reads values from args/environment; it will fail fast if required values are missing.
+
+After writing .env, [scripts/setup.js](scripts/setup.js) prints a checklist of required categories and recommends running:
+
+- npm run setup:complete
+- npm run doctor
+
+Exact scripts invoked by `first-start.ps1` (in order):
+
+- `scripts/bootstrap-venv.ps1`
+- `scripts/install-python-deps.ps1`
+- `scripts/install-node-deps.ps1`
+- `scripts/setup.ps1`
+
+Tip: `scripts/first-start.ps1 -Help` and `scripts/setup.ps1 -Help` print usage details.
+
+### DigitalOcean SSH key sync (runs during setup)
+
+This step runs inside [scripts/setup.ps1](scripts/setup.ps1) after .env is written. It calls [digital_ocean/scripts/powershell/add-ssh-key.ps1](digital_ocean/scripts/powershell/add-ssh-key.ps1) and uses [digital_ocean/DO_ssh_keys.py](digital_ocean/DO_ssh_keys.py).
+
+What it does (ordered):
+
+- Determines the key name from PROJECT_NAME (fallback: do-ssh).
+- Ensures a local SSH key exists at ~/.ssh/<keyName> (creates ED25519 key if missing).
+- Queries DigitalOcean for matching keys (same name and public key).
+- If a mismatch exists, deletes old DO keys and registers the local key.
+- Updates .env with DO_SSH_KEY_ID and DO_API_SSH_KEYS.
+
+Why it exists:
+
+- Droplet provisioning requires a valid DO SSH key; this keeps local and DO keys in sync automatically.
+
+### Golden path (all-green deploy)
+
+See the full end-to-end sequence in [docs/GOLDEN_PATH.md](docs/GOLDEN_PATH.md).
 
 Keep the environment active for every Python-related command (pip installs, Django/DO scripts, tests). Re-run `./scripts/first-start.ps1` anytime you need to refresh dependencies.
 
@@ -263,8 +335,8 @@ Fresh clone: install these versions before running builds/tests.
 
 If you encounter issues running scripts:
 
-- Ensure you are using Bash (not PowerShell or Command Prompt).
-- On Windows, use WSL or Git Bash.
+- PowerShell is the default for automation scripts; use `pwsh` on macOS/Linux.
+- Bash wrapper scripts are optional and work in WSL or Git Bash.
 - Check your Docker Compose version (`docker-compose version`).
 - Review error messages for missing files or environment variables.
 - See the onboarding section in quickstart.md for more help.

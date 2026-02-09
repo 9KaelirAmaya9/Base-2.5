@@ -2,7 +2,8 @@
 
 ## Platform Requirements
 
-- Bash shell (Mac, Linux, Windows WSL or Git Bash)
+- PowerShell 7+ (Windows) or `pwsh` (macOS/Linux)
+- Bash shell for optional wrapper scripts (Mac, Linux, WSL, or Git Bash)
 - Docker Engine 20.10+
 - Docker Compose v2.0.0 or newer
 
@@ -28,8 +29,90 @@ This orchestrates onboarding by:
 - Creating/activating the `.venv` virtual environment (use `-ForceVenv` to recreate)
 - Installing Python requirements (digital ocean automation)
 - Installing Node packages in the repo root, `react-app/`, and `e2e/`
-- Running `scripts/setup.ps1` (generates `.env`, runs guided checks)
+- Running `scripts/setup.ps1` (generates `.env` from `.env.example`, runs guided checks)
 - Use `-SkipSetup` to hydrate dependencies without re-running the guided setup
+
+During setup you may be prompted to confirm overwriting `.env` and to enter required values (DigitalOcean token, domain, emails, etc.). You can also edit `.env` manually afterward.
+
+### Setup prompts (interactive)
+
+The interactive questions come from [scripts/setup.js](scripts/setup.js) (invoked by [scripts/setup.ps1](scripts/setup.ps1)). These are the exact prompts and choices:
+
+- Overwrite existing .env: yes/no (default no); creates a timestamped backup on yes.
+- Project name: lowercase letters, digits, hyphen only; required.
+- Website domain: required non-empty value.
+- Primary email: optional; if provided you are asked whether to apply it to all default email fields.
+- Primary password: optional (masked); if provided you are asked whether to apply it to all default password fields.
+- Primary username: optional; if provided you are asked whether to apply it to all default username fields.
+- Git repo URL: optional; used for deploy automation defaults.
+- Git repo branch: optional; used for deploy automation defaults.
+- Environment: choice of development, staging, production.
+- Deploy mode: choice of local or digitalocean.
+- Apply safe dev defaults: yes/no, only when environment is development.
+
+Dev defaults summary:
+
+- Selecting "Apply safe dev defaults" sets `APPLY_DEV_DEFAULTS=true` in `.env`.
+- When you later run `npm run setup:complete`, the only change it applies is `DJANGO_DEBUG=true` (only if `ENV=development`).
+
+Non-interactive note:
+
+- `scripts/setup.ps1 -NonInteractive` disables prompts and reads values from args/environment; it will fail fast if required values are missing.
+
+After writing .env, [scripts/setup.js](scripts/setup.js) prints a checklist of required categories and recommends running:
+
+- npm run setup:complete
+- npm run doctor
+
+Exact scripts invoked by `first-start.ps1` (in order):
+
+- `scripts/bootstrap-venv.ps1`
+- `scripts/install-python-deps.ps1`
+- `scripts/install-node-deps.ps1`
+- `scripts/setup.ps1`
+
+Tip: `scripts/first-start.ps1 -Help` and `scripts/setup.ps1 -Help` print usage details.
+
+### DigitalOcean SSH key sync (runs during setup)
+
+This step runs inside [scripts/setup.ps1](scripts/setup.ps1) after .env is written. It calls [digital_ocean/scripts/powershell/add-ssh-key.ps1](digital_ocean/scripts/powershell/add-ssh-key.ps1) and uses [digital_ocean/DO_ssh_keys.py](digital_ocean/DO_ssh_keys.py).
+
+What it does (ordered):
+
+- Determines the key name from PROJECT_NAME (fallback: do-ssh).
+- Ensures a local SSH key exists at ~/.ssh/<keyName> (creates ED25519 key if missing).
+- Queries DigitalOcean for matching keys (same name and public key).
+- If a mismatch exists, deletes old DO keys and registers the local key.
+- Updates .env with DO_SSH_KEY_ID and DO_API_SSH_KEYS.
+
+Why it exists:
+
+- Droplet provisioning requires a valid DO SSH key; this keeps local and DO keys in sync automatically.
+
+### Golden path (all-green deploy)
+
+See the full end-to-end sequence in [docs/GOLDEN_PATH.md](docs/GOLDEN_PATH.md).
+
+### Example prompt transcript (abridged)
+
+This is a shortened example of the `scripts/setup.js` flow:
+
+```
+? Overwrite existing .env? (y/N) n
+? Project name (lowercase, digits, hyphen): demo-app
+? Website domain: demo.example.com
+? Primary email (optional): owner@example.com
+? Apply primary email to default fields? (y/N) y
+? Primary password (optional, masked): ********
+? Apply primary password to default fields? (y/N) y
+? Primary username (optional): admin
+? Apply primary username to default fields? (y/N) y
+? Git repo URL (optional): https://github.com/org/repo.git
+? Git repo branch (optional): main
+? Environment: (development/staging/production) development
+? Deploy mode: (local/digitalocean) digitalocean
+? Apply safe dev defaults? (y/N) y
+```
 
 Afterward, keep the PowerShell session open so `.venv` stays active for any Python or Node command. Re-run the script when dependencies change.
 
@@ -87,8 +170,8 @@ Follow these steps to get started quickly:
 
 ## Troubleshooting
 
-- Use Bash, not PowerShell or Command Prompt.
-- On Windows, use WSL or Git Bash.
+- PowerShell is the default for automation scripts; use `pwsh` on macOS/Linux.
+- Bash wrapper scripts are optional and work in WSL or Git Bash.
 - Ensure Docker Compose is v2.0.0 or newer.
 - Review error messages for missing files or environment variables.
 - See README.md for more details.
