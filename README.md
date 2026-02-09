@@ -224,6 +224,8 @@ On Windows PowerShell (no Bash/make required), use the equivalent wrappers:
 ./scripts/test.ps1
 ```
 
+`make test`, `./scripts/test.sh`, and `./scripts/test.ps1` expect the Docker stack to be running; start it first with `make up` or `./scripts/start.ps1`.
+
 ### Seed data (dev/demo)
 
 Configure `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` in `.env`, then run:
@@ -434,7 +436,7 @@ Stop all Docker services. Supports self-test mode:
 
 #### `./scripts/test.sh` - Run Tests
 
-Run frontend tests by default.
+Run backend tests in Docker and frontend tests locally. Requires the stack to be running.
 
 ```bash
 ./scripts/test.sh --self-test    # Run self-test for Node, npm, and test scripts
@@ -666,7 +668,7 @@ Before deploying to production:
 
 ## 📄 License
 
-This project configuration is available for use under your project's license terms.
+See [LICENSE](LICENSE).
 
 ## 🤝 Contributing
 

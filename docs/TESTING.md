@@ -15,6 +15,15 @@ Run a full deploy verification + tests (DigitalOcean update-only):
 
 Artifacts land under `local_run_logs/<ip>-<timestamp>/` with per-service folders and a meta report.
 
+## Official local test path (Docker-first)
+
+Start the stack, then run tests through the wrappers:
+
+- PowerShell: `./scripts/test.ps1`
+- Bash/WSL: `./scripts/test.sh`
+
+These scripts expect Docker Compose to be running (use `./scripts/start.ps1` or `./scripts/start.sh`). They run backend tests in containers and frontend tests locally.
+
 ## Backend
 
 - API unit: `cd api && pytest -q -m "not integration"`

@@ -43,9 +43,42 @@ do
     esac
 done
 
+COMPOSE_FILE="local.docker.yml"
+COMPOSE_CMD="docker compose -f $COMPOSE_FILE"
+
+require_compose_running() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo -e "${RED}❌ Docker is not installed or not on PATH.${NC}"
+        echo -e "${BLUE}Run ./scripts/start.sh to start the stack, then re-run tests.${NC}"
+        exit 1
+    fi
+
+    if [ ! -f "$COMPOSE_FILE" ]; then
+        echo -e "${RED}❌ $COMPOSE_FILE not found. Run this script from the repo root.${NC}"
+        exit 1
+    fi
+
+    running_services=$($COMPOSE_CMD ps --services --filter "status=running" 2>/dev/null || true)
+    if ! echo "$running_services" | grep -q '^api$'; then
+        echo -e "${RED}❌ api container is not running.${NC}"
+        echo -e "${BLUE}Run ./scripts/start.sh (or make up) to start the stack.${NC}"
+        exit 1
+    fi
+    if ! echo "$running_services" | grep -q '^django$'; then
+        echo -e "${RED}❌ django container is not running.${NC}"
+        echo -e "${BLUE}Run ./scripts/start.sh (or make up) to start the stack.${NC}"
+        exit 1
+    fi
+}
+
 # Self-test function
 if [ "$SELF_TEST" = true ]; then
     echo -e "${BLUE}🔎 Running test.sh self-test...${NC}"
+    # Check Docker
+    if ! command -v docker &>/dev/null; then
+        echo -e "${RED}❌ docker not found.${NC}"
+        exit 1
+    fi
     # Check Node.js
     if ! command -v node &>/dev/null; then
         echo -e "${RED}❌ Node.js not found.${NC}"
@@ -71,7 +104,19 @@ echo -e "${BLUE}================================================${NC}"
 echo ""
 
 BACKEND_EXIT_CODE=0
-echo -e "${BLUE}Legacy Node backend tests removed for the FastAPI/Django stack.${NC}"
+echo -e "${BLUE}Running backend tests inside Docker compose...${NC}"
+require_compose_running
+
+set +e
+$COMPOSE_CMD exec -T api pytest
+API_EXIT_CODE=$?
+$COMPOSE_CMD exec -T django pytest
+DJANGO_EXIT_CODE=$?
+set -e
+
+if [ $API_EXIT_CODE -ne 0 ] || [ $DJANGO_EXIT_CODE -ne 0 ]; then
+    BACKEND_EXIT_CODE=1
+fi
 
 echo ""
 echo -e "${GREEN}Running Frontend Tests...${NC}"

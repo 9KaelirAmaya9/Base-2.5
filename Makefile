@@ -30,9 +30,7 @@ logs-web:
 	$(COMPOSE) logs -f --tail=200 react-app nginx nginx-static
 
 test:
-	$(COMPOSE) exec -T api pytest
-	$(COMPOSE) exec -T django pytest
-	cd react-app && npm run test:ci
+	./scripts/test.sh
 
 lint:
 	cd react-app && npm run lint
