@@ -29,13 +29,23 @@ All contributions (human or AI) MUST comply.
 ### III. Container-first, Compose-first
 - All services MUST run together via Docker Compose with health checks and clear dependencies.
 - Local setup MUST be “clone → configure `.env` → run script” with no hidden manual steps.
+- Docker Compose v2.0.0 or newer is required for all local and CI runs.
 
 ### IV. Single-entrypoint operations
 - The *only supported* way to deploy/update/test the production-like environment is via:
-  - `digital_ocean/scripts/powershell/deploy.ps1`
-- If you need a new operational capability, add it to the script and document it (don’t invent ad-hoc commands).
+  - `digital_ocean/orchestrate_deploy.py`
+- Local development and testing MUST use the repo scripts under `scripts/` as entrypoints (PowerShell preferred; Bash wrappers allowed).
+  - Setup: `scripts/first-start.ps1` and `scripts/first-start.sh`
+  - Start: `scripts/start.ps1` and `scripts/start.sh`
+  - Test: `scripts/test.ps1` and `scripts/test.sh`
+- If you need a new operational capability, add it to the appropriate entrypoint script(s) and document it (don’t invent ad-hoc commands).
 
-### V. Observability is a feature
+### V. Script parity and shell boundaries
+- Every automation script MUST have both a PowerShell version and a Bash version.
+- PowerShell scripts MUST call only other PowerShell scripts (no cross-calling Bash).
+- Bash scripts MUST call only other Bash scripts (no cross-calling PowerShell).
+
+### VI. Observability is a feature
 - Every deploy/update run MUST generate an artifact set (logs, configs, health responses, non-sensitive env snapshots).
 - Failures MUST be diagnosable from captured artifacts—prefer “fail fast with clear error” over silent partial success.
 
@@ -56,7 +66,11 @@ All contributions (human or AI) MUST comply.
   2) include backward-compat strategy (versioning or migration)  
   3) update tests and documentation
 
-### III. Frontend contract (React)
+### III. Feature build order (Django -> FastAPI -> React)
+- New features MUST follow the build sequence: Django models first, FastAPI APIs around those models second, React app integrations last.
+- This order is mandatory for all service and feature work to preserve contract integrity and end-to-end flow.
+
+### IV. Frontend contract (React)
 - React is the user-facing client.
 - All calls MUST be internal API calls and follow best-practice security defaults:
   - No sensitive tokens in `localStorage` / `sessionStorage`
@@ -64,7 +78,7 @@ All contributions (human or AI) MUST comply.
   - Enforce CSRF protection for cookie-based auth
 - Frontend MUST be treated as untrusted input at all times.
 
-### IV. Networking and trust boundaries
+### V. Networking and trust boundaries
 - Public edge entrypoint: Traefik.
 - Databases, queues, and admin surfaces are **internal-only by default**.
 - Any non-production public exposure (e.g., admin in dev) MUST be explicitly gated by:
@@ -72,7 +86,7 @@ All contributions (human or AI) MUST comply.
   - explicit documentation
   - automated verification
 
-### V. TLS and certificates policy
+### VI. TLS and certificates policy
 - Traefik MUST issue/serve certificates **only in staging** for this production-like simulation.
 - Production certificates MUST NOT be issued from this environment (to avoid rate-limit and trust mistakes).
 
@@ -113,6 +127,6 @@ All contributions (human or AI) MUST comply.
 
 ---
 
-**Version**: 2.0.0  
+**Version**: 2.1.1  
 **Ratified**: 2025-12-24  
-**Last Amended**: 2025-12-24
+**Last Amended**: 2026-02-09
