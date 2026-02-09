@@ -3,8 +3,8 @@
 
 echo "🧪 Running tests before push..."
 
-# Run all tests
-./scripts/test.sh
+# Run all tests (local-only compose + env)
+./scripts/test.sh --compose-file local.docker.yml --env-file .env.local
 
 if [ $? -eq 0 ]; then
   echo "✅ All tests passed! Proceeding with push..."
