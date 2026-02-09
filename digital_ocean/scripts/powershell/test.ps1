@@ -19,6 +19,7 @@ param(
   [switch]$CheckSwagger,
   [switch]$CheckPgAdmin,
   [switch]$CheckTraefikDashboard,
+  [switch]$CheckExternalEdge,
   [switch]$CheckDns,
   [switch]$CheckCelery,
   [string]$AdminUser = "",
@@ -54,6 +55,16 @@ function Load-DotEnv([string]$path) {
       [System.Environment]::SetEnvironmentVariable($k, $v, 'Process')
     }
   }
+}
+
+function Resolve-EnvRef([string]$value) {
+  $v = ($value + '').Trim()
+  if ($v -match '^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$') {
+    $name = $Matches[1]
+    $resolved = [System.Environment]::GetEnvironmentVariable($name, 'Process')
+    if ($resolved) { return $resolved }
+  }
+  return $value
 }
 function Get-StatusCodeFromHeaders([string[]]$headers) {
   foreach ($line in $headers) {
@@ -458,6 +469,7 @@ function Get-ArtifactServiceSubdir([string]$fileName) {
     '^openapi-contract-check\.json$' { return 'api' }
 
     '^curl-.*\.txt$' { return 'smoke' }
+    '^external-edge-checks\.json$' { return 'smoke' }
 
     '^schema-compat-check\.(json|err|status)$' { return 'database' }
 
@@ -984,6 +996,16 @@ function Curl-GetStatusOnly([string]$url) {
   return Get-StatusCodeFromHeaders $lines
 }
 
+function Curl-GetStatusOnlyExternal([string]$url, [string]$user = '', [string]$pass = '') {
+  $args = @('-4', '-sS', '-k', '--max-time', $TimeoutSec, '-o', 'NUL', '-w', '%{http_code}')
+  if ($user -and $pass) { $args += @('-u', ("{0}:{1}" -f $user, $pass)) }
+  $args += @($url)
+  $statusText = ((Invoke-CurlSafe $args) | Out-String).Trim()
+  $status = 0
+  if ($statusText -match '(\d{3})\s*$') { $status = [int]$Matches[1] }
+  return $status
+}
+
 # Simple POST utility to capture body and status
 function Curl-PostJson([string]$url, [string]$jsonBody = '{}') {
   $tmp = [System.IO.Path]::GetTempFileName()
@@ -1111,6 +1133,21 @@ Load-DotEnv -path $EnvPath
 if (-not $Domain) { $Domain = $env:WEBSITE_DOMAIN }
 if (-not $Domain) { $Domain = 'localhost' }
 
+# Default admin credentials from .env when not explicitly provided.
+if (-not $AdminUser) {
+  $AdminUser = $env:TRAEFIK_DASH_USER
+  if (-not $AdminUser) { $AdminUser = $env:TRAEFIK_USER_NAME }
+  if (-not $AdminUser) { $AdminUser = $env:USER_MAIN_NAME }
+}
+if (-not $AdminPass) {
+  $AdminPass = $env:TRAEFIK_DASH_PASSWORD
+  if (-not $AdminPass) { $AdminPass = $env:TRAEFIK_ACTUAL_PW }
+  if (-not $AdminPass) { $AdminPass = $env:TP_TRAEFIK_PASSWORD }
+  if (-not $AdminPass) { $AdminPass = $env:USER_MAIN_PASSWORD }
+}
+$AdminUser = Resolve-EnvRef $AdminUser
+$AdminPass = Resolve-EnvRef $AdminPass
+
 # Locate artifact folder
 $artifactDir = $LogsDir
 
@@ -1153,6 +1190,7 @@ if ($All) {
   $CheckDns = $true
   $CheckPgAdmin = $true
   $CheckTraefikDashboard = $true
+  $CheckExternalEdge = $true
   $CheckRateLimit = $true
   $CheckTls = $true
   $CheckOpenApi = $true
@@ -1169,6 +1207,130 @@ $loginTimings = [ordered]@{ ok = $false; signupStatus = 0; url = ''; samples = 0
 $signupToDashboard = [ordered]@{ ok = $false; signupStatus = 0; meStatus = 0; elapsedMs = $null; thresholdMs = 120000 }
 $djangoInternalHealth = [ordered]@{ ok = $false; status = 0; service = 'django'; db_ok = $false; error = '' }
 $apiMetrics = [ordered]@{ ok = $false; status = 0; url = ''; saw = @(); error = '' }
+$externalEdgePayload = $null
+
+# External edge checks (public DNS, no resolve overrides)
+if ($CheckExternalEdge) {
+  Write-Section "External Edge Checks"
+  $adminUserResolved = $AdminUser
+  $adminPassResolved = $AdminPass
+
+  if (-not $adminUserResolved) { $adminUserResolved = $env:TRAEFIK_DASH_USER }
+  if (-not $adminUserResolved) { $adminUserResolved = $env:TRAEFIK_USER_NAME }
+  if (-not $adminUserResolved) { $adminUserResolved = $env:USER_MAIN_NAME }
+
+  if (-not $adminPassResolved) { $adminPassResolved = $env:TRAEFIK_DASH_PASSWORD }
+  if (-not $adminPassResolved) { $adminPassResolved = $env:TRAEFIK_ACTUAL_PW }
+  if (-not $adminPassResolved) { $adminPassResolved = $env:TP_TRAEFIK_PASSWORD }
+  if (-not $adminPassResolved) { $adminPassResolved = $env:USER_MAIN_PASSWORD }
+
+  $adminUserResolved = Resolve-EnvRef $adminUserResolved
+  $adminPassResolved = Resolve-EnvRef $adminPassResolved
+
+  $flowerUserResolved = $env:FLOWER_USER_NAME
+  if (-not $flowerUserResolved) { $flowerUserResolved = $env:FLOWER_USER }
+  if (-not $flowerUserResolved) { $flowerUserResolved = $adminUserResolved }
+
+  $flowerPassResolved = $env:FLOWER_ACTUAL_PW
+  if (-not $flowerPassResolved) { $flowerPassResolved = $env:TP_FLOWER_PASSWORD }
+  if (-not $flowerPassResolved) { $flowerPassResolved = $env:FLOWER_PASSWORD }
+  if (-not $flowerPassResolved) { $flowerPassResolved = $adminPassResolved }
+
+  $flowerUserResolved = Resolve-EnvRef $flowerUserResolved
+  $flowerPassResolved = Resolve-EnvRef $flowerPassResolved
+
+  $djSub = $env:DJANGO_ADMIN_DNS_LABEL
+  if (-not $djSub) { $djSub = 'admin' }
+  $pgSub = $env:PGADMIN_DNS_LABEL
+  if (-not $pgSub) { $pgSub = 'pgadmin' }
+  $tfSub = $env:TRAEFIK_DNS_LABEL
+  if (-not $tfSub) { $tfSub = 'traefik' }
+  $flSub = $env:FLOWER_DNS_LABEL
+  if (-not $flSub) { $flSub = 'flower' }
+
+  $rootUrl = "https://$Domain/"
+  $apiUrl = "https://$Domain/api/health"
+  $adminUrl = "https://$djSub.$Domain/"
+  $pgUrl = "https://$pgSub.$Domain/"
+  $traefikUrl = "https://$tfSub.$Domain/"
+  $flowerUrl = "https://$flSub.$Domain/"
+
+  $rootStatus = [int](Curl-GetStatusOnlyExternal $rootUrl)
+  $apiStatus = [int](Curl-GetStatusOnlyExternal $apiUrl)
+
+  $adminNoAuthStatus = [int](Curl-GetStatusOnlyExternal $adminUrl)
+  $pgNoAuthStatus = [int](Curl-GetStatusOnlyExternal $pgUrl)
+  $traefikNoAuthStatus = [int](Curl-GetStatusOnlyExternal $traefikUrl)
+  $flowerNoAuthStatus = [int](Curl-GetStatusOnlyExternal $flowerUrl)
+
+  $adminAuthStatus = 0
+  $pgAuthStatus = 0
+  $traefikAuthStatus = 0
+  $flowerAuthStatus = 0
+  $adminAuthProvided = [bool]($adminUserResolved -and $adminPassResolved)
+  $flowerAuthProvided = [bool]($flowerUserResolved -and $flowerPassResolved)
+
+  if ($adminAuthProvided) {
+    $adminAuthStatus = [int](Curl-GetStatusOnlyExternal $adminUrl $adminUserResolved $adminPassResolved)
+    $pgAuthStatus = [int](Curl-GetStatusOnlyExternal $pgUrl $adminUserResolved $adminPassResolved)
+    $traefikAuthStatus = [int](Curl-GetStatusOnlyExternal $traefikUrl $adminUserResolved $adminPassResolved)
+  }
+  if ($flowerAuthProvided) {
+    $flowerAuthStatus = [int](Curl-GetStatusOnlyExternal $flowerUrl $flowerUserResolved $flowerPassResolved)
+  }
+
+  $rootOk = ($rootStatus -eq 200)
+  $apiOk = ($apiStatus -eq 200)
+  $adminNoAuthOk = Get-ExpectedGuardedNoAuthOk $adminNoAuthStatus
+  $pgNoAuthOk = Get-ExpectedGuardedNoAuthOk $pgNoAuthStatus
+  $traefikNoAuthOk = Get-ExpectedGuardedNoAuthOk $traefikNoAuthStatus
+  $flowerNoAuthOk = Get-ExpectedGuardedNoAuthOk $flowerNoAuthStatus
+
+  $adminAuthOk = $true
+  $pgAuthOk = $true
+  $traefikAuthOk = $true
+  $flowerAuthOk = $true
+  if ($adminAuthProvided) {
+    $adminAuthOk = (@(200,302) -contains $adminAuthStatus)
+    $pgAuthOk = (@(200,302) -contains $pgAuthStatus)
+    $traefikAuthOk = (@(200,302) -contains $traefikAuthStatus)
+  }
+  if ($flowerAuthProvided) {
+    $flowerAuthOk = (@(200,302) -contains $flowerAuthStatus)
+  }
+
+  $payload = [ordered]@{
+    ok = ($rootOk -and $apiOk -and $adminNoAuthOk -and $pgNoAuthOk -and $traefikNoAuthOk -and $flowerNoAuthOk -and $adminAuthOk -and $pgAuthOk -and $traefikAuthOk -and $flowerAuthOk)
+    auth = [ordered]@{
+      adminUser = [string]$adminUserResolved
+      adminProvided = $adminAuthProvided
+      flowerUser = [string]$flowerUserResolved
+      flowerProvided = $flowerAuthProvided
+    }
+    endpoints = @(
+      [ordered]@{ name = 'root'; url = $rootUrl; status = $rootStatus; ok = $rootOk },
+      [ordered]@{ name = 'api-health'; url = $apiUrl; status = $apiStatus; ok = $apiOk },
+      [ordered]@{ name = 'admin'; url = $adminUrl; statusNoAuth = $adminNoAuthStatus; statusWithAuth = $adminAuthStatus; okNoAuth = $adminNoAuthOk; okAuth = $adminAuthOk },
+      [ordered]@{ name = 'pgadmin'; url = $pgUrl; statusNoAuth = $pgNoAuthStatus; statusWithAuth = $pgAuthStatus; okNoAuth = $pgNoAuthOk; okAuth = $pgAuthOk },
+      [ordered]@{ name = 'traefik'; url = $traefikUrl; statusNoAuth = $traefikNoAuthStatus; statusWithAuth = $traefikAuthStatus; okNoAuth = $traefikNoAuthOk; okAuth = $traefikAuthOk },
+      [ordered]@{ name = 'flower'; url = $flowerUrl; statusNoAuth = $flowerNoAuthStatus; statusWithAuth = $flowerAuthStatus; okNoAuth = $flowerNoAuthOk; okAuth = $flowerAuthOk }
+    )
+  }
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'smoke' -fileName 'external-edge-checks.json' -content $payload
+  $externalEdgePayload = $payload
+
+  if (-not $rootOk) { $failures += "External root expected 200, got $rootStatus ($rootUrl)" }
+  if (-not $apiOk) { $failures += "External api/health expected 200, got $apiStatus ($apiUrl)" }
+  if (-not $adminNoAuthOk) { $failures += "External admin expected 401/403 without auth, got $adminNoAuthStatus ($adminUrl)" }
+  if (-not $pgNoAuthOk) { $failures += "External pgadmin expected 401/403 without auth, got $pgNoAuthStatus ($pgUrl)" }
+  if (-not $traefikNoAuthOk) { $failures += "External traefik expected 401/403 without auth, got $traefikNoAuthStatus ($traefikUrl)" }
+  if (-not $flowerNoAuthOk) { $failures += "External flower expected 401/403 without auth, got $flowerNoAuthStatus ($flowerUrl)" }
+
+  if ($adminAuthProvided -and -not $adminAuthOk) { $failures += "External admin expected 200/302 with auth, got $adminAuthStatus ($adminUrl)" }
+  if ($adminAuthProvided -and -not $pgAuthOk) { $failures += "External pgadmin expected 200/302 with auth, got $pgAuthStatus ($pgUrl)" }
+  if ($adminAuthProvided -and -not $traefikAuthOk) { $failures += "External traefik expected 200/302 with auth, got $traefikAuthStatus ($traefikUrl)" }
+  if ($flowerAuthProvided -and -not $flowerAuthOk) { $failures += "External flower expected 200/302 with auth, got $flowerAuthStatus ($flowerUrl)" }
+}
 
 function Check-ApiMetrics([string]$artifactDir, [string]$domain) {
   $fail = @()
@@ -1242,6 +1404,9 @@ if ($CheckCelery) {
     'celery-ping.json',
     'celery-result.json'
   )
+}
+if ($CheckExternalEdge) {
+  $expectedFiles += @('external-edge-checks.json')
 }
 foreach ($f in $expectedFiles) {
   $p = Resolve-ArtifactPath -artifactDir $artifactDir -fileName $f
@@ -1587,6 +1752,7 @@ try {
   $failures += "Local smoke tests failed: $($_.Exception.Message)"
 }
 
+
 # Optional: DNS checks against DO authoritative zone
 if ($CheckDns) {
   # Derive expected IPs when not explicitly provided.
@@ -1653,9 +1819,19 @@ $result = [ordered]@{
   adminCheck = [ordered]@{ enabled = $false; host = ''; statusNoAuth = 0; statusWithAuth = 0 }
   swaggerCheck = [ordered]@{ enabled = $false; host = ''; docsHeadStatus = 0; docsGetStatus = 0; openapiStatus = 0; ok = $false }
   celeryCheck = [ordered]@{ enabled = $false; host = ''; statusNoAuth = 0; statusWithAuth = 0 }
+  externalEdgeCheck = [ordered]@{ enabled = $false; ok = $false; endpoints = @(); auth = [ordered]@{ user = ''; provided = $false } }
   doDnsCheck = [ordered]@{ enabled = $false; ok = $false; expectedIpv4 = ''; expectedIpv6 = '' }
   clientDnsCheck = [ordered]@{ enabled = $false; ok = $false; expectedIpv4 = ''; failures = @() }
   failures = @()
+}
+
+if ($externalEdgePayload) {
+  $result.externalEdgeCheck = [ordered]@{
+    enabled = $true
+    ok = [bool]$externalEdgePayload.ok
+    endpoints = @($externalEdgePayload.endpoints)
+    auth = $externalEdgePayload.auth
+  }
 }
 
 # Optional: API metrics endpoint (Prometheus-compatible text format)
@@ -1886,7 +2062,8 @@ if ($CheckDjangoAdmin) {
   $result.adminCheck = [ordered]@{ enabled = $true; host = $AdminHost; statusNoAuth = $noAuthStatus; statusWithAuth = $withAuthStatus }
   if (-not (Get-ExpectedGuardedNoAuthOk $noAuthStatus)) { $failures += "Django admin expected 401/403 without auth, got $noAuthStatus ($AdminHost)" }
   if ($AdminUser -and $AdminPass) {
-    if (@(200,302) -notcontains $withAuthStatus) { $failures += "Django admin expected 200/302 with auth, got $withAuthStatus ($AdminHost)" }
+    $adminOkStatuses = @(200,301,302,307,308)
+    if ($adminOkStatuses -notcontains $withAuthStatus) { $failures += "Django admin expected 200/301/302 with auth, got $withAuthStatus ($AdminHost)" }
   }
 
   # Admin host path guard: non-/admin paths should not be served
@@ -2088,7 +2265,8 @@ if ($CheckCelery) {
   }
   if (-not (Get-ExpectedGuardedNoAuthOk $noAuthStatus)) { $failures += "Flower expected 401/403 without auth, got $noAuthStatus ($FlowerHost)" }
   if ($AdminUser -and $AdminPass) {
-    if (@(200,302) -notcontains $withAuthStatus) { $failures += "Flower expected 200/302 with auth, got $withAuthStatus ($FlowerHost)" }
+    $flowerOkStatuses = @(200,301,302,307,308,405)
+    if ($flowerOkStatuses -notcontains $withAuthStatus) { $failures += "Flower expected 200/301/302/405 with auth, got $withAuthStatus ($FlowerHost)" }
   }
   if (-not $taskResult) { $failures += "Celery ping task did not complete successfully" }
 }

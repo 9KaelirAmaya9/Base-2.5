@@ -49,6 +49,29 @@ This Docker environment includes the following services:
 
 ## 🔧 Setup Instructions
 
+### Python Environment (required)
+
+Use the orchestration script to create/activate the virtual environment and install dependencies:
+
+```powershell
+./scripts/first-start.ps1
+```
+
+```bash
+pwsh -ExecutionPolicy Bypass -File ./scripts/first-start.ps1
+```
+
+This script:
+
+- Creates `.venv` (or recreates with `-ForceVenv`)
+- Activates the environment for the current session
+- Installs Python packages (digital_ocean requirements)
+- Installs Node packages in the root, `react-app/`, and `e2e/`
+- Runs `scripts/setup.ps1` to generate `.env`
+- Use `-SkipSetup` if you only need dependency hydration without re-running the guided setup.
+
+Keep the environment active for every Python-related command (pip installs, Django/DO scripts, tests). Re-run `./scripts/first-start.ps1` anytime you need to refresh dependencies.
+
 ### 1. Install root tooling dependencies
 
 The guided environment setup commands live in the repository root.

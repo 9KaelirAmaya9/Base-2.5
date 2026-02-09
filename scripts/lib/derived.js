@@ -14,6 +14,7 @@ function deriveIdentifiers({ projectName }) {
     PROJECT_NAME: pn,
     COMPOSE_PROJECT_NAME: pn,
     NETWORK_NAME: `${pn}_network`,
+    TRAEFIK_DOCKER_NETWORK: `${pn}_network`,
     JWT_ISSUER: pn,
     JWT_AUDIENCE: pn,
     SESSION_COOKIE_NAME: `${pn}_session`,

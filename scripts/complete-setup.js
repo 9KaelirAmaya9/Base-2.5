@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const { fileExists, readText, parseEnv, applyToTemplate, backupFile } = require('./lib/envFile');
 const { detectPublicIpv4 } = require('./lib/ipDetect');
 const { redactEnvMap } = require('./lib/redact');
-const { validateEnv, requiredCategories, normalizeEnv, normalizeDeployMode } = require('./envRules');
+const { validateEnv, requiredCategories, normalizeEnv, normalizeDeployMode, CATEGORY } = require('./envRules');
 const { isPlaceholder } = require('./lib/placeholders');
 
 function printHelp() {
@@ -84,24 +84,32 @@ function formatValidationReport(validation) {
 
 async function ensureAllowlists({ envMap, ipDetector, plannedChanges }) {
   const allowlistKeys = ['DJANGO_ADMIN_ALLOWLIST', 'FLOWER_ALLOWLIST', 'PGADMIN_ALLOWLIST'];
-  const needs = allowlistKeys.filter((k) => isPlaceholder(envMap[k], k));
-  if (needs.length === 0) return;
+  const tpKey = 'TP_USER_IP_ADDRESS';
+  let ip = envMap[tpKey];
+  const needsAllowlists = allowlistKeys.filter((k) => isPlaceholder(envMap[k], k));
+  const needsIp = isPlaceholder(ip, tpKey);
 
-  let ip;
-  try {
-    const res = await ipDetector();
-    ip = res && res.ip ? String(res.ip).trim() : '';
-  } catch (e) {
-    plannedChanges.push({ key: 'PUBLIC_IPV4', action: `ip-detect-failed:${e && e.message ? e.message : String(e)}` });
-    return;
+  if (!needsIp && needsAllowlists.length === 0) return;
+
+  if (needsIp) {
+    try {
+      const res = await ipDetector();
+      ip = res && res.ip ? String(res.ip).trim() : '';
+    } catch (e) {
+      plannedChanges.push({ key: tpKey, action: `ip-detect-failed:${e && e.message ? e.message : String(e)}` });
+      return;
+    }
+    if (!ip) {
+      plannedChanges.push({ key: tpKey, action: 'ip-detect-failed:empty-result' });
+      return;
+    }
+    envMap[tpKey] = ip;
+    plannedChanges.push({ key: tpKey, action: 'store-public-ip' });
   }
-  if (!ip) {
-    plannedChanges.push({ key: 'PUBLIC_IPV4', action: 'ip-detect-failed:empty-result' });
-    return;
-  }
-  for (const k of needs) {
-    envMap[k] = `${ip}/32`;
-    plannedChanges.push({ key: k, action: 'fill-allowlist' });
+
+  for (const k of needsAllowlists) {
+    envMap[k] = `\${${tpKey}}/32`;
+    plannedChanges.push({ key: k, action: 'set-allowlist-template' });
   }
 }
 
@@ -109,17 +117,29 @@ async function ensureBasicAuth({ envMap, hashPassword, randomBytes, plannedChang
   const primaryKey = 'TRAEFIK_DASH_BASIC_USERS';
   const flowerKey = 'FLOWER_BASIC_USERS';
   const pwKey = 'TRAEFIK_ACTUAL_PW';
+  const flowerPwKey = 'FLOWER_ACTUAL_PW';
 
-  const username = 'admin';
+  const applyUserName = String(envMap.APPLY_USER_NAME_DEFAULTS ?? '').trim().toLowerCase() === 'true';
+  const applyUserPassword = String(envMap.APPLY_USER_PASSWORD_DEFAULTS ?? '').trim().toLowerCase() === 'true';
+
+  const userName = String(envMap.USER_MAIN_NAME ?? '').trim();
+  const userPassword = String(envMap.USER_MAIN_PASSWORD ?? '').trim();
+
+  const resolvedUserName = applyUserName && userName ? userName : 'admin';
+  const resolvedUserPassword = applyUserPassword && userPassword ? userPassword : null;
 
   let primary = envMap[primaryKey];
+  let generatedPassword = null;
+  let generatedUser = resolvedUserName;
+
   if (isPlaceholder(primary, primaryKey)) {
-    const password = makeRandomPassword(randomBytes);
+    const password = resolvedUserPassword ?? makeRandomPassword(randomBytes);
     const hash = await hashPassword(password);
-    primary = createHtpasswdLine({ username, hash });
+    primary = createHtpasswdLine({ username: resolvedUserName, hash });
     envMap[primaryKey] = primary;
     plannedChanges.push({ key: primaryKey, action: 'generate-basic-auth' });
 
+    generatedPassword = password;
     if (isPlaceholder(envMap[pwKey], pwKey)) {
       envMap[pwKey] = password;
       plannedChanges.push({ key: pwKey, action: 'store-generated-password' });
@@ -134,9 +154,31 @@ async function ensureBasicAuth({ envMap, hashPassword, randomBytes, plannedChang
     }
   }
 
-  if (isPlaceholder(envMap[flowerKey], flowerKey) && !isPlaceholder(primary, primaryKey)) {
-    envMap[flowerKey] = primary;
-    plannedChanges.push({ key: flowerKey, action: 'inherit-basic-auth' });
+  if (isPlaceholder(envMap[flowerKey], flowerKey)) {
+    let flowerPassword = generatedPassword;
+    let flowerUsername = generatedUser;
+
+    if (!flowerPassword) {
+      const existingTraefikPw = envMap[pwKey];
+      if (!isPlaceholder(existingTraefikPw, pwKey)) {
+        flowerPassword = String(existingTraefikPw);
+        const userPart = String(primary || '').split(':')[0];
+        flowerUsername = userPart || resolvedUserName;
+      } else if (resolvedUserPassword) {
+        flowerPassword = resolvedUserPassword;
+      } else {
+        flowerPassword = makeRandomPassword(randomBytes);
+      }
+    }
+
+    const hash = await hashPassword(flowerPassword);
+    envMap[flowerKey] = createHtpasswdLine({ username: flowerUsername, hash });
+    plannedChanges.push({ key: flowerKey, action: 'generate-basic-auth' });
+
+    if (isPlaceholder(envMap[flowerPwKey], flowerPwKey)) {
+      envMap[flowerPwKey] = flowerPassword;
+      plannedChanges.push({ key: flowerPwKey, action: 'store-generated-password' });
+    }
   }
 }
 
@@ -220,7 +262,25 @@ async function runCompleteSetup(options = {}) {
   const report = formatValidationReport(validation);
 
   const required = requiredCategories({ env: envMap.ENV, deployMode: envMap.DEPLOY_MODE });
-  const requiredIssues = Object.entries(report).filter(([category, items]) => required.has(category) && items.length > 0);
+  let requiredIssues = Object.entries(report).filter(([category, items]) => required.has(category) && items.length > 0);
+
+  const gitKeys = ['GIT_REPO', 'GIT_REPO_BRANCH'];
+  const gitMissing = [];
+  for (const key of gitKeys) {
+    const value = envMap[key];
+    if (!value || String(value).trim() === '' || isPlaceholder(value, key)) {
+      gitMissing.push({ key, message: `${key} is required before setup:complete`, required: true });
+    }
+  }
+
+  if (gitMissing.length > 0) {
+    report[CATEGORY.Core] = report[CATEGORY.Core] ?? [];
+    for (const item of gitMissing) {
+      report[CATEGORY.Core].push(item);
+    }
+    requiredIssues = requiredIssues.filter(([category]) => category !== CATEGORY.Core);
+    requiredIssues.push([CATEGORY.Core, report[CATEGORY.Core]]);
+  }
 
   // Output summary
   stdout('setup:complete report');

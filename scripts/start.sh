@@ -129,6 +129,14 @@ if [ "$SELF_TEST" = true ]; then
     exit 0
 fi
 
+# Ensure Traefik ACME storage exists and is writable by the Traefik user.
+ACME_DIR="$PROJECT_DIR/letsencrypt"
+mkdir -p "$ACME_DIR"
+touch "$ACME_DIR/acme.json" "$ACME_DIR/acme-staging.json"
+chmod 600 "$ACME_DIR/acme.json" "$ACME_DIR/acme-staging.json" || true
+chmod 700 "$ACME_DIR" || true
+chown -R 1000:1000 "$ACME_DIR" || true
+
 # Build if requested
 if [ "$BUILD" = true ]; then
     echo "🔨 Building services..."

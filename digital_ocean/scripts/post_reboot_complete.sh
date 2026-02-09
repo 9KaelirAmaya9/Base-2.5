@@ -14,8 +14,24 @@ REPO_DIR_OPT="/opt/apps/${PROJECT_NAME_SAFE}"
 if [ -d "$REPO_DIR_OPT" ]; then
 	REPO_DIR="$REPO_DIR_OPT"
 else
-	REPO_DIR="${DEPLOY_PATH:-/srv/}${PROJECT_NAME_SAFE}"
+	if [ -d "/opt/apps" ]; then
+		CAND=$(ls -1 /opt/apps 2>/dev/null | head -n 1 || true)
+		if [ -n "$CAND" ] && [ -d "/opt/apps/$CAND" ]; then
+			REPO_DIR="/opt/apps/$CAND"
+		else
+			REPO_DIR="${DEPLOY_PATH:-/srv/}${PROJECT_NAME_SAFE}"
+		fi
+	else
+		REPO_DIR="${DEPLOY_PATH:-/srv/}${PROJECT_NAME_SAFE}"
+	fi
 fi
+
+log "Ensuring Traefik ACME storage is writable by UID 1000..."
+ACME_DIR="$REPO_DIR/letsencrypt"
+mkdir -p "$ACME_DIR"
+touch "$ACME_DIR/acme.json" "$ACME_DIR/acme-staging.json"
+chmod 600 "$ACME_DIR/acme.json" "$ACME_DIR/acme-staging.json" || true
+chown -R 1000:1000 "$ACME_DIR" || true
 
 log "Ensuring deploy user exists and has docker access..."
 if ! id "$DEPLOY_USER" >/dev/null 2>&1; then
@@ -26,6 +42,21 @@ usermod -aG docker "$DEPLOY_USER" || true
 log "Setting sensible system defaults for builds/runtime..."
 sysctl -w fs.inotify.max_user_watches=524288 || true
 sysctl -w fs.inotify.max_user_instances=1024 || true
+
+log "Ensuring Node.js 18+ is installed for frontend tests..."
+if command -v node >/dev/null 2>&1; then
+	NODE_MAJOR=$(node -v | sed 's/^v//' | cut -d'.' -f1)
+else
+	NODE_MAJOR=0
+fi
+if [ "${NODE_MAJOR}" -lt 18 ]; then
+	apt-get update -y
+	apt-get install -y ca-certificates curl gnupg
+	# Remove distro-provided node packages that conflict with NodeSource.
+	apt-get remove -y nodejs libnode-dev libnode72 nodejs-doc npm || true
+	curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+	apt-get install -y nodejs
+fi
 
 log "Ensuring scripts are executable..."
 if [ -f "$REPO_DIR/scripts/start.sh" ]; then

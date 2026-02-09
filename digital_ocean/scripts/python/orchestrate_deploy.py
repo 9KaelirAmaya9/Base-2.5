@@ -487,6 +487,10 @@ with open(base_script_path, "r") as f:
 
 # Load .env as dict
 env_dict = dotenv_values(env_path)
+if "REPO_URL" not in env_dict or not env_dict.get("REPO_URL"):
+    repo_url = env_dict.get("GIT_REPO") or env_dict.get("DO_GIT_REPO")
+    if repo_url:
+        env_dict["REPO_URL"] = repo_url
 
 def substitute_env_vars(script, env):
     # Replace $VAR and ${VAR} with env[VAR] if present
@@ -646,11 +650,12 @@ else:
         recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path)
         exit(1)
 
+    log(f"Using SSH user: {SSH_USER}")
     ssh_cmd = [
         "ssh",
         "-o", "StrictHostKeyChecking=no",
         "-i", ssh_key_path.replace('\\', '/'),
-        f"root@{ip_address}",
+        f"{SSH_USER}@{ip_address}",
         "true"  # Just test connection
     ]
 
@@ -682,7 +687,7 @@ else:
         "ssh",
         "-o", "StrictHostKeyChecking=no",
         "-i", ssh_key_path.replace('\\', '/'),
-        f"root@{ip_address}",
+        f"{SSH_USER}@{ip_address}",
         "cat /var/log/cloud-init-output.log"
     ]
     log(f"Polling /var/log/cloud-init-output.log until completion marker '{COMPLETION_MARKER}' is found...")
@@ -805,6 +810,22 @@ else:
         sftp.put(env_path.replace('\\', '/'), remote_env_path)
         sftp.close()
 
+        # In update-only, also push local script updates that aren't in the remote repo yet.
+        if UPDATE_ONLY:
+            log("[UPDATE-ONLY] Uploading local script updates...")
+            sftp = ssh_client.open_sftp()
+            upload_pairs = [
+                (str(repo_root / "scripts" / "sync-env.sh"), f"{repo_path}/scripts/sync-env.sh"),
+                (str(repo_root / "scripts" / "start.sh"), f"{repo_path}/scripts/start.sh"),
+                (str(repo_root / "traefik" / "entrypoint.sh"), f"{repo_path}/traefik/entrypoint.sh"),
+                (str(repo_root / "digital_ocean" / "scripts" / "post_reboot_complete.sh"), f"{repo_path}/digital_ocean/scripts/post_reboot_complete.sh"),
+            ]
+            for src, dest in upload_pairs:
+                if os.path.isfile(src):
+                    log(f"Uploading {src} -> {dest}")
+                    sftp.put(src.replace('\\', '/'), dest)
+            sftp.close()
+
         # Run post_reboot_complete.sh to finalize config (with reconnect on drop)
         post_reboot_path = f"{repo_path}/digital_ocean/scripts/post_reboot_complete.sh"
         log(f"Running post-reboot script: {post_reboot_path}")
@@ -844,6 +865,33 @@ else:
             if not ssh_connect_with_retry():
                 raise RuntimeError("SSH reconnect failed after start error")
             stdin, stdout, stderr = ssh_client.exec_command(start_cmd)
+            print(stdout.read().decode())
+            err_out = stderr.read().decode()
+            if err_out:
+                print(err_out)
+
+        # Run full test suite after services start (update-only requested by user).
+        # This is best-effort but will exit non-zero on failures.
+        test_timeout = str(os.getenv("REMOTE_TEST_TIMEOUT_SECONDS", "1800"))
+        test_cmd = (
+            f"cd {repo_path} && "
+            f"(cd react-app && NODE_OPTIONS=--max-old-space-size=1024 "
+            f"npm ci --no-audit --no-fund --omit=optional --legacy-peer-deps) && "
+            f"timeout {test_timeout} bash scripts/test.sh"
+        )
+        log(f"Running tests: {test_cmd}")
+        try:
+            stdin, stdout, stderr = ssh_client.exec_command(test_cmd)
+            print(stdout.read().decode())
+            err_out = stderr.read().decode()
+            if err_out:
+                print(err_out)
+        except Exception as e:
+            err(f"Test run encountered an error: {e}. Reconnecting and retrying once...")
+            ssh_client.close()
+            if not ssh_connect_with_retry():
+                raise RuntimeError("SSH reconnect failed after test error")
+            stdin, stdout, stderr = ssh_client.exec_command(test_cmd)
             print(stdout.read().decode())
             err_out = stderr.read().decode()
             if err_out:

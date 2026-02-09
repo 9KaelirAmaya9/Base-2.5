@@ -236,23 +236,39 @@ echo ""
 # The dashboard is exposed via HTTPS Host rule in dynamic config.
 
 # ============================================
-# 4. Sanitize Traefik dashboard basic-auth user list to escape $ in bcrypt hash
+# 4. Normalize basic-auth users to avoid double-escaping '$'
 # ============================================
-if grep -q "^TRAEFIK_DASH_BASIC_USERS=" .env; then
-    ORIGINAL_LINE=$(grep "^TRAEFIK_DASH_BASIC_USERS=" .env | head -n1)
-    SANITIZED_LINE=$(echo "$ORIGINAL_LINE" | sed 's/\$/$$/g')
-    if [ "$ORIGINAL_LINE" != "$SANITIZED_LINE" ]; then
-        echo -e "${YELLOW}⚙️  Escaping dollar signs in TRAEFIK_DASH_BASIC_USERS for Compose compatibility${NC}"
-        awk -v orig="$ORIGINAL_LINE" -v repl="$SANITIZED_LINE" '
-            BEGIN { done=0 }
-            {
-                if (!done && index($0, orig) == 1) { print repl; done=1 }
-                else { print $0 }
-            }
-        ' .env > .env.tmp && mv .env.tmp .env
-        CHANGES_MADE=true
+normalize_basic_users() {
+    local key="$1"
+    if grep -q "^${key}=" .env; then
+        local original_line
+        original_line=$(grep "^${key}=" .env | head -n1)
+        local value
+        value="${original_line#*=}"
+        # Collapse any run of '$' to a single '$', then escape once for .env.
+        local value_single
+        value_single=$(printf '%s' "$value" | sed -E 's/\$+/\$/g')
+        local value_escaped
+        value_escaped=$(printf '%s' "$value_single" | sed 's/\$/$$/g')
+        local sanitized_line
+        sanitized_line="${key}=${value_escaped}"
+
+        if [ "$original_line" != "$sanitized_line" ]; then
+            echo -e "${YELLOW}⚙️  Normalizing ${key} dollar signs for Compose compatibility${NC}"
+            awk -v orig="$original_line" -v repl="$sanitized_line" '
+                BEGIN { done=0 }
+                {
+                    if (!done && index($0, orig) == 1) { print repl; done=1 }
+                    else { print $0 }
+                }
+            ' .env > .env.tmp && mv .env.tmp .env
+            CHANGES_MADE=true
+        fi
     fi
-fi
+}
+
+normalize_basic_users "TRAEFIK_DASH_BASIC_USERS"
+normalize_basic_users "FLOWER_BASIC_USERS"
 
 # ============================================
 # Summary

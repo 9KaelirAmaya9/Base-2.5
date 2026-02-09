@@ -51,12 +51,23 @@ function printChecklist({ envMap, stdout = console.log }) {
  */
 async function runSetup(options = {}) {
   const rootDir = options.rootDir ?? repoRoot();
+  if (process.stdin && process.stdin.isTTY === false) {
+    throw new Error('Interactive prompt requires a TTY. Run from an interactive terminal.');
+  }
   const prompt =
     options.prompt ??
     (() => {
       try {
         // Lazy-load so unit tests can run without installed deps.
-        return require('inquirer').prompt;
+        const inquirer = require('inquirer');
+        const resolved =
+          inquirer.prompt ||
+          (inquirer.default && inquirer.default.prompt) ||
+          inquirer.default;
+        if (typeof resolved !== 'function') {
+          throw new Error('inquirer prompt export not found');
+        }
+        return resolved;
       } catch (e) {
         const err = new Error('Missing dependency: inquirer. Run: npm install');
         err.cause = e;
@@ -76,6 +87,7 @@ async function runSetup(options = {}) {
   const hasEnv = fileExists(envFile);
 
   if (hasEnv) {
+    stdout('==> .env already exists; asking whether to overwrite');
     const { overwrite } = await prompt([
       {
         type: 'confirm',
@@ -92,7 +104,22 @@ async function runSetup(options = {}) {
     stdout(`Backup created: ${path.basename(backup)}`);
   }
 
-  const { projectName, websiteDomain, env, deployMode, applyDevDefaults } = await prompt([
+  stdout('==> Gathering required settings for .env');
+  const {
+    projectName,
+    websiteDomain,
+    userMainEmail,
+    applyEmailDefaults,
+    userMainPassword,
+    applyPasswordDefaults,
+    userMainName,
+    applyUserDefaults,
+    gitRepo,
+    gitRepoBranch,
+    env,
+    deployMode,
+    applyDevDefaults,
+  } = await prompt([
     {
       type: 'input',
       name: 'projectName',
@@ -111,6 +138,58 @@ async function runSetup(options = {}) {
       name: 'websiteDomain',
       message: 'Website domain (e.g. example.com):',
       validate: (v) => (String(v || '').trim() ? true : 'WEBSITE_DOMAIN is required'),
+    },
+    {
+      type: 'input',
+      name: 'userMainEmail',
+      message: 'Primary email for certs/notifications (optional):',
+      validate: (v) => {
+        const value = String(v || '').trim();
+        if (!value) return true;
+        return value.includes('@') ? true : 'Enter a valid email address or leave blank.';
+      },
+    },
+    {
+      type: 'confirm',
+      name: 'applyEmailDefaults',
+      message: 'Apply primary email to all email fields by default?',
+      default: true,
+      when: (a) => String(a.userMainEmail || '').trim() !== '',
+    },
+    {
+      type: 'password',
+      name: 'userMainPassword',
+      message: 'Primary user password (optional, leave blank to set later):',
+      mask: '*',
+    },
+    {
+      type: 'confirm',
+      name: 'applyPasswordDefaults',
+      message: 'Apply primary password to all default password fields?',
+      default: false,
+      when: (a) => String(a.userMainPassword || '').trim() !== '',
+    },
+    {
+      type: 'input',
+      name: 'userMainName',
+      message: 'Primary username (optional, leave blank to set later):',
+    },
+    {
+      type: 'confirm',
+      name: 'applyUserDefaults',
+      message: 'Apply primary username to all default username fields?',
+      default: false,
+      when: (a) => String(a.userMainName || '').trim() !== '',
+    },
+    {
+      type: 'input',
+      name: 'gitRepo',
+      message: 'Git repo URL (optional, used for deploy automation):',
+    },
+    {
+      type: 'input',
+      name: 'gitRepoBranch',
+      message: 'Git repo branch (optional, used for deploy automation):',
     },
     {
       type: 'list',
@@ -143,6 +222,12 @@ async function runSetup(options = {}) {
   const templateContent = readText(example);
   const existingEnv = hasEnv ? parseEnv(readText(envFile)) : {};
 
+  const emailValue = String(userMainEmail || '').trim();
+  const passwordValue = String(userMainPassword || '').trim();
+  const nameValue = String(userMainName || '').trim();
+  const gitRepoValue = String(gitRepo || '').trim();
+  const gitRepoBranchValue = String(gitRepoBranch || '').trim();
+
   const updates = {
     ...existingEnv,
     ...identifiers,
@@ -152,12 +237,81 @@ async function runSetup(options = {}) {
     APPLY_DEV_DEFAULTS: applyDevDefaults ? 'true' : 'false',
   };
 
+  if (typeof applyEmailDefaults === 'boolean') {
+    updates.APPLY_USER_EMAIL_DEFAULTS = applyEmailDefaults ? 'true' : 'false';
+  }
+
+  if (emailValue) {
+    updates.USER_MAIN_EMAIL = emailValue;
+    if (applyEmailDefaults) {
+      updates.TRAEFIK_CERT_EMAIL = emailValue;
+      updates.DJANGO_SUPERUSER_EMAIL = emailValue;
+      updates.PGADMIN_DEFAULT_EMAIL = emailValue;
+      updates.DEFAULT_FROM_EMAIL = emailValue;
+      updates.EMAIL_FROM = emailValue;
+      updates.SEED_ADMIN_EMAIL = emailValue;
+      updates.EMAIL_HOST_USER = emailValue;
+      updates.EMAIL_USER = emailValue;
+      updates.DO_ALERT_EMAIL = emailValue;
+    }
+  }
+
+  if (typeof applyPasswordDefaults === 'boolean') {
+    updates.APPLY_USER_PASSWORD_DEFAULTS = applyPasswordDefaults ? 'true' : 'false';
+  }
+
+  if (passwordValue) {
+    updates.USER_MAIN_PASSWORD = passwordValue;
+    if (applyPasswordDefaults) {
+      updates.TP_REDIS_PASSWORD = passwordValue;
+      updates.TP_POSTGRES_PASSWORD = passwordValue;
+      updates.TP_PGADMIN_PASSWORD = passwordValue;
+      updates.TP_DJANGO_SUPERUSER_PASSWORD = passwordValue;
+      updates.TP_SEED_ADMIN_PASSWORD = passwordValue;
+      updates.TP_SEED_DEMO_PASSWORD = passwordValue;
+      updates.TP_FLOWER_PASSWORD = passwordValue;
+      updates.TP_TRAEFIK_PASSWORD = passwordValue;
+      updates.EMAIL_HOST_PASSWORD = passwordValue;
+      updates.EMAIL_PASSWORD = passwordValue;
+    }
+  }
+
+  if (typeof applyUserDefaults === 'boolean') {
+    updates.APPLY_USER_NAME_DEFAULTS = applyUserDefaults ? 'true' : 'false';
+  }
+
+  if (nameValue) {
+    updates.USER_MAIN_NAME = nameValue;
+    if (applyUserDefaults) {
+      updates.POSTGRES_USER = nameValue;
+      updates.DB_USER = nameValue;
+      updates.DJANGO_SUPERUSER_NAME = nameValue;
+      updates.FLOWER_USER = nameValue;
+      updates.TRAEFIK_DASH_USER = nameValue;
+      updates.FLOWER_USER_NAME = nameValue;
+      updates.TRAEFIK_USER_NAME = nameValue;
+    }
+  }
+
+  if (gitRepoValue) {
+    updates.GIT_REPO = gitRepoValue;
+    updates.GIT_REMOTE = gitRepoValue;
+    updates.DO_GIT_REPO = gitRepoValue;
+  }
+
+  if (gitRepoBranchValue) {
+    updates.GIT_REPO_BRANCH = gitRepoBranchValue;
+    updates.DO_APP_BRANCH = gitRepoBranchValue;
+  }
+
+  updates.DO_TAGS = `${projectName},automation`;
+
   const out = applyToTemplate(templateContent, updates);
   fs.writeFileSync(envFile, out, 'utf8');
 
   const merged = parseEnv(out);
 
-  stdout('✅ Wrote .env');
+  stdout('OK: Wrote .env');
   printChecklist({ envMap: merged, stdout });
 
   stdout('');

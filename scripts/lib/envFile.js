@@ -61,27 +61,70 @@ function applyToTemplate(templateContent, updates) {
   const lines = templateContent.split(/\r?\n/);
   const seen = new Set();
 
-  const out = lines.map((line) => {
+  const out = [];
+  for (const line of lines) {
     const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
-    if (!m) return line;
+    if (!m) {
+      out.push(line);
+      continue;
+    }
     const key = m[1];
+    if (seen.has(key)) {
+      continue;
+    }
     if (Object.prototype.hasOwnProperty.call(updates, key)) {
       seen.add(key);
-      return `${key}=${updates[key]}`;
+      out.push(`${key}=${updates[key]}`);
+      continue;
     }
-    return line;
-  });
-
-  const missingKeys = Object.keys(updates).filter((k) => !seen.has(k));
-  if (missingKeys.length > 0) {
-    out.push('');
-    out.push('# Added by setup tooling');
-    for (const k of missingKeys) {
-      out.push(`${k}=${updates[k]}`);
-    }
+    seen.add(key);
+    out.push(line);
   }
 
-  return out.join('\n');
+  return removeDuplicateTemplateHeader(out).join('\n');
+}
+
+function removeDuplicateTemplateHeader(lines) {
+  const header = [
+    '# ============================================',
+    '# Template Defaults (Sensitive)',
+    '# Edit these once; values are referenced in service sections below.',
+    '# ============================================',
+  ];
+
+  const out = [];
+  let lastHeaderIndex = -1;
+  let sawKeySinceHeader = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (
+      line === header[0] &&
+      lines[i + 1] === header[1] &&
+      lines[i + 2] === header[2] &&
+      lines[i + 3] === header[3]
+    ) {
+      if (lastHeaderIndex >= 0 && !sawKeySinceHeader) {
+        i += 3;
+        continue;
+      }
+      lastHeaderIndex = out.length;
+      sawKeySinceHeader = false;
+      out.push(...header);
+      i += 3;
+      continue;
+    }
+
+    const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=/);
+    if (m) {
+      sawKeySinceHeader = true;
+    }
+
+    out.push(line);
+  }
+
+  return out;
 }
 
 module.exports = {

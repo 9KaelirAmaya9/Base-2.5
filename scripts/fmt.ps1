@@ -1,6 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$venvPython = Join-Path $projectRoot '.venv\Scripts\python.exe'
 
 Push-Location $projectRoot
 try {
@@ -11,7 +12,11 @@ try {
         Pop-Location
     }
 
-    python -m ruff format .
+    if (Test-Path $venvPython) {
+        & $venvPython -m ruff format .
+    } else {
+        python -m ruff format .
+    }
 } finally {
     Pop-Location
 }

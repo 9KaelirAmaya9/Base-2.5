@@ -18,6 +18,7 @@ function isAllowlistPlaceholder(value) {
   if (isBlank(value)) return true;
   const v = String(value).trim();
   if (/your_ip_address_here/i.test(v)) return true;
+  if (/^\$\{TP_USER_IP_ADDRESS\}\/\d{1,2}$/.test(v)) return false;
   if (v === '0.0.0.0/0') return false;
   // Basic CIDR-ish validation (allow comma-separated list)
   const parts = v.split(',').map((s) => s.trim()).filter(Boolean);
@@ -50,6 +51,9 @@ function isPlaceholder(value, key) {
   for (const re of PLACEHOLDER_PATTERNS) {
     if (re.test(v)) return true;
   }
+
+  // Treat template defaults as placeholders (e.g., ${TP_JWT_SECRET}).
+  if (/^\$\{TP_[A-Z0-9_]+\}$/.test(v)) return true;
 
   // Common explicit placeholders used in env examples
   if (v === 'your' || v === 'your_username_here' || v === 'your_email_here') return true;

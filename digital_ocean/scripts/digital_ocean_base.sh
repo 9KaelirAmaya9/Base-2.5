@@ -38,9 +38,11 @@ apt-get autoremove -y
 dpkg_lock_wait
 apt-get install -y curl python3-pip python3-venv make build-essential wget git
 
-# --- Node.js and npm Install ---
+# --- Node.js and npm Install (Node 18+) ---
 dpkg_lock_wait
-apt-get install -y nodejs npm
+apt-get install -y ca-certificates curl gnupg
+curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+apt-get install -y nodejs
 
 # --- Application Setup ---
 dpkg_lock_wait
@@ -49,7 +51,10 @@ mkdir -p "$DEPLOY_PATH$PROJECT_NAME"
 if [ -d "$DEPLOY_PATH$PROJECT_NAME" ] && [ "$(ls -A "$DEPLOY_PATH$PROJECT_NAME")" ]; then
   log "$DEPLOY_PATH$PROJECT_NAME already exists and is not empty, skipping git clone."
 else
-  REPO_URL="${REPO_URL:-https://github.com/your-org/your-repo.git}"
+  REPO_URL="${REPO_URL}"
+  if [ -z "$REPO_URL" ] || [ "$REPO_URL" = "\$REPO_URL" ]; then
+    REPO_URL="https://github.com/your-org/your-repo.git"
+  fi
   git clone "$REPO_URL" "$DEPLOY_PATH$PROJECT_NAME"
 fi
 

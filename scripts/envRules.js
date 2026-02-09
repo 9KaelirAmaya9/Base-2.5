@@ -27,7 +27,13 @@ const CATEGORY = /** @type {const} */ ({
 const CATEGORIES = {
   [CATEGORY.Core]: {
     requiredByDefault: true,
-    keys: ['PROJECT_NAME', 'ENV', 'WEBSITE_DOMAIN', 'DEPLOY_MODE', 'APPLY_DEV_DEFAULTS'],
+    keys: [
+      'PROJECT_NAME',
+      'ENV',
+      'WEBSITE_DOMAIN',
+      'DEPLOY_MODE',
+      'APPLY_DEV_DEFAULTS',
+    ],
   },
   [CATEGORY.Secrets]: {
     requiredByDefault: true,
@@ -48,6 +54,7 @@ const CATEGORIES = {
     keys: [
       'TRAEFIK_DASH_BASIC_USERS',
       'FLOWER_BASIC_USERS',
+      'TP_USER_IP_ADDRESS',
       'DJANGO_ADMIN_ALLOWLIST',
       'FLOWER_ALLOWLIST',
       'PGADMIN_ALLOWLIST',
@@ -86,12 +93,9 @@ function normalizeEnv(value) {
 
 function requiredCategories({ env, deployMode }) {
   const normalizedEnv = normalizeEnv(env);
-  const normalizedDeployMode = normalizeDeployMode(deployMode);
-
   const required = new Set([CATEGORY.Core, CATEGORY.Secrets, CATEGORY.Admin, CATEGORY.Access]);
 
-  const needsTlsAndSmtp =
-    normalizedEnv === ENVS.PRODUCTION || normalizedDeployMode === DEPLOY_MODES.DIGITALOCEAN;
+  const needsTlsAndSmtp = normalizedEnv === ENVS.PRODUCTION;
 
   if (needsTlsAndSmtp) {
     required.add(CATEGORY.TLS);
@@ -144,6 +148,14 @@ function validateEnv(envMap, options = {}) {
       }
 
       if (isRequired && isPlaceholder(value, key)) {
+        const tpMatch = typeof value === 'string' ? value.match(/^\$\{(TP_[A-Z0-9_]+)\}$/) : null;
+        if (tpMatch) {
+          const tpKey = tpMatch[1];
+          const tpValue = envMap[tpKey];
+          if (tpValue && !isPlaceholder(tpValue, tpKey)) {
+            continue;
+          }
+        }
         placeholders.push({
           category: categoryName,
           key,

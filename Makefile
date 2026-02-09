@@ -1,5 +1,8 @@
 .PHONY: up down restart logs logs-api logs-web ps build test lint fmt migrate seed reset
 
+# Prefer the repo virtual environment when running Python-based tooling.
+VENV_PY := $(shell if [ -x .venv/Scripts/python.exe ]; then printf '.venv/Scripts/python.exe'; elif [ -x .venv/bin/python ]; then printf '.venv/bin/python'; else printf 'python'; fi)
+
 COMPOSE = docker compose -f local.docker.yml
 
 up:
@@ -33,11 +36,11 @@ test:
 
 lint:
 	cd react-app && npm run lint
-	python -m ruff check .
+	$(VENV_PY) -m ruff check .
 
 fmt:
 	cd react-app && npm run format
-	python -m ruff format .
+	$(VENV_PY) -m ruff format .
 
 migrate:
 	$(COMPOSE) exec -T django python manage.py migrate

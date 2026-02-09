@@ -23,10 +23,19 @@ unescape_dollars FLOWER_BASIC_USERS
 # ---------------------------------------------------------------
 
 # Default to production Let's Encrypt unless explicitly overridden.
-# Default to staging resolver unless explicitly set.
 # Treat ENV/APP_ENV of 'prod' or 'production' as production.
+MODE="${ENV:-${APP_ENV:-}}"
+case "${MODE}" in
+  prod|production)
+    :
+    ;;
+  *)
+    # Force staging in non-prod to avoid rate limits/prop delays.
+    TRAEFIK_CERT_RESOLVER="le-staging"
+    ;;
+esac
+
 if [ -z "${TRAEFIK_CERT_RESOLVER:-}" ]; then
-  MODE="${ENV:-${APP_ENV:-}}"
   case "${MODE}" in
     prod|production) TRAEFIK_CERT_RESOLVER="le" ;;
     *) TRAEFIK_CERT_RESOLVER="le-staging" ;;

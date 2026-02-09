@@ -13,93 +13,74 @@
    git clone <repo-url>
    cd <repo-dir>
    ```
-2. Copy and configure environment variables:
+2. Bootstrap tooling and configuration:
 
-   ````bash
-   cp .env.example .env
-   # Edit .env to set your values
-   ## Digital Ocean Automation Onboarding
-   This project includes robust Digital Ocean automation for deployment, teardown, edit/maintain, info/query, and exec actions.
+```powershell
+./scripts/first-start.ps1
+```
 
-   ### Digital Ocean Setup Steps
-   1. Copy `.env.example` to `.env` and fill in all required Digital Ocean variables:
-      - `DO_API_TOKEN`, `DO_API_REGION`, `DO_API_IMAGE`, `DO_APP_NAME`, etc.
-   2. Create and activate Python virtual environment:
-      ```bash
-      python -m venv .venv
-      source .venv/bin/activate  # or .venv\Scripts\activate on Windows
-      pip install -r requirements.txt
-   ````
+```bash
+pwsh -ExecutionPolicy Bypass -File ./scripts/first-start.ps1
+```
 
-   3. Run automation scripts:
-      - Deploy: `./scripts/deploy.sh [--dry-run]` or `python digital_ocean/deploy.py [--dry-run]`
-      - Teardown: `./scripts/teardown.sh [--dry-run]` or `python digital_ocean/teardown.py [--dry-run]`
-      - Edit/Maintain: `./scripts/edit.sh` or `python digital_ocean/edit.py`
-      - Info/Query: `./scripts/info.sh` or `python digital_ocean/info.py`
-      - Exec: `./scripts/exec.sh` or `python digital_ocean/exec.py`
+This orchestrates onboarding by:
 
-   ### Cross-Platform Notes
-   - **Windows:** Use PowerShell for Python venv activation and script execution, or WSL/Git Bash for shell scripts.
-   - **Mac/Linux:** Use Bash/Zsh for all scripts.
-   - **Docker:** All automation scripts work in containerized environments.
+- Creating/activating the `.venv` virtual environment (use `-ForceVenv` to recreate)
+- Installing Python requirements (digital ocean automation)
+- Installing Node packages in the repo root, `react-app/`, and `e2e/`
+- Running `scripts/setup.ps1` (generates `.env`, runs guided checks)
+- Use `-SkipSetup` to hydrate dependencies without re-running the guided setup
 
-   ### Troubleshooting
-   - Ensure all required variables are set in `.env` (see `.env.example`).
-   - Check API token permissions and region/image slugs.
-   - Review logs for error details.
-   - For rate limit issues, adjust retry settings in `.env`.
+Afterward, keep the PowerShell session open so `.venv` stays active for any Python or Node command. Re-run the script when dependencies change.
 
-   See `digital_ocean/README.md` for full usage, error handling, and troubleshooting details.
+Digital Ocean automation specifics:
 
-   ## Onboarding Checklist
+- Ensure `.env` includes `DO_API_TOKEN`, `DO_API_REGION`, `DO_API_IMAGE`, `DO_APP_NAME`, etc.
+- Use the `.venv` Python for commands: `(.venv) python digital_ocean/deploy.py [--dry-run]`, etc.
+- Cross-platform notes: PowerShell on Windows, `pwsh`/Bash elsewhere. Scripts run in containers as well.
+- See digital_ocean/README.md for troubleshooting, rate limits, and advanced usage.
 
-   Follow these steps to get started quickly:
-   1. **Clone the repository**
-      - `git clone <repo-url>`
-      - `cd <repo-dir>`
-   2. **Configure environment variables**
-      - Copy `.env.example` to `.env`
-      - Fill in all required Digital Ocean variables (`DO_API_TOKEN`, `DO_API_REGION`, `DO_API_IMAGE`, `DO_APP_NAME`, etc.)
-   3. **Set up Python environment**
-      - Python 3.10+ required
-      - Create and activate a virtual environment:
-        - `python -m venv .venv`
-        - `source .venv/bin/activate` (Linux/macOS) or `.venv\Scripts\activate` (Windows)
-      - Install dependencies:
-        - `pip install -r requirements.txt`
-   4. **(Optional) Set up Node.js dependencies**
-      - If using frontend scripts, run `npm install` in `react-app/`
-   5. **Run automation scripts**
-      - Deploy: `./scripts/deploy.sh [--dry-run]` or `python digital_ocean/deploy.py [--dry-run]`
-      - Teardown: `./scripts/teardown.sh [--dry-run]` or `python digital_ocean/teardown.py [--dry-run]`
-      - Edit/Maintain: `./scripts/edit.sh` or `python digital_ocean/edit.py`
-      - Info/Query: `./scripts/info.sh` or `python digital_ocean/info.py`
-      - Exec: `./scripts/exec.sh` or `python digital_ocean/exec.py`
-   6. **Validate and troubleshoot**
-      - Use `--dry-run` to preview actions without making changes
-      - Review logs for errors and troubleshooting
-      - Ensure all required variables are set in `.env`
-      - For platform issues, see cross-platform notes below
-   7. **Support**
-      - For issues, see troubleshooting below or contact the project maintainer
+## Onboarding Checklist
 
-   ```
+Follow these steps to get started quickly:
 
-   ```
+1. **Clone the repository**
+   - `git clone <repo-url>`
+   - `cd <repo-dir>`
+2. **Run first-start orchestration**
+   - `./scripts/first-start.ps1` (PowerShell) or `pwsh -ExecutionPolicy Bypass -File ./scripts/first-start.ps1`
+   - Re-run with `-ForceVenv` to rebuild the environment if needed.
+   3. **Review `.env` output**
+   - Fill in required Digital Ocean variables (`DO_API_TOKEN`, `DO_API_REGION`, `DO_API_IMAGE`, `DO_APP_NAME`, etc.).
+   4. **Run automation scripts**
+   - Deploy: `./scripts/deploy.sh [--dry-run]` or `(.venv) python digital_ocean/deploy.py [--dry-run]`
+   - Teardown: `./scripts/teardown.sh [--dry-run]` or `(.venv) python digital_ocean/teardown.py [--dry-run]`
+   - Edit/Maintain: `./scripts/edit.sh` or `(.venv) python digital_ocean/edit.py`
+   - Info/Query: `./scripts/info.sh` or `(.venv) python digital_ocean/info.py`
+   - Exec: `./scripts/exec.sh` or `(.venv) python digital_ocean/exec.py`
 
-3. Build and start all services:
+3. **Validate and troubleshoot**
+   - Use `--dry-run` to preview actions without changes.
+   - Review logs for errors.
+   - Ensure `.env` is complete.
+   - For platform issues, see cross-platform notes.
+
+4. **Support**
+   - For issues, use the troubleshooting guidance or contact the maintainer.
+
+5. Build and start all services:
    ```bash
    ./scripts/start.sh --build
    ```
-4. View logs:
+6. View logs:
    ```bash
    ./scripts/logs.sh
    ```
-5. Run health checks:
+7. Run health checks:
    ```bash
    ./scripts/health.sh
    ```
-6. Run tests:
+8. Run tests:
    ```bash
    ./scripts/test.sh
    ```

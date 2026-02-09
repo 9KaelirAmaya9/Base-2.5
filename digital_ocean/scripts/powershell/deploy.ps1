@@ -2,7 +2,8 @@ param(
   [switch]$Full,
   [switch]$UpdateOnly,
   [string]$EnvPath = ".\.env",
-  [string]$SshKey = "$env:USERPROFILE\.ssh\id_ed25519",
+  [string]$SshKey = $null,
+  [string]$SshUser = $env:SSH_USER,
   [string]$DropletIp = "",
   [switch]$SkipAllowlist,
   [string]$LogsDir = ".\local_run_logs",
@@ -22,7 +23,8 @@ param(
   [switch]$AsyncVerify,
   [int]$LogsPollMaxAttempts = 30,
   [int]$LogsPollIntervalSec = 10,
-  [string]$ReportName = 'post-deploy-report.json'
+  [string]$ReportName = 'post-deploy-report.json',
+  [int]$TlsWaitSeconds = 600
 )
 
 Set-StrictMode -Version Latest
@@ -51,6 +53,12 @@ if ($script:ProjectName -eq 'app' -and -not [string]::IsNullOrWhiteSpace([string
 }
 
 $script:RemoteAppDir = "/opt/apps/$script:ProjectName"
+$script:SshUser = if ([string]::IsNullOrWhiteSpace($SshUser)) { 'root' } else { $SshUser }
+$script:SshKeyPath = $SshKey
+if ([string]::IsNullOrWhiteSpace($script:SshKeyPath)) {
+  $defaultKeyName = if ($script:ProjectName) { $script:ProjectName } else { 'id_ed25519' }
+  $script:SshKeyPath = Join-Path $env:USERPROFILE (".ssh\$defaultKeyName")
+}
 
 $script:ArtifactDir = ''
 $script:ResolvedIp = ''
@@ -232,7 +240,7 @@ function Invoke-RollbackOnFailureIfEnabled([string]$ip, [string]$keyPath) {
     '-o','StrictHostKeyChecking=no',
     '-o','BatchMode=yes'
   )
-  $sshArgs = @('-i', $keyPath) + $sshCommon + @("root@$ip")
+  $sshArgs = @('-i', $keyPath) + $sshCommon + @("$($script:SshUser)@$ip")
 
   $remote = @'
 set -eu
@@ -674,6 +682,50 @@ function Update-Allowlist {
   & .\digital_ocean\scripts\powershell\update-pgadmin-allowlist.ps1 -EnvPath $EnvPath
 }
 
+function Update-TraefikResolver {
+  if (-not (Test-Path $EnvPath)) { return }
+  Write-Section "Ensuring Traefik cert resolver in .env"
+
+  $lines = Get-Content -Path $EnvPath
+  $envMode = ''
+  foreach ($line in $lines) {
+    if ($line -match '^(ENV|APP_ENV)=') {
+      $val = ($line -split '=', 2)[1]
+      $val = ($val -replace '\s*#.*$', '').Trim().Trim('"').Trim("'")
+      if ($val) { $envMode = $val }
+    }
+  }
+
+  $mode = ($envMode + '').Trim().ToLower()
+  $isProd = ($mode -eq 'prod' -or $mode -eq 'production')
+  $expected = if ($isProd) { 'le' } else { 'le-staging' }
+  $found = $false
+  $changed = $false
+
+  for ($i = 0; $i -lt $lines.Count; $i++) {
+    if ($lines[$i] -match '^TRAEFIK_CERT_RESOLVER=') {
+      $found = $true
+      if ($lines[$i] -ne "TRAEFIK_CERT_RESOLVER=$expected") {
+        $lines[$i] = "TRAEFIK_CERT_RESOLVER=$expected"
+        $changed = $true
+      }
+      break
+    }
+  }
+
+  if (-not $found) {
+    $lines += "TRAEFIK_CERT_RESOLVER=$expected"
+    $changed = $true
+  }
+
+  if ($changed) {
+    Set-Content -Path $EnvPath -Value $lines -Encoding UTF8
+    Write-Host "Updated TRAEFIK_CERT_RESOLVER to $expected based on ENV=$mode" -ForegroundColor Yellow
+  } else {
+    Write-Host "TRAEFIK_CERT_RESOLVER already set to $expected" -ForegroundColor DarkGray
+  }
+}
+
 function Invoke-Preflight {
   Write-Section "Preflight validation"
   # Runs strict validation of .env, compose labels/ports, and required files.
@@ -801,7 +853,7 @@ function Remote-Verify($ip, $keyPath) {
     '-o','StrictHostKeyChecking=no',
     '-o','BatchMode=yes'
   )
-  $sshArgs = @('-i', $keyPath) + $sshCommon + @("root@$ip")
+  $sshArgs = @('-i', $keyPath) + $sshCommon + @("$($script:SshUser)@$ip")
   $prevEap = $ErrorActionPreference
   try {
     $ErrorActionPreference = 'Continue'
@@ -822,7 +874,7 @@ function Remote-Verify($ip, $keyPath) {
   # Upload .env (secrets) to droplet repo root
   $scpEnvOut = Join-Path $dest 'scp-env.stdout.txt'
   $scpEnvErr = Join-Path $dest 'scp-env.stderr.txt'
-  $code = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @($localEnvPath, "root@${ip}:${remoteAppDir}/.env")) -Label 'SCP upload .env' -TimeoutSec 300 -StdoutPath $scpEnvOut -StderrPath $scpEnvErr -HeartbeatSec 60
+  $code = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @($localEnvPath, "$($script:SshUser)@${ip}:${remoteAppDir}/.env")) -Label 'SCP upload .env' -TimeoutSec 300 -StdoutPath $scpEnvOut -StderrPath $scpEnvErr -HeartbeatSec 60
   if ($code -ne 0) { throw "Failed to upload .env to droplet (scp exit $code). See scp-env.stderr.txt in artifacts." }
 
   # Create a remote verification script to avoid quoting pitfalls
@@ -866,7 +918,7 @@ if [ -d __REMOTE_APP_DIR__ ]; then
   if command -v git >/dev/null 2>&1; then
     status "repo-sync" "fetch/checkout/reset"
     # Determine branch from .env (DO_APP_BRANCH), default to main
-    BRANCH=$(grep -E '^DO_APP_BRANCH=' .env 2>/dev/null | cut -d'=' -f2 | tr -d '\r')
+    BRANCH=$(grep -E '^DO_APP_BRANCH=' .env 2>/dev/null | cut -d'=' -f2 | sed 's/[[:space:]]*#.*$//' | tr -d '\r')
     if [ -z "$BRANCH" ]; then BRANCH=main; fi
     git fetch --all --prune || true
     # Preserve ACME storage across git operations.
@@ -1256,9 +1308,10 @@ PY
     TRAEFIK_LABEL=$(grep -E '^TRAEFIK_DNS_LABEL=' .env 2>/dev/null | cut -d'=' -f2 | tr -d '\r' || true)
     if [ -z "$TRAEFIK_LABEL" ]; then TRAEFIK_LABEL=traefik; fi
 
+    TLS_WAIT_SECONDS=__TLS_WAIT_SECONDS__
     TLS_HOSTS="$DOMAIN www.$DOMAIN swagger.$DOMAIN admin.$DOMAIN ${PG_LABEL}.$DOMAIN ${FLOWER_LABEL}.$DOMAIN ${TRAEFIK_LABEL}.$DOMAIN"
     status "tls" "waiting for valid TLS certs (hosts: $TLS_HOSTS)"
-    DOMAIN="$DOMAIN" TLS_HOSTS="$TLS_HOSTS" python3 - <<'PY' > /root/logs/build/tls-cert-wait.txt 2>&1
+    DOMAIN="$DOMAIN" TLS_HOSTS="$TLS_HOSTS" TLS_WAIT_SECONDS="$TLS_WAIT_SECONDS" python3 - <<'PY' > /root/logs/build/tls-cert-wait.txt 2>&1
 import os
 import socket
 import ssl
@@ -1270,6 +1323,7 @@ if not domain:
   raise SystemExit('missing domain')
 
 hosts_raw = (os.environ.get('TLS_HOSTS') or '').strip()
+wait_seconds = int(os.environ.get('TLS_WAIT_SECONDS') or '600')
 hosts = [h.strip() for h in hosts_raw.split() if h.strip()]
 if not hosts:
   hosts = [domain]
@@ -1296,7 +1350,7 @@ def fetch_cert_pem(hostname: str):
     der = s.getpeercert(binary_form=True)
   return ssl.DER_cert_to_PEM_cert(der)
 
-deadline = time.time() + 600
+deadline = time.time() + wait_seconds
 ok = {h: False for h in hosts}
 last = {h: {'err': '', 'sans': []} for h in hosts}
 
@@ -1325,7 +1379,7 @@ while time.time() < deadline:
 
   time.sleep(5)
 
-print('ERROR: TLS certs never became valid for all hosts within 600s')
+print(f'ERROR: TLS certs never became valid for all hosts within {wait_seconds}s')
 for h, v in ok.items():
   if v:
     continue
@@ -1621,6 +1675,7 @@ fi
 '@
 
   $scriptContent = $scriptContent.Replace('__REMOTE_APP_DIR__', $remoteAppDir)
+  $scriptContent = $scriptContent.Replace('__TLS_WAIT_SECONDS__', $TlsWaitSeconds)
   # Ensure Unix LF endings and no BOM for remote bash
   $unixScript = $scriptContent -replace "`r`n","`n"
   Set-Content -Path $tmpScript -Value $unixScript -Encoding Ascii -NoNewline
@@ -1628,7 +1683,7 @@ fi
   try {
     $scpScriptOut = Join-Path $dest 'scp-remote-verify-script.stdout.txt'
     $scpScriptErr = Join-Path $dest 'scp-remote-verify-script.stderr.txt'
-    $scpCode = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @($tmpScript, "root@${ip}:/root/remote_verify.sh")) -Label 'SCP upload remote_verify.sh' -TimeoutSec 300 -StdoutPath $scpScriptOut -StderrPath $scpScriptErr -HeartbeatSec 60
+    $scpCode = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @($tmpScript, "$($script:SshUser)@${ip}:/root/remote_verify.sh")) -Label 'SCP upload remote_verify.sh' -TimeoutSec 300 -StdoutPath $scpScriptOut -StderrPath $scpScriptErr -HeartbeatSec 60
     if ($scpCode -ne 0) {
       throw "scp upload failed (exit $scpCode). See scp-remote-verify-script.stderr.txt in artifacts."
     }
@@ -1756,7 +1811,7 @@ fi
       $scpTimeoutSec = [Math]::Max(300, [Math]::Min(1200, [int]$VerifyTimeoutSec))
       $scpLogsOut = Join-Path $dest ("scp-logs-attempt-{0}.stdout.txt" -f $i)
       $scpLogsErr = Join-Path $dest ("scp-logs-attempt-{0}.stderr.txt" -f $i)
-      $scpCode = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @('-r', "root@${ip}:/root/logs", $dest)) -Label ("SCP logs attempt {0}/{1}" -f $i, $attempts) -TimeoutSec $scpTimeoutSec -StdoutPath $scpLogsOut -StderrPath $scpLogsErr -HeartbeatSec 30
+      $scpCode = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @('-r', "$($script:SshUser)@${ip}:/root/logs", $dest)) -Label ("SCP logs attempt {0}/{1}" -f $i, $attempts) -TimeoutSec $scpTimeoutSec -StdoutPath $scpLogsOut -StderrPath $scpLogsErr -HeartbeatSec 30
       if ($scpCode -ne 0) { throw "scp logs failed (exit $scpCode)" }
       $copied = $true
       break
@@ -1776,7 +1831,7 @@ fi
       $tgzPath = Join-Path $dest 'logs.tgz'
       $scpTgzOut = Join-Path $dest 'scp-logs-tgz.stdout.txt'
       $scpTgzErr = Join-Path $dest 'scp-logs-tgz.stderr.txt'
-      $scpCode = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @("root@${ip}:/root/logs.tgz", $tgzPath)) -Label 'SCP logs.tgz' -TimeoutSec 600 -StdoutPath $scpTgzOut -StderrPath $scpTgzErr -HeartbeatSec 30
+      $scpCode = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @("$($script:SshUser)@${ip}:/root/logs.tgz", $tgzPath)) -Label 'SCP logs.tgz' -TimeoutSec 600 -StdoutPath $scpTgzOut -StderrPath $scpTgzErr -HeartbeatSec 30
       if ($scpCode -ne 0) { throw "scp logs.tgz failed (exit $scpCode)" }
       if (Test-Path $tgzPath) {
         & tar -xzf $tgzPath -C $dest *> $null
@@ -1806,7 +1861,7 @@ fi
         $localPath = Join-Path $dest $q.local
         $scpQOut = Join-Path $dest ("scp-quick-{0}.stdout.txt" -f $q.local)
         $scpQErr = Join-Path $dest ("scp-quick-{0}.stderr.txt" -f $q.local)
-        $code = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @("root@${ip}:$($q.remote)", $localPath)) -Label ("SCP quick {0}" -f $q.remote) -TimeoutSec 60 -StdoutPath $scpQOut -StderrPath $scpQErr -HeartbeatSec 9999
+        $code = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @("$($script:SshUser)@${ip}:$($q.remote)", $localPath)) -Label ("SCP quick {0}" -f $q.remote) -TimeoutSec 60 -StdoutPath $scpQOut -StderrPath $scpQErr -HeartbeatSec 9999
         if ($code -ne 0) { continue }
       } catch { }
     }
@@ -1830,7 +1885,7 @@ fi
       'traefik-dynamic.template.yml','traefik-static.template.yml','remote_verify.done'
     )
     foreach ($f in $files) {
-      try { & $scpExe -i $keyPath @($sshCommon) "root@${ip}:/root/logs/$f" $dest *> $null } catch { }
+      try { & $scpExe -i $keyPath @($sshCommon) "$($script:SshUser)@${ip}:/root/logs/$f" $dest *> $null } catch { }
     }
 
     # Ensure expected artifacts are present at the run-folder root even if per-file scp fails.
@@ -1907,8 +1962,24 @@ try {
   Ensure-Venv
   Activate-Venv
   Load-DotEnv -path $EnvPath
+  # Refresh derived values after .env is loaded.
+  $script:ProjectName = Get-ProjectSlug $env:PROJECT_NAME
+  if ($script:ProjectName -eq 'app' -and -not [string]::IsNullOrWhiteSpace([string]$env:COMPOSE_PROJECT_NAME)) {
+    $script:ProjectName = Get-ProjectSlug $env:COMPOSE_PROJECT_NAME
+  }
+  $script:RemoteAppDir = "/opt/apps/$script:ProjectName"
+  if ([string]::IsNullOrWhiteSpace($SshUser)) {
+    $script:SshUser = if ([string]::IsNullOrWhiteSpace([string]$env:SSH_USER)) { 'root' } else { $env:SSH_USER }
+  }
+  if ([string]::IsNullOrWhiteSpace($SshKey)) {
+    $defaultKeyName = if ($script:ProjectName) { $script:ProjectName } else { 'id_ed25519' }
+    $script:SshKeyPath = Join-Path $env:USERPROFILE (".ssh\$defaultKeyName")
+  } else {
+    $script:SshKeyPath = $SshKey
+  }
   Assert-EnvNotTracked
   Update-Allowlist
+  Update-TraefikResolver
   if ($Preflight) {
     Invoke-Preflight
     Write-Section "Preflight only"
@@ -2005,7 +2076,7 @@ try {
     $RunCeleryCheck = $true
   }
 
-  Remote-Verify -ip $resolvedIp -keyPath $SshKey
+  Remote-Verify -ip $resolvedIp -keyPath $script:SshKeyPath
 
   # Group downloaded artifacts by service for easier debugging.
   Organize-ArtifactsByService
@@ -2038,7 +2109,7 @@ try {
 
       if ($exitCode -ne 0) {
         Write-Warning "Post-deploy tests failed"
-        try { Invoke-RollbackOnFailureIfEnabled -ip $script:ResolvedIp -keyPath $SshKey } catch {}
+        try { Invoke-RollbackOnFailureIfEnabled -ip $script:ResolvedIp -keyPath $script:SshKeyPath } catch {}
         $script:ExitCode = 1
         throw $script:EarlyExitSentinel
       }
@@ -2050,7 +2121,7 @@ try {
       & .\digital_ocean\scripts\powershell\test.ps1 @testArgs2
       if ($LASTEXITCODE -ne 0) {
         Write-Warning "Post-deploy tests failed"
-        try { Invoke-RollbackOnFailureIfEnabled -ip $script:ResolvedIp -keyPath $SshKey } catch {}
+        try { Invoke-RollbackOnFailureIfEnabled -ip $script:ResolvedIp -keyPath $script:SshKeyPath } catch {}
         $script:ExitCode = 1
         throw $script:EarlyExitSentinel
       }
