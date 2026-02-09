@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 const ToastContext = createContext({
   push: () => {},
@@ -12,8 +20,14 @@ export const useToast = () => useContext(ToastContext);
 const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
   const nextIdRef = useRef(1);
+  const timeoutRefs = useRef(new Map());
 
   const remove = useCallback((id) => {
+    const timeoutId = timeoutRefs.current.get(id);
+    if (timeoutId) {
+      window.clearTimeout(timeoutId);
+      timeoutRefs.current.delete(id);
+    }
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
@@ -30,12 +44,26 @@ const ToastProvider = ({ children }) => {
 
       setToasts((prev) => [...prev, { id, type, message }]);
 
-      window.setTimeout(() => {
-        remove(id);
-      }, Math.max(500, durationMs));
+      const timeoutId = window.setTimeout(
+        () => {
+          remove(id);
+        },
+        Math.max(500, durationMs)
+      );
+
+      timeoutRefs.current.set(id, timeoutId);
     },
     [remove]
   );
+
+  useEffect(() => {
+    return () => {
+      timeoutRefs.current.forEach((timeoutId) => {
+        window.clearTimeout(timeoutId);
+      });
+      timeoutRefs.current.clear();
+    };
+  }, []);
 
   const api = useMemo(
     () => ({
