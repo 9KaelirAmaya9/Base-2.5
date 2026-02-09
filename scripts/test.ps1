@@ -42,6 +42,9 @@ $envFile = Resolve-EnvFilePath -Path $EnvFile -Root $projectRoot
 $composeArgs = @('--env-file', $envFile, '-f', $composeFile)
 $coverageArgs = @('-e', 'COVERAGE_FILE=/tmp/.coverage')
 $pytestArgs = @('-m', 'not integration and not perf')
+$pytestCacheArgs = @('-o', 'cache_dir=/tmp/pytest-cache')
+$apiPytestConfig = @('-c', 'api/pytest.ini')
+$djangoPytestConfig = @('-c', 'django/pytest.ini')
 
 function Require-ComposeRunning {
     $docker = Get-Command docker -ErrorAction SilentlyContinue
@@ -72,8 +75,8 @@ try {
         }
     }
 
-    docker compose --env-file $envFile -f $composeFile exec -T @coverageArgs api pytest @pytestArgs
-    docker compose --env-file $envFile -f $composeFile exec -T @coverageArgs django pytest @pytestArgs
+    docker compose --env-file $envFile -f $composeFile exec -T @coverageArgs api pytest @pytestArgs @pytestCacheArgs @apiPytestConfig
+    docker compose --env-file $envFile -f $composeFile exec -T @coverageArgs django pytest @pytestArgs @pytestCacheArgs @djangoPytestConfig
 
     Push-Location (Join-Path $projectRoot 'react-app')
     try {
