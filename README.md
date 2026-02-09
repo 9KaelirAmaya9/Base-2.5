@@ -226,6 +226,13 @@ On Windows PowerShell (no Bash/make required), use the equivalent wrappers:
 
 `make test`, `./scripts/test.sh`, and `./scripts/test.ps1` expect the Docker stack to be running; start it first with `make up` or `./scripts/start.ps1`.
 
+### Lint (frontend)
+
+```bash
+cd react-app
+npm run lint
+```
+
 ### Use local.docker.yml for local testing
 
 All local helper scripts support an explicit compose file flag. Examples:
