@@ -22,7 +22,7 @@ services:
   django-migrate:
     build:
       context: ../django
-      dockerfile: .Dockerfile
+      dockerfile: Dockerfile
       args:
         DOCKER_LIBRARY_REGISTRY: public.ecr.aws/docker/library
         PYTHON_VERSION: 3.12-slim-bookworm
@@ -46,7 +46,7 @@ services:
   api:
     build:
       context: ../api
-      dockerfile: .Dockerfile
+      dockerfile: Dockerfile
       args:
         DOCKER_LIBRARY_REGISTRY: public.ecr.aws/docker/library
         PYTHON_VERSION: 3.12-slim-bookworm
@@ -91,7 +91,7 @@ services:
   celery-worker:
     build:
       context: ../api
-      dockerfile: .Dockerfile
+      dockerfile: Dockerfile
       args:
         DOCKER_LIBRARY_REGISTRY: public.ecr.aws/docker/library
         PYTHON_VERSION: 3.12-slim-bookworm
@@ -108,7 +108,7 @@ services:
   react-app:
     build:
       context: ../react-app
-      dockerfile: .Dockerfile
+      dockerfile: Dockerfile
       args:
         DOCKER_LIBRARY_REGISTRY: public.ecr.aws/docker/library
         NODE_VERSION: 20-alpine

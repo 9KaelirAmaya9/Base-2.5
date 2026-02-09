@@ -3,7 +3,7 @@ services:
   react-app:
     build:
       context: ./react-app
-      dockerfile: .Dockerfile
+      dockerfile: Dockerfile
       args:
         - NODE_VERSION=${REACT_APP_NODE_VERSION}
         - REACT_APP_API_URL=https://${WEBSITE_DOMAIN:-localhost}/api
@@ -29,7 +29,7 @@ services:
   api:
     build:
       context: ./api
-      dockerfile: .Dockerfile
+      dockerfile: Dockerfile
       args:
         - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_api
@@ -71,7 +71,7 @@ services:
   django:
     build:
       context: ./django
-      dockerfile: .Dockerfile
+      dockerfile: Dockerfile
       args:
         - PYTHON_VERSION=${DJANGO_PYTHON_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_django
@@ -80,7 +80,7 @@ services:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       - DJANGO_DEBUG=${DJANGO_DEBUG}
       - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
-      # Django superuser bootstrap (used by `python -m project.create_superuser` in django/.Dockerfile)
+      # Django superuser bootstrap (used by `python -m project.create_superuser` in django/Dockerfile)
       - DJANGO_SUPERUSER_NAME=${DJANGO_SUPERUSER_NAME}
       - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL}
       - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD}
@@ -114,7 +114,7 @@ services:
   nginx:
     build:
       context: ./nginx
-      dockerfile: .Dockerfile
+      dockerfile: Dockerfile
       args:
         - NGINX_VERSION=${NGINX_VERSION}
         - NGINX_PORT=${NGINX_PORT}
@@ -154,7 +154,7 @@ services:
   traefik:
     build:
       context: .
-      dockerfile: ./traefik/.Dockerfile
+      dockerfile: ./traefik/Dockerfile
       args:
         - TRAEFIK_VERSION=${TRAEFIK_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_traefik
@@ -261,7 +261,7 @@ services:
   celery-worker:
     build:
       context: ./api
-      dockerfile: .Dockerfile
+      dockerfile: Dockerfile
       args:
         - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_celery_worker
@@ -307,7 +307,7 @@ services:
   celery-beat:
     build:
       context: ./api
-      dockerfile: .Dockerfile
+      dockerfile: Dockerfile
       args:
         - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_celery_beat

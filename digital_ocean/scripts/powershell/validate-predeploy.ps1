@@ -136,8 +136,8 @@ $requiredFiles = @(
   '.\digital_ocean\scripts\powershell\smoke-tests.ps1',
   '.\digital_ocean\scripts\python\orchestrate_deploy.py',
   '.\digital_ocean\scripts\python\validate_dns.py',
-  '.\api\.Dockerfile', '.\api\requirements.txt', '.\api\main.py',
-  '.\django\.Dockerfile', '.\django\requirements.txt', '.\django\manage.py',
+  '.\api\Dockerfile', '.\api\requirements.txt', '.\api\main.py',
+  '.\django\Dockerfile', '.\django\requirements.txt', '.\django\manage.py',
   '.\django\project\settings\base.py', '.\django\project\settings\production.py', '.\django\project\urls.py', '.\django\project\wsgi.py'
 )
 $missingFiles = @()
