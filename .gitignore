@@ -140,6 +140,10 @@ junit.xml
 # JUNK
 junk/
 
+# temp workspace (keep support_tmp.md only)
+tmp/
+!tmp/support_tmp.md
+
 # Application logs
 logs/
 *.log
