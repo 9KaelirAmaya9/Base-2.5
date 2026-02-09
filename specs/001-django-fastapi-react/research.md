@@ -33,7 +33,7 @@ This document resolves planning unknowns and records key technical decisions wit
 **Rationale**:
 
 - Defense-in-depth for auth endpoints.
-- Redis is already present and healthchecked in `local.docker.yml`.
+- Redis is already present and healthchecked in `development.docker.yml`.
 
 **Alternatives considered**:
 
@@ -56,7 +56,7 @@ This document resolves planning unknowns and records key technical decisions wit
 
 ## Decision 4: Celery ownership (tasks + worker image)
 
-**Decision**: Keep Celery app ownership in `api/` for this feature (Celery app already exists in `api/tasks.py`, and `local.docker.yml` wires worker/beat from the `api` image).
+**Decision**: Keep Celery app ownership in `api/` for this feature (Celery app already exists in `api/tasks.py`, and `development.docker.yml` wires worker/beat from the `api` image).
 
 **Rationale**:
 

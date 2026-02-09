@@ -18,7 +18,7 @@ This workspace is a full-stack web application project, organized into several m
 
 ## 3. Infrastructure
 
-- **Docker Compose**: `local.docker.yml` defines the stack with internal-only exposure. Only Traefik maps host ports (80/443).
+- **Docker Compose**: `development.docker.yml` defines the stack with internal-only exposure. Only Traefik maps host ports (80/443).
 - **Nginx**: Standalone SPA server (`nginx/nginx.conf`), never exposed directly; Traefik routes to it.
 - **Traefik v3**: Static config at `traefik/traefik.yml` and dynamic routers at `traefik/dynamic.yml`. Uses Let's Encrypt staging resolver `le-staging`.
 - **PgAdmin**: Internal-only DB admin; no public exposure.

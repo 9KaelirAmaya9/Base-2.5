@@ -3,17 +3,18 @@
 
 set -e
 
-COMPOSE_FILE="local.docker.yml"
+COMPOSE_FILE="development.docker.yml"
+ENV_FILE=".env"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_DIR"
 
-# Derive container prefix from .env (fallback to PROJECT_NAME/app)
+# Derive container prefix from env file (fallback to PROJECT_NAME/app)
 get_env_var() {
     local key="$1"
     local line
-    line=$(grep -E "^${key}=" .env 2>/dev/null | head -n1 || true)
+    line=$(grep -E "^${key}=" "$ENV_FILE" 2>/dev/null | head -n1 || true)
     if [ -n "$line" ]; then
         line=$(echo "$line" | sed 's/ *#.*//' | sed 's/[[:space:]]*$//')
         echo "$line" | cut -d'=' -f2-
@@ -38,6 +39,10 @@ while [[ $# -gt 0 ]]; do
             SHELL_TYPE="bash"
             shift
             ;;
+        --env-file|-e)
+            ENV_FILE="$2"
+            shift 2
+            ;;
         --help|-h)
             echo "Usage: ./shell.sh [OPTIONS] SERVICE"
             echo ""
@@ -47,6 +52,7 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Options:"
             echo "  -b, --bash        Use bash instead of sh (if available)"
+            echo "  -e, --env-file FILE      Use a specific env file"
             echo "  -h, --help        Show this help message"
             echo ""
             echo "Examples:"
@@ -60,6 +66,11 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+if [ ! -f "$ENV_FILE" ]; then
+    echo "❌ Error: env file not found: $ENV_FILE"
+    exit 1
+fi
 
 if [ -z "$SERVICE" ]; then
     echo "❌ Error: SERVICE argument is required"
@@ -92,3 +103,4 @@ if [ "$SHELL_TYPE" = "bash" ]; then
 else
     docker exec -it "${container_name}" sh
 fi
+

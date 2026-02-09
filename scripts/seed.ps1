@@ -1,11 +1,49 @@
+param(
+    [string]$ComposeFile = 'development.docker.yml',
+    [string]$EnvFile = '.env'
+)
+
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$composeFile = Join-Path $projectRoot 'local.docker.yml'
+
+function Resolve-ComposeFilePath {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return (Join-Path $Root 'development.docker.yml')
+    }
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+    return (Join-Path $Root $Path)
+}
+
+function Resolve-EnvFilePath {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return (Join-Path $Root '.env')
+    }
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+    return (Join-Path $Root $Path)
+}
+
+$composeFile = Resolve-ComposeFilePath -Path $ComposeFile -Root $projectRoot
+$envFile = Resolve-EnvFilePath -Path $EnvFile -Root $projectRoot
 
 Push-Location $projectRoot
 try {
-    docker compose -f $composeFile exec -T api python -m api.scripts.seed
+    docker compose --env-file $envFile -f $composeFile exec -T api python -m api.scripts.seed
 } finally {
     Pop-Location
 }
+

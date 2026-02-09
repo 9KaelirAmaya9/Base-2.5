@@ -7,7 +7,7 @@ Thank you for contributing!
 - Install Python 3.12 (see .python-version)
 - Install Node 18 (see react-app/.nvmrc)
 - Copy .env.example to .env and adjust values
-- Start stack: `docker compose -f local.docker.yml up -d`
+- Start stack: `docker compose -f development.docker.yml up -d`
 
 ## Development Flow
 

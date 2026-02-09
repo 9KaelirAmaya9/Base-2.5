@@ -3,17 +3,55 @@
 
 set -e
 
-COMPOSE_FILE="local.docker.yml"
+COMPOSE_FILE="development.docker.yml"
+ENV_FILE=".env"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_DIR"
 
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --compose-file|-c)
+            COMPOSE_FILE="$2"
+            shift 2
+            ;;
+        --env-file|-e)
+            ENV_FILE="$2"
+            shift 2
+            ;;
+        --help|-h)
+            echo "Usage: ./status.sh [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  -c, --compose-file FILE  Use a specific compose file"
+            echo "  -e, --env-file FILE      Use a specific env file"
+            echo "  -h, --help        Show this help message"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
+if [ ! -f "$COMPOSE_FILE" ]; then
+    echo "❌ Error: compose file not found: $COMPOSE_FILE"
+    exit 1
+fi
+
+if [ ! -f "$ENV_FILE" ]; then
+    echo "❌ Error: env file not found: $ENV_FILE"
+    exit 1
+fi
+
 # Derive values from .env when present
 get_env_var() {
     local key="$1"
     local line
-    line=$(grep -E "^${key}=" .env 2>/dev/null | head -n1 || true)
+    line=$(grep -E "^${key}=" "$ENV_FILE" 2>/dev/null | head -n1 || true)
     if [ -n "$line" ]; then
         line=$(echo "$line" | sed 's/ *#.*//' | sed 's/[[:space:]]*$//')
         echo "$line" | cut -d'=' -f2-
@@ -29,9 +67,9 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # Check if docker-compose is running
-if docker-compose -f "$COMPOSE_FILE" ps -q | grep -q .; then
+if docker-compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -q | grep -q .; then
     echo "🐳 Container Status:"
-    docker-compose -f "$COMPOSE_FILE" ps
+    docker-compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps
     
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -67,7 +105,7 @@ if docker-compose -f "$COMPOSE_FILE" ps -q | grep -q .; then
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "📊 Resource Usage:"
     echo ""
-    docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}" $(docker-compose -f "$COMPOSE_FILE" ps -q)
+    docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}" $(docker-compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -q)
     
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -84,3 +122,4 @@ else
     echo ""
     echo "💡 Start services: ./scripts/start.sh"
 fi
+

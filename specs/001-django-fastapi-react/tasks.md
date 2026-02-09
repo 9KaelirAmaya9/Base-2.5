@@ -42,7 +42,7 @@
 - [x] T002 [P] Add feature links to README.md pointing to specs/001-django-fastapi-react/spec.md and specs/001-django-fastapi-react/plan.md ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 - [x] T003 [P] Create docs/DEPLOY.md documenting “deploy.ps1 is authoritative” and staging-only ACME policy ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 - [x] T004 [P] Create docs/SECURITY.md documenting cookie auth + CSRF + admin tool gating ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [x] T005 [P] Update docs/STACK.md to include the current service inventory from local.docker.yml ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [x] T005 [P] Update docs/STACK.md to include the current service inventory from development.docker.yml ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 
 ---
 
@@ -293,7 +293,7 @@
   - **Touch**:
     - `django/.Dockerfile`
     - `django/entrypoint.sh` (new)
-    - `local.docker.yml` / `docker-compose.yml` (where Django service command is set; repo-dependent)
+    - `development.docker.yml` / `docker-compose.yml` (where Django service command is set; repo-dependent)
     - `digital_ocean/scripts/powershell/deploy.ps1` (if it assumes a specific container command)
   - **How**:
     1. Create `django/entrypoint.sh`:
@@ -369,7 +369,7 @@
   - **Touch**:
     - `api/Dockerfile` (or `api/.Dockerfile` if present)
     - `api/entrypoint.sh` (new, recommended)
-    - `local.docker.yml` / compose service command for `api`
+    - `development.docker.yml` / compose service command for `api`
     - `docs/STACK.md` (runtime note)
   - **How**:
     1. Add `gunicorn` to `api/requirements.txt`.
@@ -455,7 +455,7 @@
     - `django/users/emails.py` (new helper: render + send)
     - `django/users/tasks.py` (Celery tasks: send_verification_email, send_password_reset_email)
     - `django/project/celery.py` (if Celery app config lives here; ensure autodiscover)
-    - `local.docker.yml` (ensure worker imports Django settings; already exists but confirm)
+    - `development.docker.yml` (ensure worker imports Django settings; already exists but confirm)
     - `docs/STACK.md` + `specs/.../quickstart.md` (how to view emails in local)
   - **How**:
     1. Add Django email settings to `.env.example`:
@@ -547,7 +547,7 @@
   - **Touch**:
     - `api/main.py` / `api/logging.py` (new)
     - `django/project/settings/*.py` (LOGGING config)
-    - `local.docker.yml` (log driver config if needed)
+    - `development.docker.yml` (log driver config if needed)
     - `digital_ocean/scripts/powershell/test.ps1` (capture sample logs into artifacts)
   - **How**:
     - Standard fields: `timestamp`, `level`, `service`, `request_id`, `path`, `method`, `status`, `latency_ms`.
@@ -695,7 +695,7 @@
     - `api/services/email_service.py` (new)
     - `api/models/email_outbox.py` (optional local outbox table)
     - `api/celery_app.py` (ensure autodiscover)
-    - `local.docker.yml` (worker imports api app)
+    - `development.docker.yml` (worker imports api app)
     - `docs/STACK.md` (how to inspect local emails)
   - **How**:
     - Same pattern as Django variant, but owned in `api/`.
@@ -1256,7 +1256,7 @@
 
 - [x] T139 Harden docker-compose runtime settings (drop caps, read-only FS where feasible, no-new-privileges).
   - **Touch**:
-    - `local.docker.yml` (and any droplet compose file, if separate)
+    - `development.docker.yml` (and any droplet compose file, if separate)
     - `docs/DEPLOY.md`
   - **How**:
     - Add `cap_drop: ["ALL"]` for app services
@@ -1396,7 +1396,7 @@
   - `react-app/e2e/*.spec.ts` (new: login, dashboard, logout)
   - `react-app/package.json` (add Playwright deps + scripts)
   - `digital_ocean/scripts/powershell/deploy.ps1` (run E2E in CI mode; store artifacts)
-  - `local.docker.yml` (ensure stable base URL + health readiness for tests)
+  - `development.docker.yml` (ensure stable base URL + health readiness for tests)
 - **How**:
   - Gate on readiness: wait for `/api/health` then run browser tests.
   - Save Playwright traces/screenshots on failure into `local_run_logs/<run>/react-app/playwright/`.
@@ -1407,7 +1407,7 @@
 - **Touch**:
   - `api/tests/integration/*` (new)
   - `api/conftest.py` (fixtures for db + redis)
-  - `local.docker.yml` (if needed to expose test db)
+  - `development.docker.yml` (if needed to expose test db)
   - `digital_ocean/scripts/powershell/deploy.ps1` (run integration tests separately; store artifacts)
 - **How**:
   - Mark tests with `@pytest.mark.integration` and run them explicitly in AllTests.
@@ -1485,7 +1485,7 @@
 
 - [x] T204 Add real Redis + Celery integration tests
 - **Touch**:
-  - `local.docker.yml`
+  - `development.docker.yml`
   - `api/tests/integration/test_celery_queue.py`
   - `django/project/celery.py`
   - `docs/TESTING.md`
@@ -1617,7 +1617,7 @@
 - [x] T228 Add chaos smoke tests (restart DB/Redis during requests)
 - **Touch**:
   - `scripts/chaos_smoke.sh` (new)
-  - `local.docker.yml` (resource constraints + restart policies)
+  - `development.docker.yml` (resource constraints + restart policies)
   - `.github/workflows/ci-chaos.yml` (optional manual trigger)
   - `docs/RUNBOOKS/chaos_testing.md` (new)
 - **Verify**:
@@ -1626,7 +1626,7 @@
 
 - [x] T229 Add resource limits and leak detection in compose/CI
 - **Touch**:
-  - `local.docker.yml`
+  - `development.docker.yml`
   - `.github/workflows/ci-backend.yml`
   - `.github/workflows/ci-e2e.yml`
   - `docs/TESTING.md`
@@ -1762,7 +1762,7 @@
 
 - [x] T242 Update local compose + container health checks to `/api/health`
 - **Touch**:
-  - `local.docker.yml` (FastAPI healthcheck; remove “Option B” comment)
+  - `development.docker.yml` (FastAPI healthcheck; remove “Option B” comment)
   - `docker-compose*.yml` variants if any (ensure consistent checks)
 - **Verify**:
   - `docker compose up` shows API service healthy

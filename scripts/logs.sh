@@ -3,7 +3,8 @@
 
 set -e
 
-COMPOSE_FILE="local.docker.yml"
+COMPOSE_FILE="development.docker.yml"
+ENV_FILE=".env"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
@@ -17,6 +18,14 @@ SELF_TEST=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --compose-file|-c)
+            COMPOSE_FILE="$2"
+            shift 2
+            ;;
+        --env-file|-e)
+            ENV_FILE="$2"
+            shift 2
+            ;;
         --follow|-f)
             FOLLOW=true
             shift
@@ -37,6 +46,8 @@ while [[ $# -gt 0 ]]; do
             echo "                    Common: traefik, react-app, api, django, postgres, nginx, nginx-static, pgadmin"
             echo ""
             echo "Options:"
+            echo "  -c, --compose-file FILE  Use a specific compose file"
+            echo "  -e, --env-file FILE      Use a specific env file"
             echo "  -f, --follow      Follow log output"
             echo "  -t, --tail N      Number of lines to show (default: 100)"
             echo "  --self-test       Run script self-test and exit"
@@ -56,6 +67,16 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
     done
+
+if [ ! -f "$COMPOSE_FILE" ]; then
+    echo "❌ Error: compose file not found: $COMPOSE_FILE"
+    exit 1
+fi
+
+if [ ! -f "$ENV_FILE" ]; then
+    echo "❌ Error: env file not found: $ENV_FILE"
+    exit 1
+fi
 
 # Self-test function
 if [ "$SELF_TEST" = true ]; then
@@ -78,7 +99,7 @@ echo "📋 Viewing logs for Docker Environment"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Build docker-compose logs command
-CMD="docker-compose -f $COMPOSE_FILE logs --tail=$TAIL"
+CMD="docker-compose --env-file $ENV_FILE -f $COMPOSE_FILE logs --tail=$TAIL"
 
 if [ "$FOLLOW" = true ]; then
     CMD="$CMD -f"
@@ -96,3 +117,4 @@ echo ""
 
 # Execute the command
 eval $CMD
+

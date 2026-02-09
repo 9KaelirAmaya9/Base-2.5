@@ -3,17 +3,18 @@
 
 set -e
 
-COMPOSE_FILE="local.docker.yml"
+COMPOSE_FILE="development.docker.yml"
+ENV_FILE=".env"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_DIR"
 
-# Derive values from .env when present
+# Derive values from env file when present
 get_env_var() {
     local key="$1"
     local line
-    line=$(grep -E "^${key}=" .env 2>/dev/null | head -n1 || true)
+    line=$(grep -E "^${key}=" "$ENV_FILE" 2>/dev/null | head -n1 || true)
     if [ -n "$line" ]; then
         line=$(echo "$line" | sed 's/ *#.*//' | sed 's/[[:space:]]*$//')
         echo "$line" | cut -d'=' -f2-
@@ -35,12 +36,24 @@ SERVICE=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --compose-file|-c)
+            COMPOSE_FILE="$2"
+            shift 2
+            ;;
+        --env-file|-e)
+            ENV_FILE="$2"
+            shift 2
+            ;;
         --help|-h)
             echo "Usage: ./debug.sh [SERVICE]"
             echo ""
             echo "Arguments:"
             echo "  SERVICE           Specific service to debug (optional)"
             echo "                    Options: react-app, nginx, postgres, pgadmin, traefik"
+            echo ""
+            echo "Options:"
+            echo "  -c, --compose-file FILE  Use a specific compose file"
+            echo "  -e, --env-file FILE      Use a specific env file"
             echo ""
             echo "Examples:"
             echo "  ./debug.sh              # Debug all services"
@@ -53,6 +66,16 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+if [ ! -f "$COMPOSE_FILE" ]; then
+    echo "❌ Error: compose file not found: $COMPOSE_FILE"
+    exit 1
+fi
+
+if [ ! -f "$ENV_FILE" ]; then
+    echo "❌ Error: env file not found: $ENV_FILE"
+    exit 1
+fi
 
 if [ -n "$SERVICE" ]; then
     container_name="${COMPOSE_PROJECT_NAME}_${SERVICE}"
@@ -113,7 +136,7 @@ else
     # Overall status
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "📊 Container Status:"
-    docker-compose -f "$COMPOSE_FILE" ps
+    docker-compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps
     
     # Network info
     echo ""
@@ -138,8 +161,8 @@ Connected Containers:
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "📈 Resource Usage:"
-    if docker-compose -f "$COMPOSE_FILE" ps -q | grep -q .; then
-        docker stats --no-stream $(docker-compose -f "$COMPOSE_FILE" ps -q)
+    if docker-compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -q | grep -q .; then
+        docker stats --no-stream $(docker-compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -q)
     else
         echo "No running containers"
     fi
@@ -150,3 +173,4 @@ fi
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+

@@ -917,7 +917,7 @@ else:
             return summary
 
         log("Fetching docker compose status...")
-        stdin, stdout, stderr = ssh_client.exec_command(f"cd {repo_path} && docker compose -f local.docker.yml ps")
+        stdin, stdout, stderr = ssh_client.exec_command(f"cd {repo_path} && docker compose -f development.docker.yml ps")
         ps_output = stdout.read().decode()
         print(ps_output)
         err_out = stderr.read().decode()
@@ -976,7 +976,7 @@ else:
         svc_errors: Dict[str, Dict[str, object]] = {}
         for svc in ["traefik", "nginx", "api", "django", "postgres", "pgadmin", "nginx-static"]:
             log(f"Logs for {svc}:")
-            stdin, stdout, stderr = ssh_client.exec_command(f"cd {repo_path} && docker compose -f local.docker.yml logs --tail=100 {svc}")
+            stdin, stdout, stderr = ssh_client.exec_command(f"cd {repo_path} && docker compose -f development.docker.yml logs --tail=100 {svc}")
             logs_text = stdout.read().decode()
             print(logs_text)
             err_out = stderr.read().decode()
@@ -1010,4 +1010,5 @@ else:
     except Exception as e:
         err(f"Post-deploy workflow failed: {e}")
     exit(0)
+
 

@@ -3,16 +3,18 @@
 # Prefer the repo virtual environment when running Python-based tooling.
 VENV_PY := $(shell if [ -x .venv/Scripts/python.exe ]; then printf '.venv/Scripts/python.exe'; elif [ -x .venv/bin/python ]; then printf '.venv/bin/python'; else printf 'python'; fi)
 
-COMPOSE = docker compose -f local.docker.yml
+COMPOSE_FILE ?= development.docker.yml
+ENV_FILE ?= .env
+COMPOSE = docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE)
 
 up:
-	./scripts/start.sh
+	./scripts/start.sh --compose-file $(COMPOSE_FILE) --env-file $(ENV_FILE)
 
 down:
-	./scripts/stop.sh
+	./scripts/stop.sh --compose-file $(COMPOSE_FILE) --env-file $(ENV_FILE)
 
 restart:
-	./scripts/restart.sh
+	./scripts/restart.sh --compose-file $(COMPOSE_FILE) --env-file $(ENV_FILE)
 
 ps:
 	$(COMPOSE) ps
@@ -30,7 +32,7 @@ logs-web:
 	$(COMPOSE) logs -f --tail=200 react-app nginx nginx-static
 
 test:
-	./scripts/test.sh
+	./scripts/test.sh --compose-file $(COMPOSE_FILE) --env-file $(ENV_FILE)
 
 lint:
 	cd react-app && npm run lint
@@ -49,3 +51,4 @@ seed:
 reset:
 	@if [ "$(CONFIRM)" != "1" ]; then echo "Refusing to reset without CONFIRM=1"; exit 1; fi
 	$(COMPOSE) down -v
+

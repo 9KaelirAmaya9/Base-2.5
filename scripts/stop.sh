@@ -3,7 +3,8 @@
 
 set -e
 
-COMPOSE_FILE="local.docker.yml"
+COMPOSE_FILE="development.docker.yml"
+ENV_FILE=".env"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
@@ -27,6 +28,14 @@ SELF_TEST=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --compose-file|-c)
+            COMPOSE_FILE="$2"
+            shift 2
+            ;;
+        --env-file|-e)
+            ENV_FILE="$2"
+            shift 2
+            ;;
         --volumes|-v)
             REMOVE_VOLUMES=true
             shift
@@ -39,6 +48,8 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: ./stop.sh [OPTIONS]"
             echo ""
             echo "Options:"
+            echo "  -c, --compose-file FILE  Use a specific compose file"
+            echo "  -e, --env-file FILE      Use a specific env file"
             echo "  -v, --volumes     Remove volumes (WARNING: deletes data)"
             echo "  --self-test       Run script self-test and exit"
             echo "  -h, --help        Show this help message"
@@ -51,6 +62,16 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+if [ ! -f "$COMPOSE_FILE" ]; then
+    echo "❌ Error: compose file not found: $COMPOSE_FILE"
+    exit 1
+fi
+
+if [ ! -f "$ENV_FILE" ]; then
+    echo "❌ Error: env file not found: $ENV_FILE"
+    exit 1
+fi
 
 # Self-test function
 if [ "$SELF_TEST" = true ]; then
@@ -76,7 +97,7 @@ if [ "$REMOVE_VOLUMES" = true ]; then
     echo
     if [[ $REPLY =~ ^[Yy][Ee][Ss]$ ]]; then
         echo "🗑️  Stopping services and removing volumes..."
-        docker-compose -f "$COMPOSE_FILE" down -v
+        docker-compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" down -v
         echo "✅ Services stopped and volumes removed"
     else
         echo "❌ Operation cancelled"
@@ -84,9 +105,10 @@ if [ "$REMOVE_VOLUMES" = true ]; then
     fi
 else
     echo "🐳 Stopping services..."
-    docker-compose -f "$COMPOSE_FILE" down
+    docker-compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" down
     echo "✅ Services stopped successfully"
 fi
 
 echo ""
 echo "💡 Start services again: ./scripts/start.sh"
+

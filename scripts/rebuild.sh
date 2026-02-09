@@ -3,7 +3,8 @@
 
 set -e
 
-COMPOSE_FILE="local.docker.yml"
+COMPOSE_FILE="development.docker.yml"
+ENV_FILE=".env"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
@@ -18,6 +19,14 @@ NO_CACHE=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --compose-file|-c)
+            COMPOSE_FILE="$2"
+            shift 2
+            ;;
+        --env-file|-e)
+            ENV_FILE="$2"
+            shift 2
+            ;;
         --no-cache|-n)
             NO_CACHE=true
             shift
@@ -30,6 +39,8 @@ while [[ $# -gt 0 ]]; do
             echo "                    Options: react-app, nginx, postgres, pgadmin, traefik"
             echo ""
             echo "Options:"
+            echo "  -c, --compose-file FILE  Use a specific compose file"
+            echo "  -e, --env-file FILE      Use a specific env file"
             echo "  -n, --no-cache    Build without using cache"
             echo "  -h, --help        Show this help message"
             echo ""
@@ -46,8 +57,18 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+if [ ! -f "$COMPOSE_FILE" ]; then
+    echo "❌ Error: compose file not found: $COMPOSE_FILE"
+    exit 1
+fi
+
+if [ ! -f "$ENV_FILE" ]; then
+    echo "❌ Error: env file not found: $ENV_FILE"
+    exit 1
+fi
+
 # Build command
-CMD="docker-compose -f $COMPOSE_FILE build"
+CMD="docker-compose --env-file $ENV_FILE -f $COMPOSE_FILE build"
 
 if [ "$NO_CACHE" = true ]; then
     CMD="$CMD --no-cache"
@@ -75,3 +96,4 @@ echo ""
 echo "✅ Build completed successfully!"
 echo ""
 echo "💡 Start services: ./scripts/start.sh"
+

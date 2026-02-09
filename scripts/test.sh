@@ -21,30 +21,60 @@ NC='\033[0m' # No Color
 COVERAGE_FLAG=""
 WATCH_FLAG=""
 SELF_TEST=false
+COMPOSE_FILE="development.docker.yml"
+ENV_FILE=".env"
 
-for arg in "$@"
-do
-    case $arg in
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --compose-file|-c)
+            COMPOSE_FILE="$2"
+            shift 2
+            ;;
+        --env-file|-e)
+            ENV_FILE="$2"
+            shift 2
+            ;;
         --coverage)
-        COVERAGE_FLAG="--coverage"
-        shift
-        ;;
+            COVERAGE_FLAG="--coverage"
+            shift
+            ;;
         --watch)
-        WATCH_FLAG="--watch"
-        shift
-        ;;
+            WATCH_FLAG="--watch"
+            shift
+            ;;
         --self-test)
-        SELF_TEST=true
-        shift
-        ;;
+            SELF_TEST=true
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: ./scripts/test.sh [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  -c, --compose-file FILE  Use a specific compose file"
+            echo "  -e, --env-file FILE      Use a specific env file"
+            echo "  --coverage        Run tests with coverage"
+            echo "  --watch           Run tests in watch mode"
+            echo "  --self-test       Run script self-test and exit"
+            echo "  -h, --help        Show this help message"
+            exit 0
+            ;;
         *)
-        shift
-        ;;
+            echo "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
     esac
 done
 
-COMPOSE_FILE="local.docker.yml"
-COMPOSE_CMD="docker compose -f $COMPOSE_FILE"
+if [ ! -f "$COMPOSE_FILE" ]; then
+    echo -e "${RED}❌ compose file not found: $COMPOSE_FILE${NC}"
+    exit 1
+fi
+if [ ! -f "$ENV_FILE" ]; then
+    echo -e "${RED}❌ env file not found: $ENV_FILE${NC}"
+    exit 1
+fi
+COMPOSE_CMD="docker compose --env-file $ENV_FILE -f $COMPOSE_FILE"
 
 require_compose_running() {
     if ! command -v docker >/dev/null 2>&1; then
@@ -151,3 +181,4 @@ else
     echo -e "${BLUE}================================================${NC}"
     exit 1
 fi
+

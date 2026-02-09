@@ -80,7 +80,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - **Environment parity**: PASS
   - The feature standardizes `.env` used by compose; does not introduce a separate “dev-only” topology.
 - **Container-first, Compose-first**: PASS
-  - Setup flow produces a correct `.env` for `local.docker.yml`; existing `scripts/start.sh` remains the primary local entrypoint.
+  - Setup flow produces a correct `.env` for `development.docker.yml`; existing `scripts/start.sh` remains the primary local entrypoint.
 - **Single-entrypoint operations**: PASS
   - Cloud deploy guidance and doctor recommendations point to `digital_ocean/scripts/powershell/deploy.ps1` (no new deploy entrypoints).
 - **Observability is a feature**: PASS

@@ -281,7 +281,7 @@ echo "Rolling back to $PREV"
 git reset --hard "$PREV" || true
 
 # Recreate core services to match the rolled-back code.
-docker compose -f local.docker.yml up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat >/root/logs/build/rollback-compose-up.txt 2>&1 || true
+docker compose -f development.docker.yml up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat >/root/logs/build/rollback-compose-up.txt 2>&1 || true
 
 echo "Rollback completed. Current HEAD: $(git rev-parse HEAD 2>/dev/null || true)"
 '@
@@ -637,7 +637,7 @@ function Write-FailureArtifacts([string]$context, [string]$message) {
   # Ensure the orchestrator knows where to write per-run artifacts.
   try { $env:DEPLOY_ARTIFACT_DIR = $dest } catch {}
   try {
-    & docker compose -f ./local.docker.yml config > (Join-Path $dest 'compose-config-local.yml') 2>$null
+    & docker compose -f ./development.docker.yml config > (Join-Path $dest 'compose-config-local.yml') 2>$null
   } catch {}
 }
 
@@ -1042,46 +1042,46 @@ PY
   # Bring up core services without forcing builds (fast path).
   status "up" "docker compose up core services (no build)"
   set +e
-  docker compose -f local.docker.yml up -d --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1
+  docker compose -f development.docker.yml up -d --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1
   CORE_UP_CODE=$?
   echo $CORE_UP_CODE > /root/logs/build/compose-up-core.status 2>/dev/null || true
   set -e
   if [ "$CORE_UP_CODE" != "0" ]; then
     # Fallback for first-time builds or missing images.
     status "up" "compose up failed; retrying with --build"
-    docker compose -f local.docker.yml up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core-build.txt 2>&1 || true
+    docker compose -f development.docker.yml up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core-build.txt 2>&1 || true
   fi
 
   # Selective rebuilds/recreates based on diff.
   # API: default to no-cache rebuild when api/ changed (historically stale cache issues).
   if [ "$NEED_API" = "1" ]; then
     status "build" "docker compose build --no-cache api (api changed)"
-    docker compose -f local.docker.yml build --no-cache api > /root/logs/build/api-build-nocache.txt 2>&1 || true
+    docker compose -f development.docker.yml build --no-cache api > /root/logs/build/api-build-nocache.txt 2>&1 || true
   fi
   status "recreate" "force-recreate api"
-  docker compose -f local.docker.yml up -d --force-recreate --no-deps api > /root/logs/build/api-up.txt 2>&1 || true
+  docker compose -f development.docker.yml up -d --force-recreate --no-deps api > /root/logs/build/api-up.txt 2>&1 || true
 
   if [ "$NEED_DJANGO" = "1" ]; then
     status "build" "docker compose build django (django changed)"
-    docker compose -f local.docker.yml build django > /root/logs/build/django-build.txt 2>&1 || true
+    docker compose -f development.docker.yml build django > /root/logs/build/django-build.txt 2>&1 || true
   fi
   status "recreate" "force-recreate django"
-  docker compose -f local.docker.yml up -d --force-recreate --no-deps django > /root/logs/build/django-up.txt 2>&1 || true
+  docker compose -f development.docker.yml up -d --force-recreate --no-deps django > /root/logs/build/django-up.txt 2>&1 || true
 
   # Traefik: rebuild only when traefik/ changed; always recreate to pick up env and templates.
   if [ "$NEED_TRAEFIK" = "1" ]; then
     status "build" "docker compose build traefik (traefik changed)"
-    docker compose -f local.docker.yml build traefik > /root/logs/build/traefik-build.txt 2>&1 || true
+    docker compose -f development.docker.yml build traefik > /root/logs/build/traefik-build.txt 2>&1 || true
   fi
   status "recreate" "force-recreate traefik"
-  docker compose -f local.docker.yml up -d --force-recreate --no-deps traefik > /root/logs/build/traefik-up.txt 2>&1 || true
+  docker compose -f development.docker.yml up -d --force-recreate --no-deps traefik > /root/logs/build/traefik-up.txt 2>&1 || true
 
   # React: rebuild only when react-app/ changed.
   if [ "$NEED_REACT" = "1" ]; then
     status "build" "docker compose build react-app (react-app changed)"
-    docker compose -f local.docker.yml build react-app > /root/logs/build/react-app-build.txt 2>&1 || true
+    docker compose -f development.docker.yml build react-app > /root/logs/build/react-app-build.txt 2>&1 || true
     status "recreate" "force-recreate react-app"
-    docker compose -f local.docker.yml up -d --force-recreate --no-deps react-app > /root/logs/build/react-app-up.txt 2>&1 || true
+    docker compose -f development.docker.yml up -d --force-recreate --no-deps react-app > /root/logs/build/react-app-up.txt 2>&1 || true
   else
     status "build" "skipping react-app rebuild (no react-app changes)"
     : > /root/logs/build/react-app-build.txt || true
@@ -1098,20 +1098,20 @@ PY
     docker system df > /root/logs/build/docker-system-df-after.txt 2>&1 || true
 
     # Retry targeted rebuild and recreate for react-app
-    docker compose -f local.docker.yml build --no-cache react-app > /root/logs/build/react-app-build-retry.txt 2>&1 || true
-    docker compose -f local.docker.yml up -d --force-recreate --no-deps react-app > /root/logs/build/react-app-up-retry.txt 2>&1 || true
+    docker compose -f development.docker.yml build --no-cache react-app > /root/logs/build/react-app-build-retry.txt 2>&1 || true
+    docker compose -f development.docker.yml up -d --force-recreate --no-deps react-app > /root/logs/build/react-app-up-retry.txt 2>&1 || true
   fi
 
   # Ensure Flower is started (kept as a separate log artifact)
   status "up" "ensure flower"
-  docker compose -f local.docker.yml up -d --build flower > /root/logs/build/flower-up.txt 2>&1 || true
+  docker compose -f development.docker.yml up -d --build flower > /root/logs/build/flower-up.txt 2>&1 || true
   # Capture Django migration output into a dedicated artifact
   status "django" "migrate/check-deploy/health"
-  docker compose -f local.docker.yml exec -T django python manage.py migrate --noinput > /root/logs/django-migrate.txt 2>&1 || true
+  docker compose -f development.docker.yml exec -T django python manage.py migrate --noinput > /root/logs/django-migrate.txt 2>&1 || true
   # Django deploy checks (security + config sanity)
-  docker compose -f local.docker.yml exec -T django python manage.py check --deploy > /root/logs/django-check-deploy.txt 2>&1 || true
+  docker compose -f development.docker.yml exec -T django python manage.py check --deploy > /root/logs/django-check-deploy.txt 2>&1 || true
   # Django internal HTTP health (avoid probing admin HTML); capture JSON body + HTTP status
-  docker compose -f local.docker.yml exec -T django python - <<'PY' > /root/logs/django-internal-health.json 2> /root/logs/django-internal-health.status || true
+  docker compose -f development.docker.yml exec -T django python - <<'PY' > /root/logs/django-internal-health.json 2> /root/logs/django-internal-health.status || true
 import json
 import os
 import sys
@@ -1152,7 +1152,7 @@ sys.stderr.write(str(status))
 PY
   # Schema compatibility check (fails if migrations unapplied or schema drift)
   set +e
-  docker compose -f local.docker.yml exec -T django python manage.py schema_compat_check --json > /root/logs/schema-compat-check.json 2> /root/logs/schema-compat-check.err
+  docker compose -f development.docker.yml exec -T django python manage.py schema_compat_check --json > /root/logs/schema-compat-check.json 2> /root/logs/schema-compat-check.err
   echo $? > /root/logs/schema-compat-check.status
   set -e
   # If requested, enable celery/flower profiles and build required images
@@ -1160,12 +1160,12 @@ PY
     # Tune host sysctl for Redis memory overcommit (best-effort, ignore errors)
     (sysctl -w vm.overcommit_memory=1 && echo 'vm.overcommit_memory=1' > /etc/sysctl.d/99-redis.conf && sysctl --system) || true
     # Build Celery services (Django-based) if present; ignore if missing
-    docker compose -f local.docker.yml build celery-worker > /root/logs/build/celery-worker-build.txt 2>&1 || true
-    docker compose -f local.docker.yml build celery-beat > /root/logs/build/celery-beat-build.txt 2>&1 || true
+    docker compose -f development.docker.yml build celery-worker > /root/logs/build/celery-worker-build.txt 2>&1 || true
+    docker compose -f development.docker.yml build celery-beat > /root/logs/build/celery-beat-build.txt 2>&1 || true
     # Start Redis, Celery worker and beat under the celery profile; ignore if services not defined
-    docker compose -f local.docker.yml --profile celery up -d --build redis celery-worker celery-beat > /root/logs/build/celery-up.txt 2>&1 || true
+    docker compose -f development.docker.yml --profile celery up -d --build redis celery-worker celery-beat > /root/logs/build/celery-up.txt 2>&1 || true
     # Start Flower if defined
-    docker compose -f local.docker.yml up -d --build flower > /root/logs/build/flower-up.txt 2>&1 || true
+    docker compose -f development.docker.yml up -d --build flower > /root/logs/build/flower-up.txt 2>&1 || true
   fi
   # Best-effort: wait for key services to report healthy before snapshotting.
   # This reduces false negatives where compose-ps.txt is captured during startup.
@@ -1173,7 +1173,7 @@ PY
   set +e
   : > /root/logs/build/health-wait.txt || true
   for i in $(seq 1 60); do
-    PS_OUT=$(docker compose -f local.docker.yml ps 2>/dev/null)
+    PS_OUT=$(docker compose -f development.docker.yml ps 2>/dev/null)
     echo "--- attempt $i ---" >> /root/logs/build/health-wait.txt
     echo "$PS_OUT" >> /root/logs/build/health-wait.txt
     OK=1
@@ -1190,15 +1190,15 @@ PY
   set -e
 
   status "snapshot" "capturing compose ps/config and ports"
-  docker compose -f local.docker.yml ps > /root/logs/compose-ps.txt || true
-  docker compose -f local.docker.yml config > /root/logs/compose-config.yml || true
+  docker compose -f development.docker.yml ps > /root/logs/compose-ps.txt || true
+  docker compose -f development.docker.yml config > /root/logs/compose-config.yml || true
   # Published host ports report (Traefik should be the only one)
   docker ps --format '{{.Names}}\t{{.Ports}}' | awk 'NF && $2!="" {print}' > /root/logs/published-ports.txt || true
   # Capture logs from all services
   # Collect logs for services across default and profiled stacks (celery, flower)
-  S_DEF=$(docker compose -f local.docker.yml config --services || true)
-  S_CEL=$(docker compose -f local.docker.yml --profile celery config --services || true)
-  S_FLO=$(docker compose -f local.docker.yml --profile flower config --services || true)
+  S_DEF=$(docker compose -f development.docker.yml config --services || true)
+  S_CEL=$(docker compose -f development.docker.yml --profile celery config --services || true)
+  S_FLO=$(docker compose -f development.docker.yml --profile flower config --services || true)
   SERVICES=$(printf "%s\n%s\n%s\n" "$S_DEF" "$S_CEL" "$S_FLO" | awk 'NF && !x[$0]++')
   status "logs" "collecting container logs"
   for s in $SERVICES; do
@@ -1207,7 +1207,7 @@ PY
     echo "Time: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$OUT" || true
 
     # If the service isn't running (e.g., profiled services like celery-*), record that explicitly.
-    CIDS=$(docker compose -f local.docker.yml ps -q "$s" 2>/dev/null || true)
+    CIDS=$(docker compose -f development.docker.yml ps -q "$s" 2>/dev/null || true)
     if [ -z "$CIDS" ]; then
       echo "NOTE: No running containers found for service '$s'." >> "$OUT" || true
       echo "      If this is a profiled service (e.g., celery), ensure the profile is enabled." >> "$OUT" || true
@@ -1224,12 +1224,12 @@ PY
     # Also include compose logs as a fallback/aggregate view.
     echo "" >> "$OUT" || true
     echo "--- docker compose logs (service=$s) ---" >> "$OUT" || true
-    docker compose -f local.docker.yml logs --no-color --timestamps --tail=$LOG_TAIL_LINES "$s" >> "$OUT" 2>&1 || true
+    docker compose -f development.docker.yml logs --no-color --timestamps --tail=$LOG_TAIL_LINES "$s" >> "$OUT" 2>&1 || true
   done
 
   # Some services may log primarily to files inside the container/volume.
   # Traefik: try /var/log/traefik/*
-  TID=$(docker compose -f local.docker.yml ps -q traefik 2>/dev/null || true)
+  TID=$(docker compose -f development.docker.yml ps -q traefik 2>/dev/null || true)
   if [ -n "$TID" ]; then
     OUT="/root/logs/services/traefik.log"
     echo "" >> "$OUT" || true
@@ -1238,7 +1238,7 @@ PY
   fi
 
   # Nginx: try /var/log/nginx/*
-  NID=$(docker compose -f local.docker.yml ps -q nginx 2>/dev/null || true)
+  NID=$(docker compose -f development.docker.yml ps -q nginx 2>/dev/null || true)
   if [ -n "$NID" ]; then
     OUT="/root/logs/services/nginx.log"
     echo "" >> "$OUT" || true
@@ -1247,14 +1247,14 @@ PY
   fi
 
   # Nginx-static: try /var/log/nginx/* (image-based static nginx may log to files)
-  NSID=$(docker compose -f local.docker.yml ps -q nginx-static 2>/dev/null || true)
+  NSID=$(docker compose -f development.docker.yml ps -q nginx-static 2>/dev/null || true)
   if [ -n "$NSID" ]; then
     OUT="/root/logs/services/nginx-static.log"
     echo "" >> "$OUT" || true
     echo "--- /var/log/nginx (file-based logs) ---" >> "$OUT" || true
     docker exec "$NSID" sh -lc 'ls -la /var/log/nginx 2>/dev/null || true; for f in /var/log/nginx/*; do [ -f "$f" ] || continue; echo "\n----- $f -----"; tail -n '$LOG_TAIL_LINES' "$f" || true; done' >> "$OUT" 2>&1 || true
   fi
-  CID=$(docker compose -f local.docker.yml ps -q traefik || true)
+  CID=$(docker compose -f development.docker.yml ps -q traefik || true)
   if [ -n "$CID" ]; then
     docker exec "$CID" sh -lc 'env | sort' > /root/logs/traefik-env.txt || true
     # Capture the *rendered* configs Traefik actually runs with (entrypoint renders into /tmp).
@@ -1279,7 +1279,7 @@ PY
     docker exec "$CID" sh -lc 'cat /etc/traefik/templates/traefik.yml.template 2>/dev/null || echo TEMPLATE_MISSING' > /root/logs/traefik-static.template.yml || true
     docker logs --timestamps --tail=1000 "$CID" > /root/logs/traefik-logs.txt || true
     # Capture API logs for quick diagnostics (in addition to per-service logs)
-    AID=$(docker compose -f local.docker.yml ps -q api || true)
+    AID=$(docker compose -f development.docker.yml ps -q api || true)
     if [ -n "$AID" ]; then
       docker logs --timestamps --tail=500 "$AID" > /root/logs/api-logs.txt || true
     else
@@ -1484,10 +1484,10 @@ PY
 
     # During deploy/recreate, `docker compose ps -q <service>` can briefly return multiple IDs.
     # Grep across all candidate IDs to avoid false negatives.
-    TIDS=$(docker compose -f local.docker.yml ps -q traefik 2>/dev/null || true)
-    AIDS=$(docker compose -f local.docker.yml ps -q api 2>/dev/null || true)
-    DJIDS=$(docker compose -f local.docker.yml ps -q django 2>/dev/null || true)
-    CWIDS=$(docker compose -f local.docker.yml ps -q celery-worker 2>/dev/null || true)
+    TIDS=$(docker compose -f development.docker.yml ps -q traefik 2>/dev/null || true)
+    AIDS=$(docker compose -f development.docker.yml ps -q api 2>/dev/null || true)
+    DJIDS=$(docker compose -f development.docker.yml ps -q django 2>/dev/null || true)
+    CWIDS=$(docker compose -f development.docker.yml ps -q celery-worker 2>/dev/null || true)
 
     # Ensure Django emits at least one structured *request* log line containing the probe RID.
     # NOTE: `docker exec` process stdout does not appear in `docker logs`, so we must trigger
@@ -1495,7 +1495,7 @@ PY
     if [ -n "$DJIDS" ]; then
       # Write into /root/logs (top-level) so the artifact copy-back picks it up.
       : > /root/logs/request-id-django-probe.txt || true
-      docker compose -f local.docker.yml exec -T django python - <<PY > /root/logs/request-id-django-probe.txt 2>&1 || true
+      docker compose -f development.docker.yml exec -T django python - <<PY > /root/logs/request-id-django-probe.txt 2>&1 || true
 import http.client
 import os
 
@@ -1518,7 +1518,7 @@ PY
     # API helper endpoints and guarantees the worker sees `request_id=$RID`.
     if [ -n "$CWIDS" ] && [ -n "$DJIDS" ]; then
       : > /root/logs/request-id-celery-probe.txt || true
-      docker compose -f local.docker.yml exec -T django python - <<PY > /root/logs/request-id-celery-probe.txt 2>&1 || true
+      docker compose -f development.docker.yml exec -T django python - <<PY > /root/logs/request-id-celery-probe.txt 2>&1 || true
 import os
 
 rid = "${RID}"
@@ -1551,7 +1551,7 @@ PY
         done
         if [ -s /root/logs/services/request-id-traefik.txt ]; then break; fi
         sleep $POLL_SLEEP
-        TIDS=$(docker compose -f local.docker.yml ps -q traefik 2>/dev/null || true)
+        TIDS=$(docker compose -f development.docker.yml ps -q traefik 2>/dev/null || true)
       done
     fi
     if [ -n "$AIDS" ]; then
@@ -1564,7 +1564,7 @@ PY
         mv -f /root/logs/services/request-id-api.txt.tmp /root/logs/services/request-id-api.txt 2>/dev/null || true
         if [ -s /root/logs/services/request-id-api.txt ]; then break; fi
         sleep $POLL_SLEEP
-        AIDS=$(docker compose -f local.docker.yml ps -q api 2>/dev/null || true)
+        AIDS=$(docker compose -f development.docker.yml ps -q api 2>/dev/null || true)
       done
     fi
     if [ -n "$DJIDS" ]; then
@@ -1579,7 +1579,7 @@ PY
         mv -f /root/logs/services/request-id-django.txt.tmp /root/logs/services/request-id-django.txt 2>/dev/null || true
         if [ -s /root/logs/services/request-id-django.txt ]; then break; fi
         sleep $POLL_SLEEP
-        DJIDS=$(docker compose -f local.docker.yml ps -q django 2>/dev/null || true)
+        DJIDS=$(docker compose -f development.docker.yml ps -q django 2>/dev/null || true)
       done
     fi
     if [ -n "$CWIDS" ]; then
@@ -1594,7 +1594,7 @@ PY
         mv -f /root/logs/services/request-id-celery-worker.txt.tmp /root/logs/services/request-id-celery-worker.txt 2>/dev/null || true
         if [ -s /root/logs/services/request-id-celery-worker.txt ]; then break; fi
         sleep $POLL_SLEEP
-        CWIDS=$(docker compose -f local.docker.yml ps -q celery-worker 2>/dev/null || true)
+        CWIDS=$(docker compose -f development.docker.yml ps -q celery-worker 2>/dev/null || true)
       done
     fi
 
@@ -1654,9 +1654,9 @@ except Exception:\
     fi
   fi
     # Ensure contract file available inside API container for contract tests
-    AID=$(docker compose -f local.docker.yml ps -q api 2>/dev/null || true)
+    AID=$(docker compose -f development.docker.yml ps -q api 2>/dev/null || true)
     if [ -n "$AID" ] && [ -f "./specs/001-django-fastapi-react/contracts/openapi.yaml" ]; then
-      docker compose -f local.docker.yml exec -T api sh -lc 'mkdir -p /app/specs/001-django-fastapi-react/contracts' >/dev/null 2>&1 || true
+      docker compose -f development.docker.yml exec -T api sh -lc 'mkdir -p /app/specs/001-django-fastapi-react/contracts' >/dev/null 2>&1 || true
       docker cp "./specs/001-django-fastapi-react/contracts/openapi.yaml" "$AID":/app/specs/001-django-fastapi-react/contracts/openapi.yaml >/dev/null 2>&1 || true
     fi
 
@@ -1673,14 +1673,14 @@ except Exception:\
     # FastAPI (api) pytest
     # Ensure we run from /app so `import main` / local imports resolve as expected.
     # Set COVERAGE_FILE to a writable path inside the container to avoid read-only filesystem issues.
-    docker compose -f local.docker.yml exec -T api sh -lc 'export COVERAGE_FILE=/tmp/.coverage_api && cd /app && pytest -q --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest.txt 2>&1 || true
+    docker compose -f development.docker.yml exec -T api sh -lc 'export COVERAGE_FILE=/tmp/.coverage_api && cd /app && pytest -q --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest.txt 2>&1 || true
     # API integration tests (marked with @pytest.mark.integration)
-    docker compose -f local.docker.yml exec -T api sh -lc 'export COVERAGE_FILE=/tmp/.coverage_api_int && cd /app && pytest -q -m integration --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest-integration.txt 2>&1 || true
+    docker compose -f development.docker.yml exec -T api sh -lc 'export COVERAGE_FILE=/tmp/.coverage_api_int && cd /app && pytest -q -m integration --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest-integration.txt 2>&1 || true
     # API lint/type checks (Ruff + Mypy)
-    docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && (ruff --version >/dev/null 2>&1 && ruff check . || echo "ruff_not_available")' > /root/logs/api-ruff.txt 2>&1 || true
-    docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && (mypy --version >/dev/null 2>&1 && mypy --show-error-codes --pretty api || echo "mypy_not_available")' > /root/logs/api-mypy.txt 2>&1 || true
+    docker compose -f development.docker.yml exec -T api sh -lc 'cd /app && (ruff --version >/dev/null 2>&1 && ruff check . || echo "ruff_not_available")' > /root/logs/api-ruff.txt 2>&1 || true
+    docker compose -f development.docker.yml exec -T api sh -lc 'cd /app && (mypy --version >/dev/null 2>&1 && mypy --show-error-codes --pretty api || echo "mypy_not_available")' > /root/logs/api-mypy.txt 2>&1 || true
     # Django pytest
-    docker compose -f local.docker.yml exec -T django sh -lc 'export COVERAGE_FILE=/tmp/.coverage_django && pytest -q --cov=project --cov-report=term --cov-fail-under=60' > /root/logs/django-pytest.txt 2>&1 || true
+    docker compose -f development.docker.yml exec -T django sh -lc 'export COVERAGE_FILE=/tmp/.coverage_django && pytest -q --cov=project --cov-report=term --cov-fail-under=60' > /root/logs/django-pytest.txt 2>&1 || true
   else
     status "tests" "skipped (RUN_REMOTE_TESTS!=1)"
     echo "SKIPPED: set RUN_REMOTE_TESTS=1 (use -RunTests or -AllTests)" > /root/logs/api-pytest.txt || true
@@ -2073,8 +2073,8 @@ try {
     try { $env:DEPLOY_ARTIFACT_DIR = $dest } catch {}
 
     # Capture minimal local Compose artifacts for troubleshooting
-    try { & docker compose -f ./local.docker.yml ps > (Join-Path $dest 'compose-ps-local.txt') 2>$null } catch {}
-    try { & docker compose -f ./local.docker.yml config > (Join-Path $dest 'compose-config-local.yml') 2>$null } catch {}
+    try { & docker compose -f ./development.docker.yml ps > (Join-Path $dest 'compose-ps-local.txt') 2>$null } catch {}
+    try { & docker compose -f ./development.docker.yml config > (Join-Path $dest 'compose-config-local.yml') 2>$null } catch {}
 
     $support = @()
     $support += "Remote verification skipped due to missing droplet IP."
@@ -2280,3 +2280,4 @@ try {
 }
 
 exit $script:ExitCode
+

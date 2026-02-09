@@ -1,8 +1,48 @@
+param(
+    [string]$ComposeFile = 'development.docker.yml',
+    [string]$EnvFile = '.env'
+)
+
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$composeFile = Join-Path $projectRoot 'local.docker.yml'
-$composeArgs = @('-f', $composeFile)
+
+function Resolve-ComposeFilePath {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return (Join-Path $Root 'development.docker.yml')
+    }
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+    return (Join-Path $Root $Path)
+}
+
+function Resolve-EnvFilePath {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return (Join-Path $Root '.env')
+    }
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+    return (Join-Path $Root $Path)
+}
+
+$composeFile = Resolve-ComposeFilePath -Path $ComposeFile -Root $projectRoot
+$envFile = Resolve-EnvFilePath -Path $EnvFile -Root $projectRoot
+$composeArgs = @('--env-file', $envFile, '-f', $composeFile)
+$isLocalCompose = ((Split-Path -Leaf $composeFile) -ieq 'local.docker.yml')
+$isLocalEnv = ((Split-Path -Leaf $envFile) -ieq '.env.local')
+$useLocalCoverage = $isLocalCompose -and $isLocalEnv
 
 function Require-ComposeRunning {
     $docker = Get-Command docker -ErrorAction SilentlyContinue
@@ -13,11 +53,11 @@ function Require-ComposeRunning {
         throw "Missing $composeFile. Run this script from the repo root."
     }
 
-    $running = & docker compose @composeArgs ps --services --filter "status=running" 2>$null
-    if (-not $running -or ($running -notmatch 'api')) {
+    $running = @(& docker compose @composeArgs ps --services --filter "status=running" 2>$null)
+    if (-not $running -or ($running -notcontains 'api')) {
         throw 'api container is not running. Run ./scripts/start.ps1 (or make up) first.'
     }
-    if ($running -notmatch 'django') {
+    if ($running -notcontains 'django') {
         throw 'django container is not running. Run ./scripts/start.ps1 (or make up) first.'
     }
 }
@@ -25,8 +65,13 @@ function Require-ComposeRunning {
 Push-Location $projectRoot
 try {
     Require-ComposeRunning
-    docker compose -f $composeFile exec -T api pytest
-    docker compose -f $composeFile exec -T django pytest
+    if ($useLocalCoverage) {
+        docker compose --env-file $envFile -f $composeFile exec -T -e COVERAGE_FILE=/tmp/.coverage api pytest
+        docker compose --env-file $envFile -f $composeFile exec -T -e COVERAGE_FILE=/tmp/.coverage django pytest
+    } else {
+        docker compose --env-file $envFile -f $composeFile exec -T api pytest
+        docker compose --env-file $envFile -f $composeFile exec -T django pytest
+    }
 
     Push-Location (Join-Path $projectRoot 'react-app')
     try {
@@ -37,3 +82,4 @@ try {
 } finally {
     Pop-Location
 }
+

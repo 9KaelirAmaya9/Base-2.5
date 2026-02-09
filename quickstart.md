@@ -222,10 +222,10 @@ Run preflight checks locally before deploying to catch misconfigurations early.
 
 ```powershell
 # Human-readable
-./digital_ocean/scripts/powershell/validate-predeploy.ps1 -EnvPath .\.env -ComposePath .\local.docker.yml
+./digital_ocean/scripts/powershell/validate-predeploy.ps1 -EnvPath .\.env -ComposePath .\development.docker.yml
 
 # Strict + JSON (CI-friendly)
-./digital_ocean/scripts/powershell/validate-predeploy.ps1 -EnvPath .\.env -ComposePath .\local.docker.yml -Strict -Json
+./digital_ocean/scripts/powershell/validate-predeploy.ps1 -EnvPath .\.env -ComposePath .\development.docker.yml -Strict -Json
 
 # Integrate with deploy (fails fast when preflight fails)
 ./digital_ocean/scripts/powershell/deploy.ps1 -Preflight
@@ -263,11 +263,11 @@ Add background task processing without increasing the attack surface. Redis and 
 
 - Redis + worker:
   ```bash
-  docker compose -f local.docker.yml --profile celery up -d redis celery-worker
+  docker compose -f development.docker.yml --profile celery up -d redis celery-worker
   ```
 - Flower (dashboard):
   ```bash
-  docker compose -f local.docker.yml --profile flower up -d flower
+  docker compose -f development.docker.yml --profile flower up -d flower
   ```
 
 ### Environment keys

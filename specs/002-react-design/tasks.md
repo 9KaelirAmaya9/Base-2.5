@@ -292,7 +292,7 @@ Purpose: Cross-cutting hardening, docs, and operational safety.
 - [x] T057 [P] Move inline theme init from react-app/public/index.html to external script file react-app/public/theme-init.js
 - [x] T058 Update index.html to reference theme-init.js in react-app/public/index.html
 
-- [x] T059 Ensure production builds inject REACT_APP_GOOGLE_CLIENT_ID via deploy configuration in local.docker.yml
+- [x] T059 Ensure production builds inject REACT_APP_GOOGLE_CLIENT_ID via deploy configuration in development.docker.yml
 - [x] T060 Ensure production builds inject REACT_APP_GOOGLE_CLIENT_ID via deploy configuration in digital_ocean/app_spec.yaml
 
 - [x] T061 Add cache guidance for index.html vs hashed assets (purge strategy) in docs/DEPLOY.md

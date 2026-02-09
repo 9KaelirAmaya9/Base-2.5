@@ -4,17 +4,18 @@
 
 set -e
 
-COMPOSE_FILE="local.docker.yml"
+COMPOSE_FILE="development.docker.yml"
+ENV_FILE=".env"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_DIR"
 
-# Derive values from .env when present
+# Derive values from env file when present
 get_env_var() {
     local key="$1"
     local line
-    line=$(grep -E "^${key}=" .env 2>/dev/null | head -n1 || true)
+    line=$(grep -E "^${key}=" "$ENV_FILE" 2>/dev/null | head -n1 || true)
     if [ -n "$line" ]; then
         line=$(echo "$line" | sed 's/ *#.*//' | sed 's/[[:space:]]*$//')
         echo "$line" | cut -d'=' -f2-
@@ -47,6 +48,14 @@ FORCE=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --compose-file|-c)
+            COMPOSE_FILE="$2"
+            shift 2
+            ;;
+        --env-file|-e)
+            ENV_FILE="$2"
+            shift 2
+            ;;
         --force|-f)
             FORCE=true
             shift
@@ -55,6 +64,8 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: ./kill.sh [OPTIONS]"
             echo ""
             echo "Options:"
+            echo "  -c, --compose-file FILE  Use a specific compose file"
+            echo "  -e, --env-file FILE      Use a specific env file"
             echo "  -f, --force       Skip confirmation prompt"
             echo "  -h, --help        Show this help message"
             echo ""
@@ -69,6 +80,16 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+if [ ! -f "$COMPOSE_FILE" ]; then
+    echo "❌ Error: compose file not found: $COMPOSE_FILE"
+    exit 1
+fi
+
+if [ ! -f "$ENV_FILE" ]; then
+    echo "❌ Error: env file not found: $ENV_FILE"
+    exit 1
+fi
 
 # Confirmation prompt
 if [ "$FORCE" = false ]; then
@@ -89,7 +110,7 @@ echo ""
 # 1. Stop and remove containers with volumes
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🛑 Stopping and removing containers..."
-docker-compose -f "$COMPOSE_FILE" down -v --remove-orphans 2>/dev/null || true
+docker-compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" down -v --remove-orphans 2>/dev/null || true
 echo "✅ Containers removed"
 
 # 2. Force remove any remaining project containers
@@ -196,3 +217,4 @@ echo ""
 echo "All Docker resources for this project have been permanently deleted."
 echo ""
 echo "💡 To start fresh: ./scripts/start.sh --build"
+

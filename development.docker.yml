@@ -159,8 +159,8 @@ services:
         - TRAEFIK_VERSION=${TRAEFIK_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_traefik
     ports:
-      - '8080:80'
-      - '8443:443'
+      - '80:80'
+      - '443:443'
     networks: [app_network]
     volumes:
       - ./letsencrypt:/etc/traefik/acme

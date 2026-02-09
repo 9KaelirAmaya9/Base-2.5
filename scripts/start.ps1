@@ -1,12 +1,45 @@
 param(
-    [switch]$Build
+    [switch]$Build,
+    [string]$ComposeFile = 'development.docker.yml',
+    [string]$EnvFile = '.env'
 )
 
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$composeFile = Join-Path $projectRoot 'local.docker.yml'
-$envFile = Join-Path $projectRoot '.env'
+
+function Resolve-ComposeFilePath {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return (Join-Path $Root 'development.docker.yml')
+    }
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+    return (Join-Path $Root $Path)
+}
+
+function Resolve-EnvFilePath {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return (Join-Path $Root '.env')
+    }
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+    return (Join-Path $Root $Path)
+}
+
+$composeFile = Resolve-ComposeFilePath -Path $ComposeFile -Root $projectRoot
+$envFile = Resolve-EnvFilePath -Path $EnvFile -Root $projectRoot
 $envExample = Join-Path $projectRoot '.env.example'
 
 if (-not (Test-Path $envFile)) {
@@ -21,10 +54,11 @@ if (-not (Test-Path $envFile)) {
 Push-Location $projectRoot
 try {
     if ($Build) {
-        docker compose -f $composeFile up -d --build
+        docker compose --env-file $envFile -f $composeFile up -d --build
     } else {
-        docker compose -f $composeFile up -d
+        docker compose --env-file $envFile -f $composeFile up -d
     }
 } finally {
     Pop-Location
 }
+

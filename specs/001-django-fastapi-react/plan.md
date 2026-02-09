@@ -73,7 +73,7 @@ postgres/               # DB init scripts
 pgadmin/                # pgAdmin config/data volume
 
 digital_ocean/          # Deploy automation (deploy.ps1 is authoritative)
-local.docker.yml        # Local/staging-like topology
+development.docker.yml        # Local/staging-like topology
 .env.example            # Required env vars (must remain complete)
 ```
 
@@ -83,7 +83,7 @@ local.docker.yml        # Local/staging-like topology
 
 ## 1) Authoritative Service Inventory (full stack)
 
-This inventory MUST match `local.docker.yml`, Traefik dynamic routing, deploy orchestration, and `.env.example`.
+This inventory MUST match `development.docker.yml`, Traefik dynamic routing, deploy orchestration, and `.env.example`.
 
 ### 1.1 Edge + routing
 
@@ -191,7 +191,7 @@ Internet
 
 ## 3) Environment Parity & Compose Discipline
 
-### 3.1 Local (`local.docker.yml`)
+### 3.1 Local (`development.docker.yml`)
 
 - Local runs the same service set as staging-like deploy, including edge, app services, DB, Redis, and admin UIs.
 - Healthchecks are mandatory and used as the primary readiness signal.
@@ -200,7 +200,7 @@ Internet
 ### 3.2 Staging-like droplet
 
 - Deployed via `digital_ocean/scripts/powershell/deploy.ps1`.
-- Uses the same compose file (`local.docker.yml`) on the droplet to enforce parity.
+- Uses the same compose file (`development.docker.yml`) on the droplet to enforce parity.
 - TLS issuance MUST remain staging-only (`le-staging`), verified in `digital_ocean/scripts/powershell/test.ps1`.
 
 ### 3.3 Build/start order (authoritative)
@@ -312,7 +312,7 @@ To satisfy the constitution (no browser token storage) while keeping implementat
 
 ### 8.2 Integration tests (Compose)
 
-- Bring up stack with `local.docker.yml`.
+- Bring up stack with `development.docker.yml`.
 - Verify:
   - health endpoints
   - migrations applied + `schema_compat_check` passes

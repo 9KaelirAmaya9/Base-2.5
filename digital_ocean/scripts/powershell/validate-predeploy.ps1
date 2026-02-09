@@ -1,6 +1,6 @@
 param(
   [string]$EnvPath = ".\.env",
-  [string]$ComposePath = ".\local.docker.yml",
+  [string]$ComposePath = ".\development.docker.yml",
   [switch]$Strict,
   [switch]$Json
 )
@@ -164,3 +164,4 @@ if ($Strict -and $failedCount -gt 0) { $script:ExitCode = 1 } else { $script:Exi
 }
 
 exit $script:ExitCode
+

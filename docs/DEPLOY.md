@@ -126,7 +126,7 @@ python manage.py makemigrations --check --dry-run
 
 ## Container Runtime Hardening
 
-`local.docker.yml` applies defense-in-depth settings where feasible:
+`development.docker.yml` applies defense-in-depth settings where feasible:
 
 - `cap_drop: [ALL]`
 - `security_opt: [no-new-privileges:true]`

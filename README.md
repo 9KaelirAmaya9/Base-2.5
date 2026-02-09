@@ -195,13 +195,13 @@ Use `--json` if you want machine-readable output.
 
 ```bash
 # Build all services
-docker compose -f local.docker.yml build
+docker compose -f development.docker.yml build
 
 # Start all services
-docker compose -f local.docker.yml up -d
+docker compose -f development.docker.yml up -d
 
 # View logs
-docker compose -f local.docker.yml logs -f
+docker compose -f development.docker.yml logs -f
 ```
 
 ### 5b. (Recommended) Use the Makefile shortcuts
@@ -225,6 +225,29 @@ On Windows PowerShell (no Bash/make required), use the equivalent wrappers:
 ```
 
 `make test`, `./scripts/test.sh`, and `./scripts/test.ps1` expect the Docker stack to be running; start it first with `make up` or `./scripts/start.ps1`.
+
+### Use local.docker.yml for local testing
+
+All local helper scripts support an explicit compose file flag. Examples:
+
+You can also keep a separate env file (for example, `.env.local`) and pass it explicitly.
+
+```bash
+./scripts/start.sh --compose-file local.docker.yml --env-file .env.local
+./scripts/test.sh --compose-file local.docker.yml --env-file .env.local
+./scripts/stop.sh --compose-file local.docker.yml --env-file .env.local
+```
+
+```powershell
+./scripts/start.ps1 -ComposeFile local.docker.yml -EnvFile .env.local
+./scripts/test.ps1 -ComposeFile local.docker.yml -EnvFile .env.local
+./scripts/stop.ps1 -ComposeFile local.docker.yml -EnvFile .env.local
+```
+
+```bash
+make COMPOSE_FILE=local.docker.yml ENV_FILE=.env.local up
+make COMPOSE_FILE=local.docker.yml ENV_FILE=.env.local test
+```
 
 ### Seed data (dev/demo)
 
@@ -364,7 +387,7 @@ This project includes an automatic synchronization system that keeps configurati
 
 Due to limitations in Docker Compose and YAML, certain values cannot use variable substitution:
 
-- Network definition keys in `local.docker.yml`
+- Network definition keys in `development.docker.yml`
 - EntryPoint keys in `traefik/traefik.yml`
 - The `TRAEFIK_DOCKER_NETWORK` must match `NETWORK_NAME`
 
@@ -396,7 +419,7 @@ The `scripts/sync-env.sh` script automatically updates these literal values to m
 
 ### What Gets Synchronized
 
-- **`local.docker.yml`**: Network definition key and service network references
+- **`development.docker.yml`**: Network definition key and service network references
 - **`traefik/traefik.yml`**: API entrypoint key
 - **`.env`**: `TRAEFIK_DOCKER_NETWORK` is updated to mirror `NETWORK_NAME`
 
@@ -554,50 +577,52 @@ This script will permanently delete:
 
 If you prefer to use Docker Compose directly:
 
+Tip: swap `development.docker.yml` for `local.docker.yml` when running local-only stacks.
+
 ### Start Services
 
 ```bash
-docker compose -f local.docker.yml up -d
+docker compose -f development.docker.yml up -d
 ```
 
 ### Stop Services
 
 ```bash
-docker compose -f local.docker.yml down
+docker compose -f development.docker.yml down
 ```
 
 ### Restart a Specific Service
 
 ```bash
-docker compose -f local.docker.yml restart react-app
+docker compose -f development.docker.yml restart react-app
 ```
 
 ### View Logs
 
 ```bash
 # All services
-docker compose -f local.docker.yml logs -f
+docker compose -f development.docker.yml logs -f
 
 # Specific service
-docker compose -f local.docker.yml logs -f postgres
+docker compose -f development.docker.yml logs -f postgres
 ```
 
 ### Rebuild After Changes
 
 ```bash
-docker compose -f local.docker.yml up -d --build
+docker compose -f development.docker.yml up -d --build
 ```
 
 ### Check Service Health
 
 ```bash
-docker compose -f local.docker.yml ps
+docker compose -f development.docker.yml ps
 ```
 
 ### Access Container Shell
 
 ```bash
-docker compose -f local.docker.yml exec postgres sh
+docker compose -f development.docker.yml exec postgres sh
 ```
 
 ## 🗄️ Data Persistence
@@ -611,7 +636,7 @@ The following data is persisted in named volumes:
 To remove volumes (⚠️ **WARNING: This will delete all data**):
 
 ```bash
-docker compose -f local.docker.yml down -v
+docker compose -f development.docker.yml down -v
 ```
 
 ## 🔍 Troubleshooting
@@ -635,7 +660,7 @@ Then log out and back in.
 Check logs for the specific service:
 
 ```bash
-docker compose -f local.docker.yml logs servicename
+docker compose -f development.docker.yml logs servicename
 ```
 
 ### Database Connection Issues
@@ -643,7 +668,7 @@ docker compose -f local.docker.yml logs servicename
 Verify PostgreSQL is healthy:
 
 ```bash
-docker compose -f local.docker.yml exec postgres pg_isready -U myuser
+docker compose -f development.docker.yml exec postgres pg_isready -U myuser
 ```
 
 ## 🚨 Production Considerations

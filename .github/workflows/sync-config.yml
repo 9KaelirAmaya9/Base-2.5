@@ -22,13 +22,13 @@ jobs:
       - name: Check for configuration changes
         id: check_changes
         run: |
-          if git diff --quiet local.docker.yml traefik/traefik.yml .env; then
+          if git diff --quiet development.docker.yml traefik/traefik.yml .env; then
             echo "No configuration changes needed"
             echo "changes_detected=false" >> $GITHUB_OUTPUT
           else
             echo "Configuration changes detected"
             echo "changes_detected=true" >> $GITHUB_OUTPUT
-            git diff local.docker.yml traefik/traefik.yml .env
+            git diff development.docker.yml traefik/traefik.yml .env
           fi
 
       - name: Fail if configuration is out of sync
@@ -37,7 +37,7 @@ jobs:
           echo "❌ Configuration is out of sync!"
           echo ""
           echo "The following files need to be synchronized:"
-          git diff --name-only local.docker.yml traefik/traefik.yml .env
+          git diff --name-only development.docker.yml traefik/traefik.yml .env
           echo ""
           echo "Run './scripts/sync-env.sh' locally to synchronize configuration."
           exit 1

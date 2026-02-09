@@ -9,6 +9,52 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_DIR"
 
+COMPOSE_FILE="development.docker.yml"
+ENV_FILE=".env"
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --compose-file|-c)
+            COMPOSE_FILE="$2"
+            shift 2
+            ;;
+        --env-file|-e)
+            ENV_FILE="$2"
+            shift 2
+            ;;
+        --help|-h)
+            echo "Usage: ./scripts/sync-env.sh [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  -c, --compose-file FILE  Use a specific compose file"
+            echo "  -e, --env-file FILE      Use a specific env file"
+            echo "  -h, --help        Show this help message"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
+if [ ! -f "$COMPOSE_FILE" ]; then
+    echo "❌ Error: compose file not found: $COMPOSE_FILE"
+    exit 1
+fi
+
+if [ ! -f "$ENV_FILE" ]; then
+    echo "⚠️  Warning: env file not found: $ENV_FILE"
+    if [ -f .env.example ]; then
+        echo "Creating $ENV_FILE from .env.example..."
+        cp .env.example "$ENV_FILE"
+    else
+        echo "❌ Error: .env.example not found. Cannot create $ENV_FILE."
+        exit 1
+    fi
+fi
+
 # Colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -20,19 +66,6 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo "Note: NETWORK_NAME is the single source of truth for the Compose network name."
 
-# Check if .env exists
-if [ ! -f .env ]; then
-    echo -e "${YELLOW}⚠️  Warning: .env file not found${NC}"
-    if [ -f .env.example ]; then
-        echo "Creating .env from .env.example..."
-        cp .env.example .env
-        echo -e "${GREEN}✅ Created .env file${NC}"
-    else
-        echo "❌ Error: No .env or .env.example found"
-        exit 1
-    fi
-fi
-
 # Load required variables from .env safely (ignore multiline values)
 echo "📖 Loading environment variables..."
 
@@ -42,7 +75,7 @@ get_env_var() {
     # Reads the first matching VAR=value line, strips inline comments, preserves spaces in value
     local key="$1"
     local line
-    line=$(grep -E "^${key}=" .env | head -n1 || true)
+    line=$(grep -E "^${key}=" "$ENV_FILE" | head -n1 || true)
     if [ -n "$line" ]; then
         # Remove inline comments and trailing spaces
         line=$(echo "$line" | sed 's/ *#.*//' | sed 's/[[:space:]]*$//')
@@ -73,18 +106,18 @@ echo "   - NETWORK_NAME will override TRAEFIK_DOCKER_NETWORK"
 CURRENT_TRAEFIK_NETWORK="$TRAEFIK_DOCKER_NETWORK"
 
 if [ "$CURRENT_TRAEFIK_NETWORK" != "$NETWORK_NAME" ]; then
-    if grep -q "^TRAEFIK_DOCKER_NETWORK=" .env; then
+    if grep -q "^TRAEFIK_DOCKER_NETWORK=" "$ENV_FILE"; then
         echo -e "${YELLOW}⚙️  Syncing TRAEFIK_DOCKER_NETWORK: $CURRENT_TRAEFIK_NETWORK → $NETWORK_NAME${NC}"
 
         # macOS compatible sed
         if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' "s/^TRAEFIK_DOCKER_NETWORK=.*/TRAEFIK_DOCKER_NETWORK=$NETWORK_NAME/" .env
+            sed -i '' "s/^TRAEFIK_DOCKER_NETWORK=.*/TRAEFIK_DOCKER_NETWORK=$NETWORK_NAME/" "$ENV_FILE"
         else
-            sed -i "s/^TRAEFIK_DOCKER_NETWORK=.*/TRAEFIK_DOCKER_NETWORK=$NETWORK_NAME/" .env
+            sed -i "s/^TRAEFIK_DOCKER_NETWORK=.*/TRAEFIK_DOCKER_NETWORK=$NETWORK_NAME/" "$ENV_FILE"
         fi
     else
         echo -e "${YELLOW}⚙️  Setting TRAEFIK_DOCKER_NETWORK: (missing) → $NETWORK_NAME${NC}"
-        printf "\nTRAEFIK_DOCKER_NETWORK=%s\n" "$NETWORK_NAME" >> .env
+        printf "\nTRAEFIK_DOCKER_NETWORK=%s\n" "$NETWORK_NAME" >> "$ENV_FILE"
     fi
 
     echo -e "${GREEN}✅ Updated .env${NC}"
@@ -95,11 +128,11 @@ fi
 echo ""
 
 # ============================================
-# 2. Update local.docker.yml network references
+# 2. Update compose network references
 # ============================================
-echo "🔍 Checking local.docker.yml network configuration..."
+echo "🔍 Checking compose network configuration in $COMPOSE_FILE..."
 
-# The Compose network *key* is an internal identifier in local.docker.yml.
+# The Compose network *key* is an internal identifier in the compose file.
 # The Compose network *name* should be driven by NETWORK_NAME via: name: ${NETWORK_NAME}
 TARGET_NETWORK_KEY="app_network"
 
@@ -114,36 +147,36 @@ CURRENT_NETWORK=$(
       print line
       exit
     }
-  ' local.docker.yml
+  ' "$COMPOSE_FILE"
 )
 
 if [ -z "$CURRENT_NETWORK" ]; then
-    echo -e "${YELLOW}⚠️  Warning: Could not detect a networks key in local.docker.yml${NC}"
+    echo -e "${YELLOW}⚠️  Warning: Could not detect a networks key in $COMPOSE_FILE${NC}"
 elif [ "$CURRENT_NETWORK" != "$TARGET_NETWORK_KEY" ]; then
     echo -e "${YELLOW}⚙️  Updating network key: $CURRENT_NETWORK → $TARGET_NETWORK_KEY${NC}"
 
     # Create backup
-    cp local.docker.yml local.docker.yml.bak
+    cp "$COMPOSE_FILE" "$COMPOSE_FILE.bak"
 
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s/^  $CURRENT_NETWORK:/  $TARGET_NETWORK_KEY:/" local.docker.yml
-        sed -i '' "s/- $CURRENT_NETWORK\$/- $TARGET_NETWORK_KEY/" local.docker.yml
+        sed -i '' "s/^  $CURRENT_NETWORK:/  $TARGET_NETWORK_KEY:/" "$COMPOSE_FILE"
+        sed -i '' "s/- $CURRENT_NETWORK\$/- $TARGET_NETWORK_KEY/" "$COMPOSE_FILE"
     else
-        sed -i "s/^  $CURRENT_NETWORK:/  $TARGET_NETWORK_KEY:/" local.docker.yml
-        sed -i "s/- $CURRENT_NETWORK\$/- $TARGET_NETWORK_KEY/" local.docker.yml
+        sed -i "s/^  $CURRENT_NETWORK:/  $TARGET_NETWORK_KEY:/" "$COMPOSE_FILE"
+        sed -i "s/- $CURRENT_NETWORK\$/- $TARGET_NETWORK_KEY/" "$COMPOSE_FILE"
     fi
 
-    echo -e "${GREEN}✅ Updated local.docker.yml network key${NC}"
+    echo -e "${GREEN}✅ Updated compose network key${NC}"
     CHANGES_MADE=true
 
-    rm -f local.docker.yml.bak
+    rm -f "$COMPOSE_FILE.bak"
 else
-    echo "✓ local.docker.yml network key is correct ($TARGET_NETWORK_KEY)"
+    echo "✓ compose network key is correct ($TARGET_NETWORK_KEY)"
 fi
 
 # Ensure the network's name is driven by NETWORK_NAME
 ensure_network_name_driven_by_env() {
-    local file="local.docker.yml"
+    local file="$COMPOSE_FILE"
     local tmp
 
     tmp="$(mktemp "${TMPDIR:-/tmp}/sync-env.local-docker.XXXXXX")"
@@ -229,7 +262,7 @@ ensure_network_name_driven_by_env() {
 
 ensure_network_name_driven_by_env
 
-echo "✓ local.docker.yml network name is driven by NETWORK_NAME"
+echo "✓ compose network name is driven by NETWORK_NAME"
 echo ""
 
 # Note: Removed automatic mutation of traefik/traefik.yml entrypoints.
@@ -240,9 +273,9 @@ echo ""
 # ============================================
 normalize_basic_users() {
     local key="$1"
-    if grep -q "^${key}=" .env; then
+    if grep -q "^${key}=" "$ENV_FILE"; then
         local original_line
-        original_line=$(grep "^${key}=" .env | head -n1)
+        original_line=$(grep "^${key}=" "$ENV_FILE" | head -n1)
         local value
         value="${original_line#*=}"
         # Collapse any run of '$' to a single '$', then escape once for .env.
@@ -261,7 +294,7 @@ normalize_basic_users() {
                     if (!done && index($0, orig) == 1) { print repl; done=1 }
                     else { print $0 }
                 }
-            ' .env > .env.tmp && mv .env.tmp .env
+            ' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
             CHANGES_MADE=true
         fi
     fi
@@ -289,3 +322,4 @@ else
     echo "  - Network Name: $NETWORK_NAME"
 fi
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
