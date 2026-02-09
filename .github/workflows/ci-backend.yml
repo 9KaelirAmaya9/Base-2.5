@@ -60,6 +60,13 @@ jobs:
             cd django
             pytest -q -m "not integration" --cov=project --cov-report=xml:coverage.xml --cov-report=term --cov-fail-under=60 -c pytest.ini .
           fi
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.service }}
+          path: ${{ matrix.service == 'api' && 'coverage.xml' || 'django/coverage.xml' }}
+          if-no-files-found: error
+          retention-days: 7
       - name: Check Django migrations
         if: matrix.service == 'django'
         working-directory: django
