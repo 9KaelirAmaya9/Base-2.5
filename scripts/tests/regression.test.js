@@ -38,6 +38,8 @@ test('regression: complete-setup inherits basic-auth and escapes $ for Compose',
     'WEBSITE_DOMAIN=your_website_domain_here.com',
     'DEPLOY_MODE=local',
     'APPLY_DEV_DEFAULTS=false',
+    'GIT_REPO=change-me',
+    'GIT_REPO_BRANCH=change-me',
     'DJANGO_SECRET_KEY=change_me_long_random_string',
     'REDIS_PASSWORD=change_me_redis_password',
     'JWT_SECRET=real',
@@ -63,6 +65,8 @@ test('regression: complete-setup inherits basic-auth and escapes $ for Compose',
     'WEBSITE_DOMAIN=example.com',
     'DEPLOY_MODE=local',
     'APPLY_DEV_DEFAULTS=false',
+    'GIT_REPO=https://example.com/repo.git',
+    'GIT_REPO_BRANCH=main',
     'DJANGO_SECRET_KEY=real',
     'REDIS_PASSWORD=real',
     'JWT_SECRET=real',
@@ -97,7 +101,8 @@ test('regression: complete-setup inherits basic-auth and escapes $ for Compose',
   assert.match(envMap.TRAEFIK_DASH_BASIC_USERS, /^admin:/);
   assert.ok(envMap.TRAEFIK_DASH_BASIC_USERS.includes('$$2a$$10$$abc$$def'));
   assert.equal(envMap.FLOWER_BASIC_USERS, envMap.TRAEFIK_DASH_BASIC_USERS);
-  assert.equal(envMap.DJANGO_ADMIN_ALLOWLIST, '1.2.3.4/32');
+  assert.equal(envMap.TP_USER_IP_ADDRESS, '1.2.3.4');
+  assert.equal(envMap.DJANGO_ADMIN_ALLOWLIST, '${TP_USER_IP_ADDRESS}/32');
 });
 
 test('regression: complete-setup is idempotent with deterministic inputs', async () => {
@@ -109,6 +114,8 @@ test('regression: complete-setup is idempotent with deterministic inputs', async
     'WEBSITE_DOMAIN=your_website_domain_here.com',
     'DEPLOY_MODE=local',
     'APPLY_DEV_DEFAULTS=false',
+    'GIT_REPO=change-me',
+    'GIT_REPO_BRANCH=change-me',
     'DJANGO_SECRET_KEY=change_me_long_random_string',
     'REDIS_PASSWORD=change_me_redis_password',
     'JWT_SECRET=real',
@@ -134,6 +141,8 @@ test('regression: complete-setup is idempotent with deterministic inputs', async
     'WEBSITE_DOMAIN=example.com',
     'DEPLOY_MODE=local',
     'APPLY_DEV_DEFAULTS=false',
+    'GIT_REPO=https://example.com/repo.git',
+    'GIT_REPO_BRANCH=main',
     'DJANGO_SECRET_KEY=real',
     'REDIS_PASSWORD=real',
     'JWT_SECRET=real',

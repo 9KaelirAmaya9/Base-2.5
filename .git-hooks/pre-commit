@@ -6,9 +6,9 @@ echo "🔍 Running pre-commit checks..."
 echo ""
 
 # Run sync-env.sh to ensure configuration is synchronized
-if [ -f "./scripts/sync-env.sh" ]; then
+if [ -f "./scripts/bash/sync-env.sh" ]; then
     echo "📋 Synchronizing environment configuration..."
-    ./scripts/sync-env.sh
+    ./scripts/bash/sync-env.sh
     
     # Check if sync made any changes
     if git diff --quiet development.docker.yml traefik/traefik.yml .env; then
@@ -26,7 +26,7 @@ if [ -f "./scripts/sync-env.sh" ]; then
         exit 1
     fi
 else
-    echo "⚠️  sync-env.sh not found, skipping synchronization"
+    echo "⚠️  scripts/bash/sync-env.sh not found, skipping synchronization"
 fi
 
 echo ""

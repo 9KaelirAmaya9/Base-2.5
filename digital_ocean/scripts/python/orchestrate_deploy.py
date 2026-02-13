@@ -7,10 +7,15 @@ Orchestrate Digital Ocean Droplet deployment, DNS update, .env generation, and s
 
 
 import argparse
+import concurrent.futures
+import atexit
 import json
 import os
 import re
+import shutil
+import socket
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -76,6 +81,26 @@ def err(msg):
 def log_json(label, data):
     print(f"\033[1;36m[DEBUG]\033[0m {label}: {json.dumps(data, indent=2)}")
 
+def _do_api_call(label, func, *args, **kwargs):
+    timeout_sec = int(os.getenv("DO_API_TIMEOUT_SECONDS", "30"))
+    retries = int(os.getenv("DO_API_RETRY_COUNT", "3"))
+    delay_sec = float(os.getenv("DO_API_RETRY_DELAY_SECONDS", "2"))
+    last_exc = None
+    for attempt in range(1, retries + 1):
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(func, *args, **kwargs)
+                return future.result(timeout=timeout_sec)
+        except concurrent.futures.TimeoutError as exc:
+            last_exc = exc
+            err(f"{label} timed out after {timeout_sec}s (attempt {attempt}/{retries})")
+        except Exception as exc:
+            last_exc = exc
+            err(f"{label} failed (attempt {attempt}/{retries}): {exc}")
+        if attempt < retries:
+            time.sleep(delay_sec)
+    raise RuntimeError(f"{label} failed after {retries} attempts: {last_exc}")
+
 # Load .env
 load_dotenv()
 
@@ -100,6 +125,201 @@ ssh_dir = os.path.expanduser("~/.ssh")
 ssh_key_path = os.path.join(ssh_dir, PROJECT_NAME)
 pub_key_path = ssh_key_path + ".pub"
 env_path = _find_env_path()
+
+artifact_dir = os.getenv("DEPLOY_ARTIFACT_DIR", "").strip()
+artifact_dir_path: Path | None = None
+deploy_console_path: str | None = None
+do_userdata_json_path = str(Path(__file__).resolve().parent / "DO_userdata.json")
+_pending_artifact_rename: Path | None = None
+_tee_stream = None
+
+
+class _TeeStream:
+    def __init__(self, primary, secondary):
+        self._primary = primary
+        self._secondary = secondary
+
+    def write(self, data):
+        self._primary.write(data)
+        try:
+            self._secondary.write(data)
+        except Exception:
+            pass
+
+    def flush(self):
+        self._primary.flush()
+        try:
+            self._secondary.flush()
+        except Exception:
+            pass
+
+    def isatty(self):
+        return self._primary.isatty()
+
+    def close(self):
+        try:
+            self._secondary.close()
+        except Exception:
+            pass
+
+
+def _init_artifacts() -> None:
+    global artifact_dir_path, deploy_console_path, _tee_stream, do_userdata_json_path
+    if not artifact_dir:
+        return
+    try:
+        artifact_dir_path = Path(artifact_dir)
+        artifact_dir_path.mkdir(parents=True, exist_ok=True)
+        do_userdata_json_path = str(artifact_dir_path / "DO_userdata.json")
+        deploy_console_path = str(artifact_dir_path / "deploy-console.log")
+        try:
+            log_file = open(deploy_console_path, "a", encoding="utf-8", errors="replace")
+            _tee_stream = _TeeStream(sys.stdout, log_file)
+            sys.stdout = _tee_stream
+            sys.stderr = _TeeStream(sys.stderr, log_file)
+        except Exception:
+            _tee_stream = None
+    except Exception as e:
+        err(f"Failed to initialize DEPLOY_ARTIFACT_DIR '{artifact_dir}': {e}")
+        artifact_dir_path = None
+        deploy_console_path = None
+
+
+def _plan_artifact_rename(ip_address: str) -> None:
+    global _pending_artifact_rename
+    if not artifact_dir_path or not ip_address:
+        return
+    name = artifact_dir_path.name
+    if ip_address in name:
+        return
+    unknown_match = re.match(r"^unknown[-_](\d{8}_\d{6})$", name)
+    stamp_match = re.match(r"^(\d{8}_\d{6})$", name)
+    if unknown_match:
+        stamp = unknown_match.group(1)
+    elif stamp_match:
+        stamp = stamp_match.group(1)
+    else:
+        return
+    target = artifact_dir_path.parent / f"{ip_address}-{stamp}"
+    if target == artifact_dir_path:
+        return
+    _pending_artifact_rename = target
+
+
+def _apply_artifact_rename() -> None:
+    global artifact_dir_path, deploy_console_path, do_userdata_json_path, _pending_artifact_rename
+    if not artifact_dir_path or not _pending_artifact_rename:
+        return
+    try:
+        if not _pending_artifact_rename.exists():
+            artifact_dir_path.rename(_pending_artifact_rename)
+        artifact_dir_path = _pending_artifact_rename
+        deploy_console_path = str(artifact_dir_path / "deploy-console.log")
+        do_userdata_json_path = str(artifact_dir_path / "DO_userdata.json")
+        os.environ["DEPLOY_ARTIFACT_DIR"] = str(artifact_dir_path)
+        _pending_artifact_rename = None
+    except Exception:
+        return
+
+
+def _finalize_artifacts() -> None:
+    global _tee_stream
+    try:
+        if _tee_stream:
+            _tee_stream.close()
+            _tee_stream = None
+    except Exception:
+        pass
+    _apply_artifact_rename()
+
+
+def _write_artifact_text(name: str, content: str) -> None:
+    if not artifact_dir_path:
+        return
+    try:
+        path = artifact_dir_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8", errors="replace") as f:
+            f.write(content)
+    except Exception:
+        pass
+
+
+def _write_deploy_metadata(*, droplet_id: int | None, ip_address: str | None, update_only: bool) -> None:
+    if not artifact_dir_path:
+        return
+    payload = {
+        "droplet_id": droplet_id,
+        "ip_address": ip_address,
+        "update_only": update_only,
+        "create_if_missing": CREATE_IF_MISSING,
+        "timestamp_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "artifact_dir": str(artifact_dir_path),
+    }
+    try:
+        with open(artifact_dir_path / "deploy-meta.json", "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2)
+    except Exception:
+        pass
+
+
+def _find_powershell_exe() -> str | None:
+    for candidate in ("pwsh", "powershell"):
+        path = shutil.which(candidate)
+        if path:
+            return path
+    return None
+
+
+def _run_all_tests_suite() -> None:
+    if not artifact_dir_path:
+        err("All-tests requested but DEPLOY_ARTIFACT_DIR is not set.")
+        raise RuntimeError("DEPLOY_ARTIFACT_DIR is required for all-tests")
+
+    ps_exe = _find_powershell_exe()
+    if not ps_exe:
+        err("All-tests requested but no PowerShell executable (pwsh/powershell) was found.")
+        raise RuntimeError("PowerShell is required for all-tests")
+
+    test_script = repo_root / "digital_ocean" / "scripts" / "powershell" / "test.ps1"
+    if not test_script.is_file():
+        raise RuntimeError(f"All-tests script not found at {test_script}")
+
+    args = [
+        ps_exe,
+        "-NoProfile",
+    ]
+    if os.path.basename(ps_exe).lower().startswith("powershell"):
+        args += ["-ExecutionPolicy", "Bypass"]
+    args += [
+        "-File",
+        str(test_script),
+        "-EnvPath",
+        env_path,
+        "-LogsDir",
+        str(artifact_dir_path),
+        "-UseLatestTimestamp:$false",
+        "-Json",
+        "-All",
+    ]
+    domain = os.getenv("WEBSITE_DOMAIN", "").strip()
+    if domain:
+        args += ["-Domain", domain]
+
+    log(f"Running all-tests suite via {ps_exe}...")
+    result = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    stdout_text = result.stdout or ""
+    stderr_text = result.stderr or ""
+    if stdout_text:
+        _write_artifact_text("all-tests.json", stdout_text)
+    if stderr_text:
+        _write_artifact_text("all-tests.stderr.txt", stderr_text)
+    if result.returncode != 0:
+        raise RuntimeError(f"All-tests suite failed with exit code {result.returncode}")
+
+
+atexit.register(_finalize_artifacts)
+_init_artifacts()
 
 
 log(f"Checking for SSH key at {ssh_key_path} and {pub_key_path}")
@@ -176,17 +396,20 @@ SWAGGER_DNS_LABEL = os.getenv("SWAGGER_DNS_LABEL", "swagger").strip() or "swagge
 
 
 def ensure_dns_records_for_droplet(*, client: Client, droplet_id: int, ipv4_address: str) -> None:
+    if _truthy_env(os.getenv("DO_SKIP_DNS"), default=False):
+        log("Skipping DNS updates because DO_SKIP_DNS is set.")
+        return
     log("Updating DNS A/AAAA records for required hostnames...")
     try:
         log_json("API Request - domains.list_records", {"domain": DO_DOMAIN})
-        records = client.domains.list_records(DO_DOMAIN)["domain_records"]
+        records = _do_api_call("domains.list_records", client.domains.list_records, DO_DOMAIN)["domain_records"]
         log_json("API Response - domains.list_records", records)
 
         ipv6_enabled = _truthy_env(os.getenv("DO_IPV6_ENABLED"), default=True)
         ipv6_wait_timeout_sec = int(os.getenv("DO_IPV6_WAIT_TIMEOUT", os.getenv("DO_DEPLOY_TIMEOUT", "180")))
 
         # Refresh droplet info right before DNS changes.
-        droplet_info = client.droplets.get(int(droplet_id))["droplet"]
+        droplet_info = _do_api_call("droplets.get", client.droplets.get, int(droplet_id))["droplet"]
         ipv6_address = _get_public_ipv6(droplet_info)
         if ipv6_enabled and not ipv6_address:
             try:
@@ -270,11 +493,17 @@ def ensure_dns_records_for_droplet(*, client: Client, droplet_id: int, ipv4_addr
                         log(f"[DRY RUN] Would update A record ({name}) -> {ipv4_address}")
                     else:
                         log_json("API Request - domains.update_record (A_generic)", {"id": record["id"], "data": ipv4_address})
-                        resp = client.domains.update_record(DO_DOMAIN, record["id"], {
+                        resp = _do_api_call(
+                            "domains.update_record (A_generic)",
+                            client.domains.update_record,
+                            DO_DOMAIN,
+                            record["id"],
+                            {
                             "type": "A",
                             "name": name,
                             "data": ipv4_address,
-                        })
+                            },
+                        )
                         log_json("API Response - domains.update_record (A_generic)", resp)
                         log(f"Updated A record ({name}) -> {ipv4_address}")
 
@@ -323,11 +552,17 @@ def ensure_dns_records_for_droplet(*, client: Client, droplet_id: int, ipv4_addr
                             log(f"[DRY RUN] Would update AAAA record ({name}) -> {ipv6_address}")
                         else:
                             log_json("API Request - domains.update_record (AAAA_generic)", {"id": record["id"], "data": ipv6_address})
-                            resp = client.domains.update_record(DO_DOMAIN, record["id"], {
+                            resp = _do_api_call(
+                                "domains.update_record (AAAA_generic)",
+                                client.domains.update_record,
+                                DO_DOMAIN,
+                                record["id"],
+                                {
                                 "type": "AAAA",
                                 "name": name,
                                 "data": ipv6_address,
-                            })
+                                },
+                            )
                             log_json("API Response - domains.update_record (AAAA_generic)", resp)
                             log(f"Updated AAAA record ({name}) -> {ipv6_address}")
 
@@ -338,7 +573,12 @@ def ensure_dns_records_for_droplet(*, client: Client, droplet_id: int, ipv4_addr
                 log(f"[DRY RUN] Would create A record ({label}) -> {ipv4_address}")
                 return
             log_json("API Request - domains.create_record (A)", {"type": "A", "name": label, "data": ipv4_address})
-            resp = client.domains.create_record(DO_DOMAIN, {"type": "A", "name": label, "data": ipv4_address})
+            resp = _do_api_call(
+                "domains.create_record (A)",
+                client.domains.create_record,
+                DO_DOMAIN,
+                {"type": "A", "name": label, "data": ipv4_address},
+            )
             log_json("API Response - domains.create_record (A)", resp)
             log(f"Created A record ({label}) -> {ipv4_address}")
 
@@ -349,7 +589,12 @@ def ensure_dns_records_for_droplet(*, client: Client, droplet_id: int, ipv4_addr
                 log(f"[DRY RUN] Would create AAAA record ({label}) -> {ipv6_address}")
                 return
             log_json("API Request - domains.create_record (AAAA)", {"type": "AAAA", "name": label, "data": ipv6_address})
-            resp = client.domains.create_record(DO_DOMAIN, {"type": "AAAA", "name": label, "data": ipv6_address})
+            resp = _do_api_call(
+                "domains.create_record (AAAA)",
+                client.domains.create_record,
+                DO_DOMAIN,
+                {"type": "AAAA", "name": label, "data": ipv6_address},
+            )
             log_json("API Response - domains.create_record (AAAA)", resp)
             log(f"Created AAAA record ({label}) -> {ipv6_address}")
 
@@ -433,9 +678,13 @@ def wait_for_public_ipv6(client: Client, droplet_id: int, timeout_sec: int, inte
 parser = argparse.ArgumentParser(description="Orchestrate DO deploy and post-deploy actions")
 parser.add_argument("--dry-run", action="store_true", help="Print actions without making changes")
 parser.add_argument("--update-only", action="store_true", help="Skip droplet creation; pull latest repo on droplet and rerun post-deploy")
+parser.add_argument("--create-if-missing", action="store_true", help="Create droplet if update-only target is missing")
+parser.add_argument("--all-tests", action="store_true", help="Run full post-deploy verification suite")
 args = parser.parse_args()
 DRY_RUN = args.dry_run
 UPDATE_ONLY = args.update_only
+CREATE_IF_MISSING = args.create_if_missing
+RUN_ALL_TESTS = args.all_tests
 if DRY_RUN:
     print("\033[1;32m[INFO]\033[0m [DRY RUN] No changes will be made. Printing planned actions only.")
 DO_SSH_KEY_ID = os.getenv("DO_SSH_KEY_ID")
@@ -470,7 +719,7 @@ client = Client(token=DO_API_TOKEN)
 
 
 repo_root = Path(env_path).resolve().parent if env_path else Path(__file__).resolve().parents[3]
-base_script_path = str((repo_root / "digital_ocean" / "scripts" / "digital_ocean_base.sh").resolve())
+base_script_path = str((repo_root / "digital_ocean" / "scripts" / "bash" / "digital_ocean_base.sh").resolve())
 log(f"Loading user_data script from {base_script_path}")
 with open(base_script_path) as f:
     user_data_script = f.read()
@@ -498,25 +747,9 @@ print("--- user_data script ---\n" + user_data_script_sub + "\n--- end user_data
 
 """DO_userdata.json location
 
-When run via scripts/powershell/deploy.ps1, we set DEPLOY_ARTIFACT_DIR to a per-run folder
-local_run_logs/<ip>-<timestamp>/ (initially unknown-<timestamp> and later renamed).
-
-In that flow we ONLY write DO_userdata.json into the artifact folder.
+When run via scripts/powershell/deploy.ps1 or Bash wrappers, we set DEPLOY_ARTIFACT_DIR
+to a per-run folder (unknown-<timestamp>) and rename it to <ip>-<timestamp> once known.
 """
-
-artifact_dir = os.getenv("DEPLOY_ARTIFACT_DIR", "").strip()
-if artifact_dir:
-    try:
-        artifact_dir_path = Path(artifact_dir)
-        artifact_dir_path.mkdir(parents=True, exist_ok=True)
-        do_userdata_json_path = str(artifact_dir_path / "DO_userdata.json")
-    except Exception as e:
-        err(f"Failed to initialize DEPLOY_ARTIFACT_DIR '{artifact_dir}': {e}")
-        # Avoid writing into the workspace root by default.
-        do_userdata_json_path = str(Path(__file__).resolve().parent / "DO_userdata.json")
-else:
-    # Avoid writing into the workspace root by default.
-    do_userdata_json_path = str(Path(__file__).resolve().parent / "DO_userdata.json")
 
 
 def write_do_userdata(payload: dict):
@@ -534,6 +767,412 @@ except Exception:
 existing_userdata["user_data"] = user_data_script_sub
 write_do_userdata(existing_userdata)
 log("Wrote user_data to DO_userdata.json (preserving existing fields)")
+
+
+def run_post_reboot() -> None:
+    # --- Post-reboot configuration and service startup ---
+    try:
+        SSH_USER = os.getenv("SSH_USER", "root")
+        deploy_root = str(env_dict.get('DEPLOY_PATH', '/opt/apps')).rstrip('/')
+        project_name = str(env_dict.get('PROJECT_NAME', PROJECT_NAME)).strip('/')
+        repo_path = f"{deploy_root}/{project_name}"
+        log(f"Connecting via SSH to {ip_address} for post-reboot configuration...")
+        ssh_client = paramiko.SSHClient()
+        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        def ssh_connect_with_retry(max_attempts: int = 5, delay: int = 15):
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    connect_timeout = float(os.getenv("SSH_CONNECT_TIMEOUT", "30"))
+                    banner_timeout = float(os.getenv("SSH_BANNER_TIMEOUT", "30"))
+                    auth_timeout = float(os.getenv("SSH_AUTH_TIMEOUT", "30"))
+                    ssh_client.connect(
+                        ip_address,
+                        username=SSH_USER,
+                        key_filename=ssh_key_path,
+                        timeout=connect_timeout,
+                        banner_timeout=banner_timeout,
+                        auth_timeout=auth_timeout,
+                    )
+                    return True
+                except Exception as e:
+                    err(f"SSH connect attempt {attempt}/{max_attempts} failed: {e}")
+                    time.sleep(delay)
+            return False
+
+        def wait_for_ssh_port(host: str, port: int = 22) -> None:
+            timeout_sec = int(os.getenv("SSH_PORT_TIMEOUT", "300"))
+            interval_sec = int(os.getenv("SSH_PORT_INTERVAL", "5"))
+            deadline = time.time() + timeout_sec
+            while time.time() < deadline:
+                try:
+                    with socket.create_connection((host, port), timeout=5):
+                        return
+                except OSError:
+                    time.sleep(interval_sec)
+            raise RuntimeError(f"SSH port {port} did not become available within {timeout_sec}s")
+
+        def run_ssh_cmd(cmd: str, label: str, *, artifact_name: str | None = None, allow_fail: bool = False) -> tuple[int, str, str]:
+            stdin, stdout, stderr = ssh_client.exec_command(cmd)
+            out = stdout.read().decode(errors="replace") if stdout else ""
+            err_out = stderr.read().decode(errors="replace") if stderr else ""
+            exit_status = 0
+            try:
+                exit_status = stdout.channel.recv_exit_status()
+            except Exception:
+                exit_status = 0
+            if out:
+                print(out)
+            if err_out:
+                print(err_out)
+            if artifact_name:
+                payload = out
+                if err_out:
+                    payload = payload + "\n[stderr]\n" + err_out
+                _write_artifact_text(artifact_name, payload)
+            if exit_status != 0 and not allow_fail:
+                raise RuntimeError(f"{label} failed with exit status {exit_status}")
+            return exit_status, out, err_out
+
+        def run_ssh_cmd_stream(cmd: str, label: str, *, artifact_name: str | None = None) -> None:
+            stdin, stdout, stderr = ssh_client.exec_command(cmd)
+            channel = stdout.channel
+            stderr_started = False
+            artifact_handle = None
+            if artifact_name and artifact_dir_path:
+                path = artifact_dir_path / artifact_name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                artifact_handle = open(path, "w", encoding="utf-8", errors="replace")
+            try:
+                while True:
+                    if channel.recv_ready():
+                        chunk = channel.recv(4096).decode(errors="replace")
+                        if chunk:
+                            print(chunk, end="", flush=True)
+                            if artifact_handle:
+                                artifact_handle.write(chunk)
+                                artifact_handle.flush()
+                    if channel.recv_stderr_ready():
+                        chunk = channel.recv_stderr(4096).decode(errors="replace")
+                        if chunk:
+                            if not stderr_started and artifact_handle:
+                                artifact_handle.write("\n[stderr]\n")
+                                artifact_handle.flush()
+                                stderr_started = True
+                            print(chunk, end="", flush=True)
+                            if artifact_handle:
+                                artifact_handle.write(chunk)
+                                artifact_handle.flush()
+                    if channel.exit_status_ready() and not channel.recv_ready() and not channel.recv_stderr_ready():
+                        break
+                    time.sleep(0.2)
+                exit_status = channel.recv_exit_status()
+            finally:
+                if artifact_handle:
+                    artifact_handle.close()
+            if exit_status != 0:
+                raise RuntimeError(f"{label} failed with exit status {exit_status}")
+
+        try:
+            droplet_status = client.droplets.get(int(droplet_id))["droplet"].get("status")
+            if droplet_status and droplet_status != "active":
+                log(f"Droplet status is '{droplet_status}', waiting for 'active'...")
+                for _ in range(30):
+                    time.sleep(5)
+                    droplet_status = client.droplets.get(int(droplet_id))["droplet"].get("status")
+                    if droplet_status == "active":
+                        break
+        except Exception as e:
+            err(f"Unable to confirm droplet status before SSH: {e}")
+
+        try:
+            wait_for_ssh_port(ip_address)
+        except Exception as e:
+            err(str(e))
+
+        if not ssh_connect_with_retry():
+            raise RuntimeError("SSH connection failed after retries")
+
+        # Resolve the actual repo path on the droplet (create flow uses a fixed /opt/apps/project1).
+        candidates = [repo_path, f"{deploy_root}/{PROJECT_NAME}", "/opt/apps/project1"]
+        candidates = [c for c in candidates if c]
+        quoted = " ".join(f"'{c}'" for c in candidates)
+        resolve_cmd = (
+            f"for p in {quoted}; do "
+            f"if [ -f \"$p/development.docker.yml\" ]; then echo $p; break; fi; "
+            f"done"
+        )
+        _, resolved_out, _ = run_ssh_cmd(resolve_cmd, "resolve repo path", artifact_name="resolve-repo-path.txt", allow_fail=True)
+        resolved_path = (resolved_out or "").strip().splitlines()
+        if resolved_path:
+            repo_path = resolved_path[-1].strip() or repo_path
+
+        # If update-only, ensure repo exists and sync it BEFORE uploading .env.
+        # Rationale:
+        # - Git operations (reset/clean/checkout) can clobber local uncommitted state.
+        # - We upload .env after the sync so the deployed runtime secrets/credentials win.
+        if UPDATE_ONLY:
+            log("[UPDATE-ONLY] Ensuring repo path exists and syncing latest changes...")
+            git_remote = str(env_dict.get("GIT_REMOTE", "")).strip()
+            repo_url = str(env_dict.get("REPO_URL", "")).strip()
+            branch = str(env_dict.get("DO_APP_BRANCH", "main")).strip() or "main"
+            if not git_remote:
+                git_remote = repo_url
+            if not git_remote:
+                raise RuntimeError("Missing GIT_REMOTE/REPO_URL in local .env (required for --update-only repo sync)")
+
+            def sync_repo(remote_url: str) -> None:
+                pull_cmd = (
+                    f"set -eu; "
+                    f"test -d {repo_path} || mkdir -p {repo_path}; "
+                    f"cd {repo_path}; "
+                    # Ensure we always have an initialized repo with a correct origin URL.
+                    f"if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then "
+                    f"  git remote set-url origin '{remote_url}' >/dev/null 2>&1 || true; "
+                    f"else "
+                    f"  git init >/dev/null 2>&1; "
+                    f"  git remote remove origin >/dev/null 2>&1 || true; "
+                    f"  git remote add origin '{remote_url}'; "
+                    f"fi; "
+                    # Fetch + hard reset to the desired branch (prefer remote branch, fall back to main).
+                    f"git fetch --all --prune || true; "
+                    f"TARGET='{branch}'; "
+                    f"if ! git show-ref --verify --quiet \"refs/remotes/origin/$TARGET\"; then TARGET='main'; fi; "
+                    f"git checkout -B \"$TARGET\" \"origin/$TARGET\" >/dev/null 2>&1 || true; "
+                    f"git reset --hard \"origin/$TARGET\" >/dev/null 2>&1 || true; "
+                    # Clean untracked files but keep ignored files (like .env). Extra exclusions are belt-and-suspenders.
+                    f"git clean -fd -e .env -e '.env.*' || true"
+                )
+                stdin, stdout, stderr = ssh_client.exec_command(pull_cmd)
+                print(stdout.read().decode())
+                err_out = stderr.read().decode()
+                if err_out:
+                    print(err_out)
+            sync_repo(git_remote)
+
+            _, compose_check, _ = run_ssh_cmd(
+                f"test -f {repo_path}/development.docker.yml && echo ok",
+                "check compose file",
+                artifact_name="compose-present.txt",
+                allow_fail=True,
+            )
+            if "ok" not in (compose_check or "") and repo_url and repo_url != git_remote:
+                log("Compose file missing after sync; retrying with REPO_URL...")
+                sync_repo(repo_url)
+
+        # Copy local .env to remote repo (AFTER any git sync)
+        remote_env_path = f"{repo_path}/.env"
+        log(f"Uploading .env to {remote_env_path}")
+        sftp = ssh_client.open_sftp()
+        sftp.put(env_path.replace('\\', '/'), remote_env_path)
+        sftp.close()
+
+        # Ensure destination folders exist for script updates.
+        run_ssh_cmd(
+            f"mkdir -p {repo_path}/scripts/bash {repo_path}/digital_ocean/scripts/bash {repo_path}/traefik",
+            "ensure remote script dirs",
+            artifact_name="ensure-dirs.txt",
+            allow_fail=True,
+        )
+
+        # Push local script updates that may not exist in the remote repo yet.
+        # This is required for create flows when the repo clone doesn't include newer scripts.
+        log("Uploading local script updates...")
+        sftp = ssh_client.open_sftp()
+        upload_pairs = [
+            (str(repo_root / "scripts" / "bash" / "sync-env.sh"), f"{repo_path}/scripts/bash/sync-env.sh"),
+            (str(repo_root / "scripts" / "bash" / "start.sh"), f"{repo_path}/scripts/bash/start.sh"),
+            (str(repo_root / "traefik" / "entrypoint.sh"), f"{repo_path}/traefik/entrypoint.sh"),
+            (str(repo_root / "digital_ocean" / "scripts" / "bash" / "post_reboot_complete.sh"), f"{repo_path}/digital_ocean/scripts/bash/post_reboot_complete.sh"),
+        ]
+        for src, dest in upload_pairs:
+            if os.path.isfile(src):
+                log(f"Uploading {src} -> {dest}")
+                sftp.put(src.replace('\\', '/'), dest)
+        sftp.close()
+
+        run_ssh_cmd(
+            f"chmod +x {repo_path}/scripts/bash/*.sh {repo_path}/digital_ocean/scripts/bash/*.sh",
+            "chmod scripts",
+            artifact_name="chmod-scripts.txt",
+            allow_fail=True,
+        )
+
+        # Run post_reboot_complete.sh to finalize config (with reconnect on drop)
+        post_reboot_path = f"{repo_path}/digital_ocean/scripts/bash/post_reboot_complete.sh"
+        log(f"Running post-reboot script: {post_reboot_path}")
+        try:
+            run_ssh_cmd(f"bash {post_reboot_path}", "post-reboot script", artifact_name="post-reboot.txt")
+        except Exception as e:
+            err(f"Post-reboot exec encountered an error: {e}. Reconnecting and retrying once...")
+            ssh_client.close()
+            if not ssh_connect_with_retry():
+                raise RuntimeError("SSH reconnect failed after post-reboot error") from e
+            run_ssh_cmd(f"bash {post_reboot_path}", "post-reboot script (retry)", artifact_name="post-reboot.txt")
+
+        # Start services and follow logs briefly for live visibility
+        # Always rebuild to ensure latest images when updating remotely
+        disable_buildkit = _truthy_env(os.getenv("DO_DISABLE_BUILDKIT"), default=False)
+        buildkit_prefix = "DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 " if disable_buildkit else ""
+        start_cmd = (
+            f"cd {repo_path} && {buildkit_prefix}START_FOLLOW_LOGS=true START_BUILD_PROGRESS=plain "
+            f"START_USE_DOCKER_COMPOSE_V2=true START_BUILD_TIMEOUT_SECONDS=900 "
+            f"START_COMPOSE_PARALLEL_LIMIT=1 START_COMPOSE_HTTP_TIMEOUT=1200 "
+            f"POST_DEPLOY_LOGS_FOLLOW_SECONDS=60 bash scripts/bash/start.sh --build --follow-logs"
+        )
+        log(f"Starting services: {start_cmd}")
+        try:
+            run_ssh_cmd_stream(start_cmd, "start services", artifact_name="start-services.txt")
+        except Exception as e:
+            err(f"Start services encountered an error: {e}. Reconnecting and retrying once...")
+            ssh_client.close()
+            if not ssh_connect_with_retry():
+                raise RuntimeError("SSH reconnect failed after start error") from e
+            run_ssh_cmd_stream(start_cmd, "start services (retry)", artifact_name="start-services.txt")
+
+        # Run full test suite after services start (update-only requested by user).
+        # This is best-effort but will exit non-zero on failures.
+        test_timeout = str(os.getenv("REMOTE_TEST_TIMEOUT_SECONDS", "1800"))
+        test_cmd = (
+            f"cd {repo_path} && "
+            f"(cd react-app && NODE_OPTIONS=--max-old-space-size=1024 "
+            f"npm ci --no-audit --no-fund --omit=optional --legacy-peer-deps) && "
+            f"if [ -f scripts/bash/test.sh ]; then TEST_SCRIPT=scripts/bash/test.sh; "
+            f"elif [ -f digital_ocean/scripts/bash/test.sh ]; then TEST_SCRIPT=digital_ocean/scripts/bash/test.sh; "
+            f"else echo 'Missing test script: scripts/bash/test.sh'; exit 127; fi; "
+            f"timeout {test_timeout} bash $TEST_SCRIPT"
+        )
+        log(f"Running tests: {test_cmd}")
+        try:
+            run_ssh_cmd(test_cmd, "remote tests", artifact_name="remote-tests.txt")
+        except Exception as e:
+            err(f"Test run encountered an error: {e}. Reconnecting and retrying once...")
+            ssh_client.close()
+            if not ssh_connect_with_retry():
+                raise RuntimeError("SSH reconnect failed after test error") from e
+            run_ssh_cmd(test_cmd, "remote tests (retry)", artifact_name="remote-tests.txt")
+
+        # Check status and logs
+        def parse_ps_health(ps_text: str) -> dict[str, str]:
+            summary: dict[str, str] = {}
+            for line in ps_text.splitlines():
+                if not line or line.startswith("NAME"):
+                    continue
+                parts = re.split(r"\s{2,}", line.strip())
+                if len(parts) < 4:
+                    # Fallback split by single spaces if columns are condensed
+                    parts = line.split()
+                if not parts:
+                    continue
+                name = parts[0]
+                # STATUS column usually near the end; search for token containing health
+                status_field = next((p for p in parts if "healthy" in p.lower() or "unhealthy" in p.lower() or "exit" in p.lower() or "restarting" in p.lower()), None)
+                if status_field:
+                    summary[name] = status_field
+            return summary
+
+        log("Fetching docker compose status...")
+        _, ps_output, ps_err = run_ssh_cmd(
+            f"cd {repo_path} && docker compose -f development.docker.yml ps",
+            "docker compose ps",
+            artifact_name="compose-ps.txt",
+            allow_fail=True,
+        )
+        if ps_err:
+            ps_output = ps_output + "\n[stderr]\n" + ps_err
+        health_summary = parse_ps_health(ps_output)
+
+        def detect_http_errors(log_text: str) -> tuple[int, int, dict[str, int]]:
+            errors_4xx = 0
+            errors_5xx = 0
+            paths: dict[str, int] = {}
+            for raw_line in log_text.splitlines():
+                line = raw_line.strip()
+                if not line:
+                    continue
+                # Try JSON first (Traefik, structured logs)
+                try:
+                    obj = json.loads(line)
+                    status = None
+                    for key in ("status", "DownstreamStatus", "downstream_status"):
+                        if key in obj:
+                            status = obj[key]
+                            break
+                    if isinstance(status, str) and status.isdigit():
+                        status = int(status)
+                    if isinstance(status, int):
+                        if 400 <= status <= 499:
+                            errors_4xx += 1
+                        elif 500 <= status <= 599:
+                            errors_5xx += 1
+                        # Capture path if present
+                        path = obj.get("RequestPath") or obj.get("path") or obj.get("requestPath")
+                        if path and (400 <= status <= 499 or 500 <= status <= 599):
+                            paths[path] = paths.get(path, 0) + 1
+                        continue
+                except Exception:
+                    pass
+
+                # Nginx/combined log format: "GET /path HTTP/1.1" 404 ...
+                m = re.search(r"\s([45]\d{2})\s", line)
+                if m:
+                    code = int(m.group(1))
+                    if 400 <= code <= 499:
+                        errors_4xx += 1
+                    elif 500 <= code <= 599:
+                        errors_5xx += 1
+                    # Try to extract the path inside quotes
+                    pm = re.search(r"\"(?:GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+([^\s\"]+)\s+HTTP/", line)
+                    if pm:
+                        p = pm.group(1)
+                        if 400 <= code <= 499 or 500 <= code <= 599:
+                            paths[p] = paths.get(p, 0) + 1
+            return errors_4xx, errors_5xx, paths
+
+        log("Fetching key service logs (last 100 lines) and summarizing...")
+        svc_errors: dict[str, dict[str, object]] = {}
+        for svc in ["traefik", "nginx", "api", "django", "postgres", "pgadmin", "nginx-static"]:
+            log(f"Logs for {svc}:")
+            _, logs_text, logs_err = run_ssh_cmd(
+                f"cd {repo_path} && docker compose -f development.docker.yml logs --tail=100 {svc}",
+                f"logs {svc}",
+                artifact_name=f"{svc}-logs.txt",
+                allow_fail=True,
+            )
+            if logs_err:
+                logs_text = logs_text + "\n[stderr]\n" + logs_err
+            # Only perform HTTP error detection for web-facing services
+            if svc in ("traefik", "nginx", "api"):
+                e4, e5, paths = detect_http_errors(logs_text)
+                svc_errors[svc] = {"4xx": e4, "5xx": e5, "paths": paths}
+
+        # Print concise summary
+        print("\n===== Deployment Health Summary =====")
+        if health_summary:
+            print("[Containers]")
+            for name, status in health_summary.items():
+                print(f"- {name}: {status}")
+        else:
+            print("[Containers] No explicit health statuses parsed.")
+        if svc_errors:
+            print("\n[HTTP Errors]")
+            for svc, data in svc_errors.items():
+                print(f"- {svc}: 4xx={data['4xx']}, 5xx={data['5xx']}")
+                hotpaths = sorted(((p, c) for p, c in data.get("paths", {}).items()), key=lambda x: -x[1])[:5]
+                if hotpaths:
+                    for p, c in hotpaths:
+                        print(f"  \u2514 {p}: {c}")
+        print("===== End Summary =====\n")
+
+        ssh_client.close()
+        log("Post-deploy tasks completed.")
+
+        if RUN_ALL_TESTS:
+            _run_all_tests_suite()
+            log("All-tests suite completed.")
+    except Exception as e:
+        err(f"Post-deploy workflow failed: {e}")
+        raise
 
 # --- 1. Create Droplet ---
 
@@ -555,50 +1194,63 @@ ip_address = None
 droplet_id = None
 droplet_info = None
 
+fallback_to_create = False
 if UPDATE_ONLY:
     log("[UPDATE-ONLY] Skipping creation; locating existing droplet by name...")
     try:
         lst = client.droplets.list(per_page=200)
         matches = [d for d in lst.get("droplets", []) if d.get("name") == DO_DROPLET_NAME]
         if not matches:
-            raise RuntimeError(f"No existing droplet found named {DO_DROPLET_NAME}")
+            if CREATE_IF_MISSING:
+                log(f"[UPDATE-ONLY] No existing droplet found named {DO_DROPLET_NAME}; falling back to create.")
+                fallback_to_create = True
+            else:
+                raise RuntimeError(f"No existing droplet found named {DO_DROPLET_NAME}")
 
-        # If multiple droplets share the same name, prefer the most recently created.
-        # If created_at is missing, fall back to highest id.
-        def sort_key(d):
-            return (d.get("created_at") or "", int(d.get("id") or 0))
-        matched = sorted(matches, key=sort_key)[-1]
+        if fallback_to_create:
+            UPDATE_ONLY = False
+        else:
+            # If multiple droplets share the same name, prefer the most recently created.
+            # If created_at is missing, fall back to highest id.
+            def sort_key(d):
+                return (d.get("created_at") or "", int(d.get("id") or 0))
+            matched = sorted(matches, key=sort_key)[-1]
 
-        droplet_id = matched["id"]
-        droplet_info = client.droplets.get(droplet_id)["droplet"]
-        v4_list = droplet_info.get("networks", {}).get("v4", [])
-        public_v4 = next((n for n in v4_list if n.get("type") == "public" and n.get("ip_address")), None)
-        ip_address = (public_v4 or (v4_list[0] if v4_list else {})).get("ip_address")
-        if not ip_address:
-            raise RuntimeError(f"Could not determine public IPv4 for droplet {droplet_id}")
-        log(f"Using existing droplet {droplet_id} at {ip_address}")
+            droplet_id = matched["id"]
+            droplet_info = client.droplets.get(droplet_id)["droplet"]
+            v4_list = droplet_info.get("networks", {}).get("v4", [])
+            public_v4 = next((n for n in v4_list if n.get("type") == "public" and n.get("ip_address")), None)
+            ip_address = (public_v4 or (v4_list[0] if v4_list else {})).get("ip_address")
+            if not ip_address:
+                raise RuntimeError(f"Could not determine public IPv4 for droplet {droplet_id}")
+            log(f"Using existing droplet {droplet_id} at {ip_address}")
 
-        # Update DO_userdata.json for downstream scripts (deploy.ps1 uses it as a primary source)
-        try:
-            do_userdata = {}
-            if os.path.exists(do_userdata_json_path):
-                with open(do_userdata_json_path, encoding="utf-8") as f:
-                    do_userdata = json.load(f) or {}
-            do_userdata["droplet_id"] = droplet_id
-            do_userdata["ip_address"] = ip_address
-            write_do_userdata(do_userdata)
-            log(f"Updated {do_userdata_json_path} with droplet_id {droplet_id} and ip_address {ip_address}")
-        except Exception as e:
-            err(f"Failed to update {do_userdata_json_path}: {e}")
+            # Update DO_userdata.json for downstream scripts (deploy.ps1 uses it as a primary source)
+            try:
+                do_userdata = {}
+                if os.path.exists(do_userdata_json_path):
+                    with open(do_userdata_json_path, encoding="utf-8") as f:
+                        do_userdata = json.load(f) or {}
+                do_userdata["droplet_id"] = droplet_id
+                do_userdata["ip_address"] = ip_address
+                write_do_userdata(do_userdata)
+                log(f"Updated {do_userdata_json_path} with droplet_id {droplet_id} and ip_address {ip_address}")
+            except Exception as e:
+                err(f"Failed to update {do_userdata_json_path}: {e}")
 
-        # Always ensure required DNS records exist/update to current droplet IP.
-        # This is important in --update-only, where the droplet already exists but
-        # DNS may be missing/stale (e.g., swagger subdomain).
-        ensure_dns_records_for_droplet(client=client, droplet_id=int(droplet_id), ipv4_address=str(ip_address))
+            _plan_artifact_rename(ip_address)
+            _apply_artifact_rename()
+            _write_deploy_metadata(droplet_id=droplet_id, ip_address=ip_address, update_only=True)
+
+            # Always ensure required DNS records exist/update to current droplet IP.
+            # This is important in --update-only, where the droplet already exists but
+            # DNS may be missing/stale (e.g., swagger subdomain).
+            ensure_dns_records_for_droplet(client=client, droplet_id=int(droplet_id), ipv4_address=str(ip_address))
     except Exception as e:
         err(f"Failed to locate existing droplet: {e}")
         exit(1)
-else:
+
+if not UPDATE_ONLY:
     log("Creating droplet via DigitalOcean API...")
     try:
         log_json("API Request - droplets.create", droplet_spec)
@@ -629,6 +1281,10 @@ else:
             log(f"Updated {do_userdata_json_path} with droplet_id {droplet_id} and ip_address {ip_address}")
         except Exception as e:
             err(f"Failed to update {do_userdata_json_path}: {e}")
+
+        _plan_artifact_rename(ip_address)
+        _apply_artifact_rename()
+        _write_deploy_metadata(droplet_id=droplet_id, ip_address=ip_address, update_only=False)
     except Exception as e:
         err(f"Droplet creation failed: {e}")
         exit(1)
@@ -725,279 +1381,13 @@ else:
         log("Deployment script completed successfully.")
         SUMMARY.append("Deployment script completed successfully.")
 
-    # Extra stabilization wait to allow services/SSH to settle
-    STABILIZATION_WAIT = int(os.getenv("POST_DEPLOY_STABILIZATION_SECONDS", "60"))
-    if not UPDATE_ONLY:
-        log(f"Waiting {STABILIZATION_WAIT} seconds for SSH/services to stabilize...")
-        time.sleep(STABILIZATION_WAIT)
+# Extra stabilization wait to allow services/SSH to settle
+STABILIZATION_WAIT = int(os.getenv("POST_DEPLOY_STABILIZATION_SECONDS", "60"))
+if not UPDATE_ONLY:
+    log(f"Waiting {STABILIZATION_WAIT} seconds for SSH/services to stabilize...")
+    time.sleep(STABILIZATION_WAIT)
 
-    # --- Post-reboot configuration and service startup ---
-    try:
-        SSH_USER = os.getenv("SSH_USER", "root")
-        deploy_root = str(env_dict.get('DEPLOY_PATH', '/opt/apps')).rstrip('/')
-        project_name = str(env_dict.get('PROJECT_NAME', PROJECT_NAME)).strip('/')
-        repo_path = f"{deploy_root}/{project_name}"
-        log(f"Connecting via SSH to {ip_address} for post-reboot configuration...")
-        ssh_client = paramiko.SSHClient()
-        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
-        def ssh_connect_with_retry(max_attempts: int = 5, delay: int = 15):
-            for attempt in range(1, max_attempts + 1):
-                try:
-                    ssh_client.connect(ip_address, username=SSH_USER, key_filename=ssh_key_path)
-                    return True
-                except Exception as e:
-                    err(f"SSH connect attempt {attempt}/{max_attempts} failed: {e}")
-                    time.sleep(delay)
-            return False
-
-        if not ssh_connect_with_retry():
-            raise RuntimeError("SSH connection failed after retries")
-
-        # If update-only, ensure repo exists and sync it BEFORE uploading .env.
-        # Rationale:
-        # - Git operations (reset/clean/checkout) can clobber local uncommitted state.
-        # - We upload .env after the sync so the deployed runtime secrets/credentials win.
-        if UPDATE_ONLY:
-            log("[UPDATE-ONLY] Ensuring repo path exists and syncing latest changes...")
-            git_remote = str(env_dict.get("GIT_REMOTE", "")).strip()
-            branch = str(env_dict.get("DO_APP_BRANCH", "main")).strip() or "main"
-            if not git_remote:
-                raise RuntimeError("Missing GIT_REMOTE in local .env (required for --update-only repo sync)")
-
-            pull_cmd = (
-                f"set -eu; "
-                f"test -d {repo_path} || mkdir -p {repo_path}; "
-                f"cd {repo_path}; "
-                # Ensure we always have an initialized repo with a correct origin URL.
-                f"if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then "
-                f"  git remote set-url origin '{git_remote}' >/dev/null 2>&1 || true; "
-                f"else "
-                f"  git init >/dev/null 2>&1; "
-                f"  git remote remove origin >/dev/null 2>&1 || true; "
-                f"  git remote add origin '{git_remote}'; "
-                f"fi; "
-                # Fetch + hard reset to the desired branch (prefer remote branch, fall back to main).
-                f"git fetch --all --prune || true; "
-                f"TARGET='{branch}'; "
-                f"if ! git show-ref --verify --quiet \"refs/remotes/origin/$TARGET\"; then TARGET='main'; fi; "
-                f"git checkout -B \"$TARGET\" \"origin/$TARGET\" >/dev/null 2>&1 || true; "
-                f"git reset --hard \"origin/$TARGET\" >/dev/null 2>&1 || true; "
-                # Clean untracked files but keep ignored files (like .env). Extra exclusions are belt-and-suspenders.
-                f"git clean -fd -e .env -e '.env.*' || true"
-            )
-            stdin, stdout, stderr = ssh_client.exec_command(pull_cmd)
-            print(stdout.read().decode())
-            err_out = stderr.read().decode()
-            if err_out:
-                print(err_out)
-
-        # Copy local .env to remote repo (AFTER any git sync)
-        remote_env_path = f"{repo_path}/.env"
-        log(f"Uploading .env to {remote_env_path}")
-        sftp = ssh_client.open_sftp()
-        sftp.put(env_path.replace('\\', '/'), remote_env_path)
-        sftp.close()
-
-        # In update-only, also push local script updates that aren't in the remote repo yet.
-        if UPDATE_ONLY:
-            log("[UPDATE-ONLY] Uploading local script updates...")
-            sftp = ssh_client.open_sftp()
-            upload_pairs = [
-                (str(repo_root / "scripts" / "sync-env.sh"), f"{repo_path}/scripts/sync-env.sh"),
-                (str(repo_root / "scripts" / "start.sh"), f"{repo_path}/scripts/start.sh"),
-                (str(repo_root / "traefik" / "entrypoint.sh"), f"{repo_path}/traefik/entrypoint.sh"),
-                (str(repo_root / "digital_ocean" / "scripts" / "post_reboot_complete.sh"), f"{repo_path}/digital_ocean/scripts/post_reboot_complete.sh"),
-            ]
-            for src, dest in upload_pairs:
-                if os.path.isfile(src):
-                    log(f"Uploading {src} -> {dest}")
-                    sftp.put(src.replace('\\', '/'), dest)
-            sftp.close()
-
-        # Run post_reboot_complete.sh to finalize config (with reconnect on drop)
-        post_reboot_path = f"{repo_path}/digital_ocean/scripts/post_reboot_complete.sh"
-        log(f"Running post-reboot script: {post_reboot_path}")
-        try:
-            stdin, stdout, stderr = ssh_client.exec_command(f"bash {post_reboot_path}")
-            print(stdout.read().decode())
-            err_out = stderr.read().decode()
-            if err_out:
-                print(err_out)
-        except Exception as e:
-            err(f"Post-reboot exec encountered an error: {e}. Reconnecting and retrying once...")
-            ssh_client.close()
-            if not ssh_connect_with_retry():
-                raise RuntimeError("SSH reconnect failed after post-reboot error") from e
-            stdin, stdout, stderr = ssh_client.exec_command(f"bash {post_reboot_path}")
-            print(stdout.read().decode())
-            err_out = stderr.read().decode()
-            if err_out:
-                print(err_out)
-
-        # Start services and follow logs briefly for live visibility
-        # Always rebuild to ensure latest images when updating remotely
-        start_cmd = (
-            f"cd {repo_path} && START_FOLLOW_LOGS=true POST_DEPLOY_LOGS_FOLLOW_SECONDS=60 "
-            f"bash scripts/start.sh --build --follow-logs"
-        )
-        log(f"Starting services: {start_cmd}")
-        try:
-            stdin, stdout, stderr = ssh_client.exec_command(start_cmd)
-            print(stdout.read().decode())
-            err_out = stderr.read().decode()
-            if err_out:
-                print(err_out)
-        except Exception as e:
-            err(f"Start services encountered an error: {e}. Reconnecting and retrying once...")
-            ssh_client.close()
-            if not ssh_connect_with_retry():
-                raise RuntimeError("SSH reconnect failed after start error") from e
-            stdin, stdout, stderr = ssh_client.exec_command(start_cmd)
-            print(stdout.read().decode())
-            err_out = stderr.read().decode()
-            if err_out:
-                print(err_out)
-
-        # Run full test suite after services start (update-only requested by user).
-        # This is best-effort but will exit non-zero on failures.
-        test_timeout = str(os.getenv("REMOTE_TEST_TIMEOUT_SECONDS", "1800"))
-        test_cmd = (
-            f"cd {repo_path} && "
-            f"(cd react-app && NODE_OPTIONS=--max-old-space-size=1024 "
-            f"npm ci --no-audit --no-fund --omit=optional --legacy-peer-deps) && "
-            f"timeout {test_timeout} bash scripts/test.sh"
-        )
-        log(f"Running tests: {test_cmd}")
-        try:
-            stdin, stdout, stderr = ssh_client.exec_command(test_cmd)
-            print(stdout.read().decode())
-            err_out = stderr.read().decode()
-            if err_out:
-                print(err_out)
-        except Exception as e:
-            err(f"Test run encountered an error: {e}. Reconnecting and retrying once...")
-            ssh_client.close()
-            if not ssh_connect_with_retry():
-                raise RuntimeError("SSH reconnect failed after test error") from e
-            stdin, stdout, stderr = ssh_client.exec_command(test_cmd)
-            print(stdout.read().decode())
-            err_out = stderr.read().decode()
-            if err_out:
-                print(err_out)
-
-        # Check status and logs
-        def parse_ps_health(ps_text: str) -> dict[str, str]:
-            summary: dict[str, str] = {}
-            for line in ps_text.splitlines():
-                if not line or line.startswith("NAME"):
-                    continue
-                parts = re.split(r"\s{2,}", line.strip())
-                if len(parts) < 4:
-                    # Fallback split by single spaces if columns are condensed
-                    parts = line.split()
-                if not parts:
-                    continue
-                name = parts[0]
-                # STATUS column usually near the end; search for token containing health
-                status_field = next((p for p in parts if "healthy" in p.lower() or "unhealthy" in p.lower() or "exit" in p.lower() or "restarting" in p.lower()), None)
-                if status_field:
-                    summary[name] = status_field
-            return summary
-
-        log("Fetching docker compose status...")
-        stdin, stdout, stderr = ssh_client.exec_command(f"cd {repo_path} && docker compose -f development.docker.yml ps")
-        ps_output = stdout.read().decode()
-        print(ps_output)
-        err_out = stderr.read().decode()
-        if err_out:
-            print(err_out)
-        health_summary = parse_ps_health(ps_output)
-
-        def detect_http_errors(log_text: str) -> tuple[int, int, dict[str, int]]:
-            errors_4xx = 0
-            errors_5xx = 0
-            paths: dict[str, int] = {}
-            for raw_line in log_text.splitlines():
-                line = raw_line.strip()
-                if not line:
-                    continue
-                # Try JSON first (Traefik, structured logs)
-                try:
-                    obj = json.loads(line)
-                    status = None
-                    for key in ("status", "DownstreamStatus", "downstream_status"):
-                        if key in obj:
-                            status = obj[key]
-                            break
-                    if isinstance(status, str) and status.isdigit():
-                        status = int(status)
-                    if isinstance(status, int):
-                        if 400 <= status <= 499:
-                            errors_4xx += 1
-                        elif 500 <= status <= 599:
-                            errors_5xx += 1
-                        # Capture path if present
-                        path = obj.get("RequestPath") or obj.get("path") or obj.get("requestPath")
-                        if path and (400 <= status <= 499 or 500 <= status <= 599):
-                            paths[path] = paths.get(path, 0) + 1
-                        continue
-                except Exception:
-                    pass
-
-                # Nginx/combined log format: "GET /path HTTP/1.1" 404 ...
-                m = re.search(r"\s([45]\d{2})\s", line)
-                if m:
-                    code = int(m.group(1))
-                    if 400 <= code <= 499:
-                        errors_4xx += 1
-                    elif 500 <= code <= 599:
-                        errors_5xx += 1
-                    # Try to extract the path inside quotes
-                    pm = re.search(r"\"(?:GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+([^\s\"]+)\s+HTTP/", line)
-                    if pm:
-                        p = pm.group(1)
-                        if 400 <= code <= 499 or 500 <= code <= 599:
-                            paths[p] = paths.get(p, 0) + 1
-            return errors_4xx, errors_5xx, paths
-
-        log("Fetching key service logs (last 100 lines) and summarizing...")
-        svc_errors: dict[str, dict[str, object]] = {}
-        for svc in ["traefik", "nginx", "api", "django", "postgres", "pgadmin", "nginx-static"]:
-            log(f"Logs for {svc}:")
-            stdin, stdout, stderr = ssh_client.exec_command(f"cd {repo_path} && docker compose -f development.docker.yml logs --tail=100 {svc}")
-            logs_text = stdout.read().decode()
-            print(logs_text)
-            err_out = stderr.read().decode()
-            if err_out:
-                print(err_out)
-            # Only perform HTTP error detection for web-facing services
-            if svc in ("traefik", "nginx", "api"):
-                e4, e5, paths = detect_http_errors(logs_text)
-                svc_errors[svc] = {"4xx": e4, "5xx": e5, "paths": paths}
-
-        # Print concise summary
-        print("\n===== Deployment Health Summary =====")
-        if health_summary:
-            print("[Containers]")
-            for name, status in health_summary.items():
-                print(f"- {name}: {status}")
-        else:
-            print("[Containers] No explicit health statuses parsed.")
-        if svc_errors:
-            print("\n[HTTP Errors]")
-            for svc, data in svc_errors.items():
-                print(f"- {svc}: 4xx={data['4xx']}, 5xx={data['5xx']}")
-                hotpaths = sorted(((p, c) for p, c in data.get("paths", {}).items()), key=lambda x: -x[1])[:5]
-                if hotpaths:
-                    for p, c in hotpaths:
-                        print(f"  \u2514 {p}: {c}")
-        print("===== End Summary =====\n")
-
-        ssh_client.close()
-        log("Post-deploy tasks completed.")
-    except Exception as e:
-        err(f"Post-deploy workflow failed: {e}")
-    exit(0)
+run_post_reboot()
+exit(0)
 
 

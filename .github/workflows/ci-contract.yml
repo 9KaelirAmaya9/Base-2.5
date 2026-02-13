@@ -15,8 +15,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-          cache: "pip"
+          python-version: '3.12'
+          cache: 'pip'
 
       - name: Install deps
         run: |
@@ -26,4 +26,4 @@ jobs:
 
       - name: Check contract vs runtime
         run: |
-          python scripts/contract_check.py --contract specs/001-django-fastapi-react/contracts/openapi.yaml
+          python scripts/python/contract_check.py --contract specs/001-django-fastapi-react/contracts/openapi.yaml

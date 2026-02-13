@@ -105,6 +105,34 @@ if ($RequireTasks -and -not (Test-Path $paths.TASKS -PathType Leaf)) {
     exit 1
 }
 
+# Validate Spec-Kit configuration/templates
+$templateDir = Join-Path $paths.REPO_ROOT '.specify/templates'
+$requiredTemplates = @(
+    'agent-file-template.md'
+    'checklist-template.md'
+    'constitution-template.md'
+    'plan-template.md'
+    'spec-template.md'
+    'tasks-template.md'
+)
+
+$missingTemplates = @()
+foreach ($template in $requiredTemplates) {
+    $templatePath = Join-Path $templateDir $template
+    if (-not (Test-Path $templatePath -PathType Leaf)) {
+        $missingTemplates += $template
+    }
+}
+
+if ($missingTemplates.Count -gt 0) {
+    Write-Output "ERROR: Missing Spec-Kit template files in ${templateDir}:"
+    foreach ($template in $missingTemplates) {
+        Write-Output "  - $template"
+    }
+    Write-Output "Run specify init or restore the templates before continuing."
+    exit 1
+}
+
 # Build list of available documents
 $docs = @()
 

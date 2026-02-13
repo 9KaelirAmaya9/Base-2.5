@@ -3,6 +3,7 @@ param(
   [switch]$Help,
   [switch]$Full,
   [switch]$UpdateOnly,
+  [switch]$CreateIfMissing,
   [string]$EnvPath = ".\.env",
   [string]$SshKey = $null,
   [string]$SshUser = $env:SSH_USER,
@@ -38,6 +39,7 @@ if ($Help) {
   Write-Host 'Common options:'
   Write-Host '  -Full            Provision a droplet if needed (default is update-only)'
   Write-Host '  -UpdateOnly      Update an existing droplet without provisioning'
+  Write-Host '  -CreateIfMissing Create droplet if update-only target is missing'
   Write-Host '  -EnvPath <path>  Path to .env (default: .\.env)'
   Write-Host '  -SshKey <path>   Override SSH key path'
   Write-Host '  -SshUser <user>  SSH user (default: SSH_USER env or root)'
@@ -854,6 +856,7 @@ function Run-Orchestrator {
   Write-Section "Running orchestrator"
     $cliArgs = @()
   if (-not $Full -and $UpdateOnly) { $cliArgs += '--update-only' }
+  if ($CreateIfMissing) { $cliArgs += '--create-if-missing' }
   & .\.venv\Scripts\python.exe .\digital_ocean\scripts\python\orchestrate_deploy.py @cliArgs
 }
 

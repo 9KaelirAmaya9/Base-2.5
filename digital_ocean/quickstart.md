@@ -3,7 +3,9 @@
 Run the edit/maintain script to update deployed resources (with `.venv` active):
 
 ```bash
-(.venv) python edit.py [--dry-run]
+(.venv) python digital_ocean/scripts/python/edit.py [--dry-run]
+# or
+./digital_ocean/scripts/bash/edit.sh [--dry-run]
 ```
 
 **Options:**
@@ -39,7 +41,9 @@ Run the edit/maintain script to update deployed resources (with `.venv` active):
 Run the teardown script to remove deployed resources:
 
 ```bash
-(.venv) python teardown.py [--dry-run]
+(.venv) python digital_ocean/scripts/python/teardown.py [--dry-run]
+# or
+./digital_ocean/scripts/bash/teardown.sh [--dry-run]
 ```
 
 **Options:**
@@ -78,17 +82,17 @@ Run the teardown script to remove deployed resources:
    - Key variables: `DO_API_TOKEN`, `DO_API_REGION`, `DO_API_IMAGE`, `DO_APP_NAME`, etc.
    - Never commit `.env` to version control.
 3. **Run first-start orchestration**:
-   - `./scripts/first-start.ps1` (PowerShell) or `pwsh -ExecutionPolicy Bypass -File ./scripts/first-start.ps1`
+   - `./scripts/powershell/first-start.ps1` (PowerShell) or `pwsh -ExecutionPolicy Bypass -File ./scripts/powershell/first-start.ps1`
    - Creates/activates `.venv`, installs Python/Node dependencies, and runs the guided setup.
    - Guided setup generates `.env` from `.env.example` and may prompt to overwrite `.env` and request required values (DigitalOcean token, domain, emails, etc.).
    - Use `-SkipSetup` if you only need to hydrate dependencies.
    - Keep `.venv` active for all pip installs and DigitalOcean Python commands.
 
    Exact scripts invoked by `first-start.ps1` (in order):
-   - `scripts/bootstrap-venv.ps1`
-   - `scripts/install-python-deps.ps1`
-   - `scripts/install-node-deps.ps1`
-   - `scripts/setup.ps1`
+   - `scripts/powershell/bootstrap-venv.ps1`
+   - `scripts/powershell/install-python-deps.ps1`
+   - `scripts/powershell/install-node-deps.ps1`
+   - `scripts/powershell/setup.ps1`
 
 ## Experimental tools
 
@@ -96,7 +100,7 @@ Experimental or stubbed scripts live in [digital_ocean/experimental](experimenta
 
 ### DigitalOcean SSH key sync (runs during setup)
 
-This step runs inside [scripts/setup.ps1](../scripts/setup.ps1) after .env is written. It calls [scripts/powershell/add-ssh-key.ps1](scripts/powershell/add-ssh-key.ps1) and uses [DO_ssh_keys.py](DO_ssh_keys.py).
+This step runs inside [scripts/powershell/setup.ps1](../scripts/powershell/setup.ps1) after .env is written. It calls [scripts/powershell/add-ssh-key.ps1](scripts/powershell/add-ssh-key.ps1) and uses [DO_ssh_keys.py](DO_ssh_keys.py).
 
 What it does (ordered):
 
@@ -112,7 +116,7 @@ Why it exists:
 
 ### Setup prompts (interactive)
 
-The interactive questions come from [scripts/setup.js](../scripts/setup.js) (invoked by [scripts/setup.ps1](../scripts/setup.ps1)). These are the exact prompts and choices:
+The interactive questions come from [scripts/setup.js](../scripts/setup.js) (invoked by [scripts/powershell/setup.ps1](../scripts/powershell/setup.ps1)). These are the exact prompts and choices:
 
 - Overwrite existing .env: yes/no (default no); creates a timestamped backup on yes.
 - Project name: lowercase letters, digits, hyphen only; required.
@@ -133,14 +137,14 @@ Dev defaults summary:
 
 Non-interactive note:
 
-- `scripts/setup.ps1 -NonInteractive` disables prompts and reads values from args/environment; it will fail fast if required values are missing.
+- `scripts/powershell/setup.ps1 -NonInteractive` disables prompts and reads values from args/environment; it will fail fast if required values are missing.
 
 After writing .env, [scripts/setup.js](../scripts/setup.js) prints a checklist of required categories and recommends running:
 
 - npm run setup:complete
 - npm run doctor
 
-Tip: `scripts/first-start.ps1 -Help` and `scripts/setup.ps1 -Help` print usage details.
+Tip: `scripts/powershell/first-start.ps1 -Help` and `scripts/powershell/setup.ps1 -Help` print usage details.
 
 ### Golden path (all-green deploy)
 
@@ -165,50 +169,54 @@ See the full end-to-end sequence in [docs/GOLDEN_PATH.md](../docs/GOLDEN_PATH.md
 
 ## Usage
 
-Activate the repo virtual environment before running these commands (PowerShell: `.\.venv\Scripts\Activate.ps1`, Bash: `source .venv/bin/activate`). Running `./scripts/first-start.ps1` handles this for the current shell. Once active:
+Activate the repo virtual environment before running these commands (PowerShell: `.\.venv\Scripts\Activate.ps1`, Bash: `source .venv/bin/activate`). Running `./scripts/powershell/first-start.ps1` handles this for the current shell. Once active:
 
-- **Deploy**: `./scripts/deploy.sh [--dry-run]` or `(.venv) python deploy.py [--dry-run]`
-- **Teardown**: `./scripts/teardown.sh` or `(.venv) python teardown.py`
-- **Edit/Maintain**: `./scripts/edit.sh` or `(.venv) python edit.py`
-- **Info/Query**: `./scripts/info.sh` or `(.venv) python info.py`
-- **Exec**: `./scripts/exec.sh` or `(.venv) python exec.py`
+- **Deploy**: `./digital_ocean/scripts/bash/deploy.sh [options]` or `(.venv) python digital_ocean/scripts/python/deploy.py [--dry-run]`
+- **Teardown**: `./digital_ocean/scripts/bash/teardown.sh` or `(.venv) python digital_ocean/scripts/python/teardown.py`
+- **Edit/Maintain**: `./digital_ocean/scripts/bash/edit.sh` or `(.venv) python digital_ocean/scripts/python/edit.py`
+- **Info/Query**: `./digital_ocean/scripts/bash/info.sh` or `(.venv) python digital_ocean/scripts/python/info.py`
+- **Exec**: `./digital_ocean/scripts/bash/exec.sh` or `(.venv) python digital_ocean/scripts/python/exec.py`
 
 ## Deployment Instructions
 
 1. Ensure all required environment variables are set in `.env`.
-2. Run `./scripts/first-start.ps1` if `.venv` is not already active and hydrated.
+2. Run `./scripts/powershell/first-start.ps1` if `.venv` is not already active and hydrated.
 3. Run the deployment script:
    ```bash
-   cd digital_ocean/scripts
-   ./deploy.sh
+   ./digital_ocean/scripts/bash/deploy.sh [options]
    # or
-   (.venv) python ../deploy.py
+   (.venv) python digital_ocean/scripts/python/deploy.py [--dry-run]
    ```
+   Bash MVP flags:
+   - `--dry-run`
+   - `--update-only`
+   - `--full` (default when no deploy mode is specified)
+   - `--env-path <path>` (sets `ENV_PATH` for the orchestrator)
+   - `--logs-dir <path>` (sets `DEPLOY_ARTIFACT_DIR`)
+   - `--timestamped` (append a timestamp to the logs dir)
 4. Monitor logs for deployment status and errors.
 
 ## Teardown Instructions
 
 1. Ensure all required environment variables are set in `.env`.
-2. Run `./scripts/first-start.ps1` if `.venv` is not already active and hydrated.
+2. Run `./scripts/powershell/first-start.ps1` if `.venv` is not already active and hydrated.
 3. Run the teardown script:
    ```bash
-   cd digital_ocean/scripts
-   ./teardown.sh [--dry-run]
+   ./digital_ocean/scripts/bash/teardown.sh [--dry-run]
    # or
-   (.venv) python ../teardown.py [--dry-run]
+   (.venv) python digital_ocean/scripts/python/teardown.py [--dry-run]
    ```
 4. Monitor logs for teardown status and errors.
 
 ## Edit/Maintain Instructions
 
 1. Ensure all required environment variables are set in `.env`.
-2. Run `./scripts/first-start.ps1` if `.venv` is not already active and hydrated.
+2. Run `./scripts/powershell/first-start.ps1` if `.venv` is not already active and hydrated.
 3. Run the edit/maintain script:
    ```bash
-   cd digital_ocean/scripts
-   ./edit.sh
+   ./digital_ocean/scripts/bash/edit.sh
    # or
-   (.venv) python ../edit.py
+   (.venv) python digital_ocean/scripts/python/edit.py
    ```
 4. Monitor logs for edit/maintain status and errors.
 

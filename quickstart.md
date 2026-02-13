@@ -17,11 +17,11 @@
 2. Bootstrap tooling and configuration:
 
 ```powershell
-./scripts/first-start.ps1
+./scripts/powershell/first-start.ps1
 ```
 
 ```bash
-pwsh -ExecutionPolicy Bypass -File ./scripts/first-start.ps1
+pwsh -ExecutionPolicy Bypass -File ./scripts/powershell/first-start.ps1
 ```
 
 This orchestrates onboarding by:
@@ -29,14 +29,14 @@ This orchestrates onboarding by:
 - Creating/activating the `.venv` virtual environment (use `-ForceVenv` to recreate)
 - Installing Python requirements (digital ocean automation)
 - Installing Node packages in the repo root, `react-app/`, and `e2e/`
-- Running `scripts/setup.ps1` (generates `.env` from `.env.example`, runs guided checks)
+- Running `scripts/powershell/setup.ps1` (generates `.env` from `.env.example`, runs guided checks)
 - Use `-SkipSetup` to hydrate dependencies without re-running the guided setup
 
 During setup you may be prompted to confirm overwriting `.env` and to enter required values (DigitalOcean token, domain, emails, etc.). You can also edit `.env` manually afterward.
 
 ### Setup prompts (interactive)
 
-The interactive questions come from [scripts/setup.js](scripts/setup.js) (invoked by [scripts/setup.ps1](scripts/setup.ps1)). These are the exact prompts and choices:
+The interactive questions come from [scripts/setup.js](scripts/setup.js) (invoked by [scripts/powershell/setup.ps1](scripts/powershell/setup.ps1)). These are the exact prompts and choices:
 
 - Overwrite existing .env: yes/no (default no); creates a timestamped backup on yes.
 - Project name: lowercase letters, digits, hyphen only; required.
@@ -57,7 +57,7 @@ Dev defaults summary:
 
 Non-interactive note:
 
-- `scripts/setup.ps1 -NonInteractive` disables prompts and reads values from args/environment; it will fail fast if required values are missing.
+- `scripts/powershell/setup.ps1 -NonInteractive` disables prompts and reads values from args/environment; it will fail fast if required values are missing.
 
 After writing .env, [scripts/setup.js](scripts/setup.js) prints a checklist of required categories and recommends running:
 
@@ -66,16 +66,16 @@ After writing .env, [scripts/setup.js](scripts/setup.js) prints a checklist of r
 
 Exact scripts invoked by `first-start.ps1` (in order):
 
-- `scripts/bootstrap-venv.ps1`
-- `scripts/install-python-deps.ps1`
-- `scripts/install-node-deps.ps1`
-- `scripts/setup.ps1`
+- `scripts/powershell/bootstrap-venv.ps1`
+- `scripts/powershell/install-python-deps.ps1`
+- `scripts/powershell/install-node-deps.ps1`
+- `scripts/powershell/setup.ps1`
 
-Tip: `scripts/first-start.ps1 -Help` and `scripts/setup.ps1 -Help` print usage details.
+Tip: `scripts/powershell/first-start.ps1 -Help` and `scripts/powershell/setup.ps1 -Help` print usage details.
 
 ### DigitalOcean SSH key sync (runs during setup)
 
-This step runs inside [scripts/setup.ps1](scripts/setup.ps1) after .env is written. It calls [digital_ocean/scripts/powershell/add-ssh-key.ps1](digital_ocean/scripts/powershell/add-ssh-key.ps1) and uses [digital_ocean/DO_ssh_keys.py](digital_ocean/DO_ssh_keys.py).
+This step runs inside [scripts/powershell/setup.ps1](scripts/powershell/setup.ps1) after .env is written. It calls [digital_ocean/scripts/powershell/add-ssh-key.ps1](digital_ocean/scripts/powershell/add-ssh-key.ps1) and uses [digital_ocean/DO_ssh_keys.py](digital_ocean/DO_ssh_keys.py).
 
 What it does (ordered):
 
@@ -131,16 +131,22 @@ Follow these steps to get started quickly:
    - `git clone <repo-url>`
    - `cd <repo-dir>`
 2. **Run first-start orchestration**
-   - `./scripts/first-start.ps1` (PowerShell) or `pwsh -ExecutionPolicy Bypass -File ./scripts/first-start.ps1`
-   - Re-run with `-ForceVenv` to rebuild the environment if needed.
-   3. **Review `.env` output**
-   - Fill in required Digital Ocean variables (`DO_API_TOKEN`, `DO_API_REGION`, `DO_API_IMAGE`, `DO_APP_NAME`, etc.).
-   4. **Run automation scripts**
-   - Deploy: `./scripts/deploy.sh [--dry-run]` or `(.venv) python digital_ocean/deploy.py [--dry-run]`
-   - Teardown: `./scripts/teardown.sh [--dry-run]` or `(.venv) python digital_ocean/teardown.py [--dry-run]`
-   - Edit/Maintain: `./scripts/edit.sh` or `(.venv) python digital_ocean/edit.py`
-   - Info/Query: `./scripts/info.sh` or `(.venv) python digital_ocean/info.py`
-   - Exec: `./scripts/exec.sh` or `(.venv) python digital_ocean/exec.py`
+
+- `./scripts/powershell/first-start.ps1` (PowerShell)
+- `./scripts/bash/first-start.sh` (Bash)
+- Re-run with `-ForceVenv` to rebuild the environment if needed.
+
+3.  **Review `.env` output**
+
+- Fill in required Digital Ocean variables (`DO_API_TOKEN`, `DO_API_REGION`, `DO_API_IMAGE`, `DO_APP_NAME`, etc.).
+
+4. **Run automation scripts**
+
+- Deploy: `./digital_ocean/scripts/bash/deploy.sh [--dry-run]` or `(.venv) python digital_ocean/deploy.py [--dry-run]`
+- Teardown: `./digital_ocean/scripts/bash/teardown.sh [--dry-run]` or `(.venv) python digital_ocean/teardown.py [--dry-run]`
+- Edit/Maintain: `./digital_ocean/scripts/bash/edit.sh` or `(.venv) python digital_ocean/edit.py`
+- Info/Query: `./digital_ocean/scripts/bash/info.sh` or `(.venv) python digital_ocean/info.py`
+- Exec: `./digital_ocean/scripts/bash/exec.sh` or `(.venv) python digital_ocean/exec.py`
 
 3. **Validate and troubleshoot**
    - Use `--dry-run` to preview actions without changes.
@@ -153,25 +159,25 @@ Follow these steps to get started quickly:
 
 5. Build and start all services:
    ```bash
-   ./scripts/start.sh --build
+   ./scripts/bash/start.sh --build
    ```
 6. View logs:
    ```bash
-   ./scripts/logs.sh
+   ./scripts/bash/logs.sh
    ```
 7. Run health checks:
    ```bash
-   ./scripts/health.sh
+   ./scripts/bash/health.sh
    ```
 8. Run tests:
    ```bash
-   ./scripts/test.sh
+   ./scripts/bash/test.sh
    ```
 
 ## Troubleshooting
 
-- PowerShell is the default for automation scripts; use `pwsh` on macOS/Linux.
-- Bash wrapper scripts are optional and work in WSL or Git Bash.
+- PowerShell entrypoints live in `scripts/powershell/` (use `pwsh` on macOS/Linux).
+- Bash entrypoints live in `scripts/bash/` and work in WSL or Git Bash.
 - Ensure Docker Compose is v2.0.0 or newer.
 - Review error messages for missing files or environment variables.
 - See README.md for more details.
@@ -280,7 +286,7 @@ Add background task processing without increasing the attack surface. Redis and 
 Update your allowlist to your current IP:
 
 ```powershell
-./scripts/update-flower-allowlist.ps1
+./scripts/powershell/update-flower-allowlist.ps1
 ```
 
 ### Traefik routing (guarded)

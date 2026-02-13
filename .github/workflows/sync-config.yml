@@ -16,8 +16,8 @@ jobs:
 
       - name: Run environment sync script
         run: |
-          chmod +x scripts/sync-env.sh
-          ./scripts/sync-env.sh
+          chmod +x scripts/bash/sync-env.sh
+          ./scripts/bash/sync-env.sh
 
       - name: Check for configuration changes
         id: check_changes
@@ -39,7 +39,7 @@ jobs:
           echo "The following files need to be synchronized:"
           git diff --name-only development.docker.yml traefik/traefik.yml .env
           echo ""
-          echo "Run './scripts/sync-env.sh' locally to synchronize configuration."
+          echo "Run './scripts/bash/sync-env.sh' locally to synchronize configuration."
           exit 1
 
       - name: Configuration is synchronized

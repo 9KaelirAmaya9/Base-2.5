@@ -30,7 +30,7 @@ if __name__ == "logging":
     finally:
         sys.path = _orig_path
 else:
-    from .do_logging import (  # noqa: F401
+    from digital_ocean.scripts.python.do_logging import (  # noqa: F401
         LEVELS,
         LOG_LEVEL,
         get_logger,

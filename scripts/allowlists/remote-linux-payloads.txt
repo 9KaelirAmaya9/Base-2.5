@@ -1,0 +1,10 @@
+# Remote Linux payloads allowlisted for shell parity guard.
+# Entries are matched as substrings; use * wildcards for globs.
+
+# Remote verification script uploaded to droplet during DO deploy.
+/root/remote_verify.sh
+
+# DigitalOcean provisioning payloads (user_data and post-reboot steps).
+digital_ocean/scripts/digital_ocean_base.sh
+digital_ocean/scripts/post_reboot_complete.sh
+digital_ocean/scripts/teardown.sh

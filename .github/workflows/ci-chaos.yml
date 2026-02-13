@@ -11,4 +11,4 @@ jobs:
       - name: Print guidance
         run: |
           echo "This workflow is a placeholder for chaos smoke tests."
-          echo "Run scripts/chaos_smoke.sh on an environment with docker access."
+          echo "Run scripts/bash/chaos_smoke.sh on an environment with docker access."

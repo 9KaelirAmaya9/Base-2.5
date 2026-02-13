@@ -8,7 +8,7 @@ See the feature specification at `specs/003-env-setup-deploy-ux/spec.md` and imp
 - Docker Engine + Docker Compose v2
 - Windows users:
   - PowerShell is supported
-  - Git Bash/WSL is recommended for existing `scripts/*.sh`
+  - Git Bash/WSL is recommended for existing `scripts/bash/*.sh`
 
 ## Install
 
@@ -67,13 +67,13 @@ Recommended options:
 Bash:
 
 ```bash
-./scripts/start.sh --build
+./scripts/bash/start.sh --build
 ```
 
 Windows PowerShell:
 
 ```powershell
-./scripts/start.ps1
+./scripts/powershell/start.ps1
 ```
 
 ## Cloud deploy (DigitalOcean)

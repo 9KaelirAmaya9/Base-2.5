@@ -13,11 +13,11 @@ This is the recommended end-to-end sequence to get a full green run: local boots
 ## 1) First-start (local bootstrap)
 
 ```powershell
-./scripts/first-start.ps1
+./scripts/powershell/first-start.ps1
 ```
 
 ```bash
-pwsh -ExecutionPolicy Bypass -File ./scripts/first-start.ps1
+pwsh -ExecutionPolicy Bypass -File ./scripts/powershell/first-start.ps1
 ```
 
 What it does (in order):
@@ -26,7 +26,7 @@ What it does (in order):
 - Activates `.venv` for the current shell session
 - Installs Python deps (DigitalOcean automation)
 - Installs Node deps in root, `react-app/`, and `e2e/`
-- Runs `scripts/setup.ps1` to generate `.env`, generate secrets, and sync DO SSH keys
+- Runs `scripts/powershell/setup.ps1` to generate `.env`, generate secrets, and sync DO SSH keys
 
 ## 2) Required .env inputs
 
@@ -66,5 +66,5 @@ High-level order:
 ## Notes
 
 - Keep the same PowerShell session open so `.venv` remains active.
-- `-NonInteractive` on `scripts/setup.ps1` disables prompts; missing required values will fail fast.
+- `-NonInteractive` on `scripts/powershell/setup.ps1` disables prompts; missing required values will fail fast.
 - `APPLY_DEV_DEFAULTS=true` only affects `npm run setup:complete`, which will set `DJANGO_DEBUG=true` in development.

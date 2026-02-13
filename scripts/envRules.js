@@ -54,7 +54,6 @@ const CATEGORIES = {
     keys: [
       'TRAEFIK_DASH_BASIC_USERS',
       'FLOWER_BASIC_USERS',
-      'TP_USER_IP_ADDRESS',
       'DJANGO_ADMIN_ALLOWLIST',
       'FLOWER_ALLOWLIST',
       'PGADMIN_ALLOWLIST',
@@ -93,9 +92,11 @@ function normalizeEnv(value) {
 
 function requiredCategories({ env, deployMode }) {
   const normalizedEnv = normalizeEnv(env);
+  const normalizedDeployMode = normalizeDeployMode(deployMode);
   const required = new Set([CATEGORY.Core, CATEGORY.Secrets, CATEGORY.Admin, CATEGORY.Access]);
 
-  const needsTlsAndSmtp = normalizedEnv === ENVS.PRODUCTION;
+  const needsTlsAndSmtp =
+    normalizedEnv === ENVS.PRODUCTION || normalizedDeployMode === DEPLOY_MODES.DIGITALOCEAN;
 
   if (needsTlsAndSmtp) {
     required.add(CATEGORY.TLS);

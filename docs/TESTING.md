@@ -19,10 +19,10 @@ Artifacts land under `local_run_logs/<ip>-<timestamp>/` with per-service folders
 
 Start the stack, then run tests through the wrappers:
 
-- PowerShell: `./scripts/test.ps1`
-- Bash/WSL: `./scripts/test.sh`
+- PowerShell: `./scripts/powershell/test.ps1`
+- Bash/WSL: `./scripts/bash/test.sh`
 
-These scripts expect Docker Compose to be running (use `./scripts/start.ps1` or `./scripts/start.sh`). They run backend tests in containers and frontend tests locally.
+These scripts expect Docker Compose to be running (use `./scripts/powershell/start.ps1` or `./scripts/bash/start.sh`). They run backend tests in containers and frontend tests locally.
 
 ## Backend
 

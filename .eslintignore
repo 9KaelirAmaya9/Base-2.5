@@ -3,6 +3,7 @@ node_modules/
 dist/
 build/
 coverage/
+*.min.js
 
 # Minified bundles and generated assets
 *.min.js

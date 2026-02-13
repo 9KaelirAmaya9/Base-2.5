@@ -51,7 +51,7 @@ DigitalOcean automation (`digital_ocean/orchestrate_deploy.py`) provisions a dro
 ## 8. Operations
 
 - Management scripts in `scripts/` for start/stop/logs/status/health/test.
-- `scripts/start.sh` validates `.env`, syncs literal config, starts services, and prints endpoints.
+- `scripts/bash/start.sh` validates `.env`, syncs literal config, starts services, and prints endpoints.
 - Ensure `NETWORK_NAME` equals `TRAEFIK_DOCKER_NETWORK` in `.env`.
 
 ---

@@ -89,7 +89,7 @@ function recommend({ hasEnv, requiredIssues, deployMode }) {
   if (deployMode === 'digitalocean') {
     return { command: './digital_ocean/scripts/powershell/deploy.ps1', reason: 'DEPLOY_MODE=digitalocean' };
   }
-  return { command: './scripts/start.sh --build', reason: 'Local run is ready' };
+  return { command: './scripts/bash/start.sh --build', reason: 'Local run is ready' };
 }
 
 function parseTokenList(value) {

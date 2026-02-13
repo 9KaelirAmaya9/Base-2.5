@@ -9,9 +9,9 @@ param(
 # - Safe for PowerShell 5.1; preserves other .env content
 #
 # Usage examples:
-#   ./scripts/update-pgadmin-allowlist.ps1
-#   ./scripts/update-pgadmin-allowlist.ps1 -Ip 203.0.113.42
-#   ./scripts/update-pgadmin-allowlist.ps1 -EnvPath ./.env -DryRun
+#   ./digital_ocean/scripts/powershell/update-pgadmin-allowlist.ps1
+#   ./digital_ocean/scripts/powershell/update-pgadmin-allowlist.ps1 -Ip 203.0.113.42
+#   ./digital_ocean/scripts/powershell/update-pgadmin-allowlist.ps1 -EnvPath ./.env -DryRun
 
 $ErrorActionPreference = 'Stop'
 

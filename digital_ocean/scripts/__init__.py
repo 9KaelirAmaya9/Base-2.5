@@ -1,0 +1,1 @@
+"""DigitalOcean script package."""

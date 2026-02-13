@@ -4,9 +4,9 @@ A robust, production-ready Docker setup with enhanced security, health checks, a
 
 ## Quickstart (Docker-first)
 
-1. `./scripts/first-start.ps1`
-2. `./scripts/start.ps1`
-3. `./scripts/test.ps1`
+1. `./scripts/powershell/first-start.ps1`
+2. `./scripts/powershell/start.ps1`
+3. `./scripts/powershell/test.ps1`
 4. Open `https://${WEBSITE_DOMAIN}` (staging cert warnings are expected)
 5. For a deeper setup flow, see [quickstart.md](quickstart.md)
 6. Architecture overview: [project_overview.md](project_overview.md)
@@ -34,11 +34,11 @@ A robust, production-ready Docker setup with enhanced security, health checks, a
 
 ## ⚠️ Platform Compatibility
 
-Primary automation scripts are PowerShell (`*.ps1`).
+Primary automation scripts live in `scripts/powershell/` and `scripts/bash/`.
 
-- Windows: run with Windows PowerShell or PowerShell 7.
-- macOS/Linux: use `pwsh` (PowerShell 7) for the `*.ps1` scripts.
-- Bash wrappers exist for local Docker flows (start/logs/test/seed) and work in WSL or Git Bash.
+- Windows: run PowerShell entrypoints with Windows PowerShell or PowerShell 7.
+- macOS/Linux: run Bash entrypoints or use `pwsh` for PowerShell scripts.
+- Bash entrypoints cover local Docker flows (start/logs/test/seed).
 
 ## ⚠️ Docker Compose Version
 
@@ -105,11 +105,11 @@ More detail in [project_overview.md](project_overview.md).
 Use the orchestration script to create/activate the virtual environment and install dependencies:
 
 ```powershell
-./scripts/first-start.ps1
+./scripts/powershell/first-start.ps1
 ```
 
 ```bash
-pwsh -ExecutionPolicy Bypass -File ./scripts/first-start.ps1
+pwsh -ExecutionPolicy Bypass -File ./scripts/powershell/first-start.ps1
 ```
 
 This script:
@@ -118,14 +118,14 @@ This script:
 - Activates the environment for the current session
 - Installs Python packages (digital_ocean requirements)
 - Installs Node packages in the root, `react-app/`, and `e2e/`
-- Runs `scripts/setup.ps1` to generate `.env` from `.env.example`
+- Runs `scripts/powershell/setup.ps1` to generate `.env` from `.env.example`
 - Use `-SkipSetup` if you only need dependency hydration without re-running the guided setup.
 
-During `scripts/setup.ps1`, you may be prompted to confirm overwriting `.env` and to provide required values (DigitalOcean token, domain, email, etc.). You can also edit `.env` manually afterward.
+During `scripts/powershell/setup.ps1`, you may be prompted to confirm overwriting `.env` and to provide required values (DigitalOcean token, domain, email, etc.). You can also edit `.env` manually afterward.
 
 ### Setup prompts (interactive)
 
-The interactive questions come from [scripts/setup.js](scripts/setup.js) (invoked by [scripts/setup.ps1](scripts/setup.ps1)). These are the exact prompts and choices:
+The interactive questions come from [scripts/setup.js](scripts/setup.js) (invoked by [scripts/powershell/setup.ps1](scripts/powershell/setup.ps1)). These are the exact prompts and choices:
 
 - Overwrite existing .env: yes/no (default no); creates a timestamped backup on yes.
 - Project name: lowercase letters, digits, hyphen only; required.
@@ -146,7 +146,7 @@ Dev defaults summary:
 
 Non-interactive note:
 
-- `scripts/setup.ps1 -NonInteractive` disables prompts and reads values from args/environment; it will fail fast if required values are missing.
+- `scripts/powershell/setup.ps1 -NonInteractive` disables prompts and reads values from args/environment; it will fail fast if required values are missing.
 
 After writing .env, [scripts/setup.js](scripts/setup.js) prints a checklist of required categories and recommends running:
 
@@ -155,16 +155,16 @@ After writing .env, [scripts/setup.js](scripts/setup.js) prints a checklist of r
 
 Exact scripts invoked by `first-start.ps1` (in order):
 
-- `scripts/bootstrap-venv.ps1`
-- `scripts/install-python-deps.ps1`
-- `scripts/install-node-deps.ps1`
-- `scripts/setup.ps1`
+- `scripts/powershell/bootstrap-venv.ps1`
+- `scripts/powershell/install-python-deps.ps1`
+- `scripts/powershell/install-node-deps.ps1`
+- `scripts/powershell/setup.ps1`
 
-Tip: `scripts/first-start.ps1 -Help` and `scripts/setup.ps1 -Help` print usage details.
+Tip: `scripts/powershell/first-start.ps1 -Help` and `scripts/powershell/setup.ps1 -Help` print usage details.
 
 ### DigitalOcean SSH key sync (runs during setup)
 
-This step runs inside [scripts/setup.ps1](scripts/setup.ps1) after .env is written. It calls [digital_ocean/scripts/powershell/add-ssh-key.ps1](digital_ocean/scripts/powershell/add-ssh-key.ps1) and uses [digital_ocean/DO_ssh_keys.py](digital_ocean/DO_ssh_keys.py).
+This step runs inside [scripts/powershell/setup.ps1](scripts/powershell/setup.ps1) after .env is written. It calls [digital_ocean/scripts/powershell/add-ssh-key.ps1](digital_ocean/scripts/powershell/add-ssh-key.ps1) and uses [digital_ocean/DO_ssh_keys.py](digital_ocean/DO_ssh_keys.py).
 
 What it does (ordered):
 
@@ -182,7 +182,7 @@ Why it exists:
 
 See the full end-to-end sequence in [docs/GOLDEN_PATH.md](docs/GOLDEN_PATH.md).
 
-Keep the environment active for every Python-related command (pip installs, Django/DO scripts, tests). Re-run `./scripts/first-start.ps1` anytime you need to refresh dependencies.
+Keep the environment active for every Python-related command (pip installs, Django/DO scripts, tests). Re-run `./scripts/powershell/first-start.ps1` anytime you need to refresh dependencies.
 
 If you prefer a manual venv flow (no guided setup), install Python deps per service with:
 
@@ -249,15 +249,25 @@ make test
 
 See `Makefile` for all available targets.
 
+If you do not have `make`, use the cross-platform wrapper:
+
+```bash
+./scripts/make/make.sh start
+```
+
+```powershell
+./scripts/make/make.ps1 start
+```
+
 On Windows PowerShell (no Bash/make required), use the equivalent wrappers:
 
 ```powershell
-./scripts/start.ps1
-./scripts/logs.ps1
-./scripts/test.ps1
+./scripts/powershell/start.ps1
+./scripts/powershell/logs.ps1
+./scripts/powershell/test.ps1
 ```
 
-`make test`, `./scripts/test.sh`, and `./scripts/test.ps1` expect the Docker stack to be running; start it first with `make up` or `./scripts/start.ps1`.
+`make test`, `./scripts/bash/test.sh`, and `./scripts/powershell/test.ps1` expect the Docker stack to be running; start it first with `make up` or `./scripts/powershell/start.ps1`.
 
 Integration/perf tests are opt-in:
 
@@ -268,9 +278,9 @@ make test-perf
 
 ## 🧪 Testing
 
-- Default unit-only runs: `./scripts/test.ps1` or `./scripts/test.sh`
+- Default unit-only runs: `./scripts/powershell/test.ps1` or `./scripts/bash/test.sh`
 - Integration/perf (opt-in): `make test-integration`, `make test-perf`
-- Local compose override: `./scripts/test.ps1 -ComposeFile local.docker.yml -EnvFile .env.local`
+- Local compose override: `./scripts/powershell/test.ps1 -ComposeFile local.docker.yml -EnvFile .env.local`
 
 ### Lint (frontend)
 
@@ -286,15 +296,15 @@ All local helper scripts support an explicit compose file flag. Examples:
 You can also keep a separate env file (for example, `.env.local`) and pass it explicitly.
 
 ```bash
-./scripts/start.sh --compose-file local.docker.yml --env-file .env.local
-./scripts/test.sh --compose-file local.docker.yml --env-file .env.local
-./scripts/stop.sh --compose-file local.docker.yml --env-file .env.local
+./scripts/bash/start.sh --compose-file local.docker.yml --env-file .env.local
+./scripts/bash/test.sh --compose-file local.docker.yml --env-file .env.local
+./scripts/bash/stop.sh --compose-file local.docker.yml --env-file .env.local
 ```
 
 ```powershell
-./scripts/start.ps1 -ComposeFile local.docker.yml -EnvFile .env.local
-./scripts/test.ps1 -ComposeFile local.docker.yml -EnvFile .env.local
-./scripts/stop.ps1 -ComposeFile local.docker.yml -EnvFile .env.local
+./scripts/powershell/start.ps1 -ComposeFile local.docker.yml -EnvFile .env.local
+./scripts/powershell/test.ps1 -ComposeFile local.docker.yml -EnvFile .env.local
+./scripts/powershell/stop.ps1 -ComposeFile local.docker.yml -EnvFile .env.local
 ```
 
 ```bash
@@ -313,7 +323,7 @@ make seed
 Windows PowerShell:
 
 ```powershell
-./scripts/seed.ps1
+./scripts/powershell/seed.ps1
 ```
 
 ### 3. Configure Authentication (IMPORTANT!)
@@ -428,8 +438,8 @@ Fresh clone: install these versions before running builds/tests.
 
 If you encounter issues running scripts:
 
-- PowerShell is the default for automation scripts; use `pwsh` on macOS/Linux.
-- Bash wrapper scripts are optional and work in WSL or Git Bash.
+- PowerShell entrypoints live in `scripts/powershell/` (use `pwsh` on macOS/Linux).
+- Bash entrypoints live in `scripts/bash/` and work in WSL or Git Bash.
 - Check your Docker Compose version (`docker-compose version`).
 - Review error messages for missing files or environment variables.
 - See the onboarding section in quickstart.md for more help.
@@ -446,23 +456,23 @@ Due to limitations in Docker Compose and YAML, certain values cannot use variabl
 
 ### Automatic Synchronization
 
-The `scripts/sync-env.sh` script automatically updates these literal values to match your `.env` file.
+The `scripts/bash/sync-env.sh` script automatically updates these literal values to match your `.env` file.
 
 **Integration Points:**
 
 1. **Manual Execution:**
 
    ```bash
-   ./scripts/sync-env.sh
+   ./scripts/bash/sync-env.sh
    ```
 
 2. **Automatic on Start:**
-   The `start.sh` script automatically runs synchronization before starting services.
+   The `scripts/bash/start.sh` script automatically runs synchronization before starting services.
 
 3. **Git Pre-Commit Hook:**
 
    ```bash
-   ./scripts/setup-hooks.sh  # Install git hooks
+   ./scripts/bash/setup-hooks.sh  # Install git hooks
    ```
 
    Prevents commits if configuration is out of sync.
@@ -479,7 +489,7 @@ The `scripts/sync-env.sh` script automatically updates these literal values to m
 Source of truth:
 
 - `NETWORK_NAME` is the single source of truth for networking.
-- `scripts/sync-env.sh` will automatically make `TRAEFIK_DOCKER_NETWORK` match `NETWORK_NAME`.
+- `scripts/bash/sync-env.sh` will automatically make `TRAEFIK_DOCKER_NETWORK` match `NETWORK_NAME`.
 
 ---
 
@@ -489,113 +499,113 @@ The `scripts/` directory contains convenient management scripts for common Docke
 
 ### Available Scripts
 
-#### `./scripts/start.sh` - Start Services
+#### `./scripts/bash/start.sh` - Start Services
 
 Start all Docker services. Automatically checks for .env file and validates required environment variables. Supports self-test mode:
 
 ```bash
-./scripts/start.sh --self-test   # Run self-test for environment and config
-./scripts/start.sh               # Start in detached mode
-./scripts/start.sh --build       # Build before starting
-./scripts/start.sh --foreground  # Run in foreground
+./scripts/bash/start.sh --self-test   # Run self-test for environment and config
+./scripts/bash/start.sh               # Start in detached mode
+./scripts/bash/start.sh --build       # Build before starting
+./scripts/bash/start.sh --foreground  # Run in foreground
 ```
 
-#### `./scripts/stop.sh` - Stop Services
+#### `./scripts/bash/stop.sh` - Stop Services
 
 Stop all Docker services. Supports self-test mode:
 
 ```bash
-./scripts/stop.sh --self-test    # Run self-test for Docker and Compose
-./scripts/stop.sh                # Stop services
-./scripts/stop.sh --volumes      # Stop and remove volumes (deletes data!)
+./scripts/bash/stop.sh --self-test    # Run self-test for Docker and Compose
+./scripts/bash/stop.sh                # Stop services
+./scripts/bash/stop.sh --volumes      # Stop and remove volumes (deletes data!)
 ```
 
-#### `./scripts/test.sh` - Run Tests
+#### `./scripts/bash/test.sh` - Run Tests
 
 Run backend tests in Docker and frontend tests locally. Requires the stack to be running.
 
 ```bash
-./scripts/test.sh --self-test    # Run self-test for Node, npm, and test scripts
-./scripts/test.sh                # Run all tests
-./scripts/test.sh --coverage     # Run tests with coverage
-./scripts/test.sh --watch        # Run tests in watch mode
+./scripts/bash/test.sh --self-test    # Run self-test for Node, npm, and test scripts
+./scripts/bash/test.sh                # Run all tests
+./scripts/bash/test.sh --coverage     # Run tests with coverage
+./scripts/bash/test.sh --watch        # Run tests in watch mode
 ```
 
-#### `./scripts/logs.sh` - View Logs
+#### `./scripts/bash/logs.sh` - View Logs
 
 View service logs with filtering options. Supports self-test mode:
 
 ```bash
-./scripts/logs.sh --self-test    # Run self-test for Docker and Compose
-./scripts/logs.sh                # View last 100 lines of all services
-./scripts/logs.sh --follow       # Follow all logs in real-time
-./scripts/logs.sh nginx          # View nginx logs
-./scripts/logs.sh -f postgres    # Follow postgres logs
-./scripts/logs.sh -t 50 nginx    # View last 50 lines of nginx
+./scripts/bash/logs.sh --self-test    # Run self-test for Docker and Compose
+./scripts/bash/logs.sh                # View last 100 lines of all services
+./scripts/bash/logs.sh --follow       # Follow all logs in real-time
+./scripts/bash/logs.sh nginx          # View nginx logs
+./scripts/bash/logs.sh -f postgres    # Follow postgres logs
+./scripts/bash/logs.sh -t 50 nginx    # View last 50 lines of nginx
 ```
 
-#### `./scripts/status.sh` - Check Status
+#### `./scripts/bash/status.sh` - Check Status
 
 Get comprehensive status of all services.
 
 ```bash
-./scripts/status.sh             # Show status, health, and resource usage
+./scripts/bash/status.sh             # Show status, health, and resource usage
 ```
 
-#### `./scripts/health.sh` - Health Check
+#### `./scripts/bash/health.sh` - Health Check
 
 Check health status of all services with detailed output.
 
 ```bash
-./scripts/health.sh             # Detailed health check for all services
+./scripts/bash/health.sh             # Detailed health check for all services
 ```
 
-#### `./scripts/rebuild.sh` - Rebuild Services
+#### `./scripts/bash/rebuild.sh` - Rebuild Services
 
 Rebuild Docker images.
 
 ```bash
-./scripts/rebuild.sh            # Rebuild all services
-./scripts/rebuild.sh nginx      # Rebuild specific service
-./scripts/rebuild.sh --no-cache # Rebuild without cache
+./scripts/bash/rebuild.sh            # Rebuild all services
+./scripts/bash/rebuild.sh nginx      # Rebuild specific service
+./scripts/bash/rebuild.sh --no-cache # Rebuild without cache
 ```
 
-#### `./scripts/clean.sh` - Clean Resources
+#### `./scripts/bash/clean.sh` - Clean Resources
 
 Clean up Docker resources.
 
 ```bash
-./scripts/clean.sh              # Remove containers only
-./scripts/clean.sh --volumes    # Remove containers and volumes
-./scripts/clean.sh --images     # Remove containers and images
-./scripts/clean.sh --all        # Remove everything
+./scripts/bash/clean.sh              # Remove containers only
+./scripts/bash/clean.sh --volumes    # Remove containers and volumes
+./scripts/bash/clean.sh --images     # Remove containers and images
+./scripts/bash/clean.sh --all        # Remove everything
 ```
 
-#### `./scripts/debug.sh` - Debug Services
+#### `./scripts/bash/debug.sh` - Debug Services
 
 Inspect containers, networks, and volumes for troubleshooting.
 
 ```bash
-./scripts/debug.sh              # Debug all services
-./scripts/debug.sh postgres     # Debug specific service
+./scripts/bash/debug.sh              # Debug all services
+./scripts/bash/debug.sh postgres     # Debug specific service
 ```
 
-#### `./scripts/shell.sh` - Access Container Shell
+#### `./scripts/bash/shell.sh` - Access Container Shell
 
 Access a container's shell for direct interaction.
 
 ```bash
-./scripts/shell.sh postgres     # Access postgres container
-./scripts/shell.sh -b react-app # Access react-app with bash
+./scripts/bash/shell.sh postgres     # Access postgres container
+./scripts/bash/shell.sh -b react-app # Access react-app with bash
 ```
 
-#### `./scripts/kill.sh` - ⚠️ NUCLEAR OPTION ⚠️
+#### `./scripts/bash/kill.sh` - ⚠️ NUCLEAR OPTION ⚠️
 
 **WARNING: DESTRUCTIVE OPERATION!** Completely removes ALL Docker resources for this project including all data. This is the nuclear option when you want to start completely fresh.
 
 ```bash
-./scripts/kill.sh               # Requires typing "DELETE EVERYTHING" to confirm
-./scripts/kill.sh --force       # Skip confirmation (use with extreme caution!)
+./scripts/bash/kill.sh               # Requires typing "DELETE EVERYTHING" to confirm
+./scripts/bash/kill.sh --force       # Skip confirmation (use with extreme caution!)
 ```
 
 This script will permanently delete:
@@ -611,19 +621,19 @@ This script will permanently delete:
 
 ```bash
 # Initial setup
-./scripts/start.sh --build
+./scripts/bash/start.sh --build
 
 # Check if everything is running
-./scripts/status.sh
+./scripts/bash/status.sh
 
 # View logs
-./scripts/logs.sh --follow
+./scripts/bash/logs.sh --follow
 
 # Access a container
-./scripts/shell.sh postgres
+./scripts/bash/shell.sh postgres
 
 # Stop everything
-./scripts/stop.sh
+./scripts/bash/stop.sh
 ```
 
 ## 🛠️ Direct Docker Compose Commands

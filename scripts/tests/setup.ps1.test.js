@@ -31,10 +31,10 @@ test('setup.ps1 generates TP_ secrets for placeholders', () => {
 
   fs.writeFileSync(envPath, template, 'utf8');
 
-  const setupPs1 = path.join(repoRoot, 'scripts', 'setup.ps1');
+  const setupPs1 = path.join(repoRoot, 'scripts', 'powershell', 'setup.ps1');
   const result = spawnSync(
     'powershell',
-    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', setupPs1, '-SkipSetupJs', '-EnvPath', envPath],
+    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', setupPs1, '-SkipSetupJs', '-DoSyncDryRun', '-EnvPath', envPath],
     { cwd: repoRoot, encoding: 'utf8' }
   );
 
@@ -43,7 +43,8 @@ test('setup.ps1 generates TP_ secrets for placeholders', () => {
   const envText = fs.readFileSync(envPath, 'utf8');
   const envMap = parseEnv(envText);
 
-  for (const key of Object.keys(envMap)) {
+  const templateKeys = Object.keys(parseEnv(template));
+  for (const key of templateKeys) {
     assert.match(envMap[key], /^[a-f0-9]{64}$/);
   }
 });

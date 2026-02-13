@@ -119,6 +119,33 @@ if $REQUIRE_TASKS && [[ ! -f "$TASKS" ]]; then
     exit 1
 fi
 
+# Validate Spec-Kit configuration/templates
+TEMPLATE_DIR="$REPO_ROOT/.specify/templates"
+REQUIRED_TEMPLATES=(
+    "agent-file-template.md"
+    "checklist-template.md"
+    "constitution-template.md"
+    "plan-template.md"
+    "spec-template.md"
+    "tasks-template.md"
+)
+
+missing_templates=()
+for template in "${REQUIRED_TEMPLATES[@]}"; do
+    if [[ ! -f "$TEMPLATE_DIR/$template" ]]; then
+        missing_templates+=("$template")
+    fi
+done
+
+if [[ ${#missing_templates[@]} -gt 0 ]]; then
+    echo "ERROR: Missing Spec-Kit template files in $TEMPLATE_DIR:" >&2
+    for template in "${missing_templates[@]}"; do
+        echo "  - $template" >&2
+    done
+    echo "Run specify init or restore the templates before continuing." >&2
+    exit 1
+fi
+
 # Build list of available documents
 docs=()
 

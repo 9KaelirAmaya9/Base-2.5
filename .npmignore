@@ -1,0 +1,38 @@
+# Node
+node_modules/
+dist/
+build/
+coverage/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Environment
+.env*
+
+# OS/IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Temp
+*.tmp
+*.swp
+
+# Docker
+Dockerfile*
+.dockerignore
+
+# Git
+.git/
+.github/
+
+# Local artifacts
+local_run_logs/
+DO_userdata.json

@@ -3,7 +3,9 @@
 Run the edit/maintain script to update deployed resources (always activate `.venv` first):
 
 ```bash
-(.venv) python edit.py [--dry-run]
+(.venv) python digital_ocean/scripts/python/edit.py [--dry-run]
+# or
+./digital_ocean/scripts/bash/edit.sh [--dry-run]
 ```
 
 **Options:**
@@ -43,7 +45,9 @@ Experimental or stubbed scripts live in [digital_ocean/experimental](experimenta
 Run the teardown script to remove deployed resources:
 
 ```bash
-(.venv) python teardown.py [--dry-run]
+(.venv) python digital_ocean/scripts/python/teardown.py [--dry-run]
+# or
+./digital_ocean/scripts/bash/teardown.sh [--dry-run]
 ```
 
 **Options:**
@@ -99,7 +103,7 @@ Run the teardown script to remove deployed resources:
 
 ### DigitalOcean SSH key sync (runs during setup)
 
-This step runs inside [scripts/setup.ps1](../scripts/setup.ps1) after .env is written. It calls [scripts/powershell/add-ssh-key.ps1](scripts/powershell/add-ssh-key.ps1) and uses [DO_ssh_keys.py](DO_ssh_keys.py).
+This step runs inside [scripts/powershell/setup.ps1](../scripts/powershell/setup.ps1) after .env is written. It calls [scripts/powershell/add-ssh-key.ps1](scripts/powershell/add-ssh-key.ps1) and uses [DO_ssh_keys.py](DO_ssh_keys.py).
 
 What it does (ordered):
 
@@ -115,7 +119,7 @@ Why it exists:
 
 ### Setup prompts (interactive)
 
-The interactive questions come from [scripts/setup.js](../scripts/setup.js) (invoked by [scripts/setup.ps1](../scripts/setup.ps1)). These are the exact prompts and choices:
+The interactive questions come from [scripts/setup.js](../scripts/setup.js) (invoked by [scripts/powershell/setup.ps1](../scripts/powershell/setup.ps1)). These are the exact prompts and choices:
 
 - Overwrite existing .env: yes/no (default no); creates a timestamped backup on yes.
 - Project name: lowercase letters, digits, hyphen only; required.
@@ -136,14 +140,14 @@ Dev defaults summary:
 
 Non-interactive note:
 
-- `scripts/setup.ps1 -NonInteractive` disables prompts and reads values from args/environment; it will fail fast if required values are missing.
+- `scripts/powershell/setup.ps1 -NonInteractive` disables prompts and reads values from args/environment; it will fail fast if required values are missing.
 
 After writing .env, [scripts/setup.js](../scripts/setup.js) prints a checklist of required categories and recommends running:
 
 - npm run setup:complete
 - npm run doctor
 
-Tip: `scripts/first-start.ps1 -Help` and `scripts/setup.ps1 -Help` print usage details.
+Tip: `scripts/powershell/first-start.ps1 -Help` and `scripts/powershell/setup.ps1 -Help` print usage details.
 
 ### Golden path (all-green deploy)
 
@@ -211,10 +215,19 @@ For rate limit issues, adjust retry settings in `.env`
 Run deployment:
 
 ```bash
-./scripts/deploy.sh [--dry-run]
+./digital_ocean/scripts/bash/deploy.sh [options]
 # or
-(.venv) python digital_ocean/deploy.py [--dry-run]
+(.venv) python digital_ocean/scripts/python/deploy.py [--dry-run]
 ```
+
+Bash MVP flags:
+
+- `--dry-run`
+- `--update-only`
+- `--full` (default when no deploy mode is specified)
+- `--env-path <path>` (sets `ENV_PATH` for the orchestrator)
+- `--logs-dir <path>` (sets `DEPLOY_ARTIFACT_DIR`)
+- `--timestamped` (append a timestamp to the logs dir)
 
 `--dry-run` shows planned actions without making changes.
 Error handling: exits nonzero if environment variables are missing or API fails. See logs for details.
@@ -224,9 +237,9 @@ Error handling: exits nonzero if environment variables are missing or API fails.
 Remove resources:
 
 ```bash
-./scripts/teardown.sh [--dry-run]
+./digital_ocean/scripts/bash/teardown.sh [--dry-run]
 # or
-(.venv) python digital_ocean/teardown.py [--dry-run]
+(.venv) python digital_ocean/scripts/python/teardown.py [--dry-run]
 ```
 
 `--dry-run` shows planned deletions. Error handling and rollback on failure.
@@ -236,9 +249,9 @@ Remove resources:
 Update resources:
 
 ```bash
-./scripts/edit.sh
+./digital_ocean/scripts/bash/edit.sh
 # or
-(.venv) python digital_ocean/edit.py
+(.venv) python digital_ocean/scripts/python/edit.py
 ```
 
 Error handling: logs errors, supports rollback.
@@ -248,9 +261,9 @@ Error handling: logs errors, supports rollback.
 List namespaces, domains, and resource metadata:
 
 ```bash
-./scripts/info.sh
+./digital_ocean/scripts/bash/info.sh
 # or
-(.venv) python digital_ocean/info.py
+(.venv) python digital_ocean/scripts/python/info.py
 ```
 
 Output example:
@@ -268,11 +281,11 @@ Error handling: exits nonzero if environment variables are missing or API fails.
 Run commands in droplets (via SSH) or apps (if supported):
 
 ```bash
-./scripts/exec.sh --droplet <id|name> --cmd <command>
-./scripts/exec.sh --app <id|name> --service <service> --cmd <command>
+./digital_ocean/scripts/bash/exec.sh --droplet <id|name> --cmd <command>
+./digital_ocean/scripts/bash/exec.sh --app <id|name> --service <service> --cmd <command>
 # or
-(.venv) python digital_ocean/exec.py --droplet <id|name> --cmd <command>
-(.venv) python digital_ocean/exec.py --app <id|name> --service <service> --cmd <command>
+(.venv) python digital_ocean/scripts/python/exec.py --droplet <id|name> --cmd <command>
+(.venv) python digital_ocean/scripts/python/exec.py --app <id|name> --service <service> --cmd <command>
 ```
 
 Output example (droplet):
@@ -295,7 +308,6 @@ Error handling: exits nonzero if arguments are invalid or API fails.
 
 Scripts are tested on Windows (PowerShell, Bash), Mac, Linux, and Docker containers.
 Windows: Use PowerShell for venv activation and script execution. Bash: Use WSL or Git Bash. Docker: All scripts work in containers.
-All scripts use environment variables from `.env`—ensure your shell loads them correctly.
 
 ### Security Audit
 
@@ -316,7 +328,7 @@ Test with invalid/missing API token, resource name conflicts, and deleted resour
    - Copy `.env.example` to `.env` and fill in all required Digital Ocean variables (see comments in `.env.example`).
    - Key variables: `DO_API_TOKEN`, `DO_API_REGION`, `DO_API_IMAGE`, `DO_APP_NAME`, etc.
 3. **Run first-start orchestration**:
-   - `./scripts/first-start.ps1` (PowerShell) or `pwsh -ExecutionPolicy Bypass -File ./scripts/first-start.ps1`
+   - `./scripts/powershell/first-start.ps1` (PowerShell) or `pwsh -ExecutionPolicy Bypass -File ./scripts/powershell/first-start.ps1`
    - Creates/activates `.venv`, installs Python/Node dependencies, and runs the guided setup.
    - Use `-SkipSetup` if you only need to hydrate dependencies.
    - Keep `.venv` active for every pip install or Python command referenced in this README.

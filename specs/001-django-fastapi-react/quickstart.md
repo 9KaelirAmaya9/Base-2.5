@@ -11,25 +11,30 @@ This quickstart is for running and verifying the full stack using the repo’s s
 
 ## Local (Compose-first)
 
-1) Create environment file:
+1. Create environment file:
+
 - Copy `.env.example` to `.env`
 - Set at minimum:
   - `WEBSITE_DOMAIN`
   - `TRAEFIK_CERT_EMAIL`
   - allowlists (`DJANGO_ADMIN_ALLOWLIST`, `PGADMIN_ALLOWLIST`, `FLOWER_ALLOWLIST`) to your public IP/CIDR
 
-2) Start the stack:
-- From repo root: `bash scripts/start.sh --build`
+2. Start the stack:
 
-3) Verify health (staging-like expectation):
+- From repo root: `bash scripts/bash/start.sh --build`
+
+3. Verify health (staging-like expectation):
+
 - Web UI: `https://$WEBSITE_DOMAIN/`
 - API health: `https://$WEBSITE_DOMAIN/api/health`
 
 Email (local outbox fallback):
+
 - If SMTP is not configured (for example, `EMAIL_HOST` is empty), outbound emails are written to the Django `EmailOutbox` table instead of being sent.
 - To inspect queued emails, use Django Admin (`https://admin.$WEBSITE_DOMAIN/admin`) and view the EmailOutbox entries.
 
 Notes:
+
 - The Traefik config enforces HTTPS and uses the Let’s Encrypt **staging** ACME directory. For fully offline/local domains that are not publicly resolvable, certificate issuance may not succeed; the staging-like verification path is designed for the droplet environment.
 
 ## Google OAuth (US4)
@@ -49,10 +54,12 @@ Deploy/update/test MUST be executed via the single entrypoint:
   - `powershell -File digital_ocean/scripts/powershell/deploy.ps1 -Full -AllTests -Timestamped`
 
 Artifacts:
+
 - Deploy/test runs write artifacts under `local_run_logs/<droplet-ip>-<timestamp>/`.
 - The post-deploy JSON report is stored at `local_run_logs/<run>/meta/post-deploy-report.json`.
 
 Key artifacts to inspect:
+
 - Report summary: `meta/post-deploy-report.json`
 - OpenAPI runtime: `api/openapi.json`
 - OpenAPI basic validation: `api/openapi-validation.json`
@@ -62,6 +69,7 @@ Key artifacts to inspect:
 - DB schema compatibility: `database/schema-compat-check.json`
 
 How to interpret `meta/post-deploy-report.json`:
+
 - `success=true` means no failures, no missing files, and staging TLS resolver checks passed.
 - `failures` lists human-readable failures (including contract mismatches and guarded endpoint violations).
 - `openApiContractCheck.missingPaths` shows contract paths that are not present in runtime OpenAPI.

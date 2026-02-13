@@ -8,13 +8,13 @@ ENV_FILE ?= .env
 COMPOSE = docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE)
 
 up:
-	./scripts/start.sh --compose-file $(COMPOSE_FILE) --env-file $(ENV_FILE)
+	./scripts/make/make.sh start --compose-file $(COMPOSE_FILE) --env-file $(ENV_FILE)
 
 down:
-	./scripts/stop.sh --compose-file $(COMPOSE_FILE) --env-file $(ENV_FILE)
+	./scripts/make/make.sh stop --compose-file $(COMPOSE_FILE) --env-file $(ENV_FILE)
 
 restart:
-	./scripts/restart.sh --compose-file $(COMPOSE_FILE) --env-file $(ENV_FILE)
+	./scripts/make/make.sh restart --compose-file $(COMPOSE_FILE) --env-file $(ENV_FILE)
 
 ps:
 	$(COMPOSE) ps
@@ -23,7 +23,7 @@ build:
 	$(COMPOSE) build
 
 logs:
-	$(COMPOSE) logs -f --tail=200
+	./scripts/make/make.sh logs --follow --tail 200
 
 logs-api:
 	$(COMPOSE) logs -f --tail=200 api
@@ -32,7 +32,7 @@ logs-web:
 	$(COMPOSE) logs -f --tail=200 react-app nginx nginx-static
 
 test:
-	./scripts/test.sh --compose-file $(COMPOSE_FILE) --env-file $(ENV_FILE)
+	./scripts/make/make.sh test --compose-file $(COMPOSE_FILE) --env-file $(ENV_FILE)
 
 test-integration:
 	$(COMPOSE) exec -T api pytest -m integration -o addopts=

@@ -60,6 +60,7 @@ function backupFile(originalPath, tag = 'bak') {
 function applyToTemplate(templateContent, updates) {
   const lines = templateContent.split(/\r?\n/);
   const seen = new Set();
+  const missing = [];
 
   const out = [];
   for (const line of lines) {
@@ -79,6 +80,22 @@ function applyToTemplate(templateContent, updates) {
     }
     seen.add(key);
     out.push(line);
+  }
+
+  for (const key of Object.keys(updates)) {
+    if (!seen.has(key)) {
+      missing.push(key);
+    }
+  }
+
+  if (missing.length > 0) {
+    if (out.length > 0 && out[out.length - 1].trim() !== '') {
+      out.push('');
+    }
+    out.push('# Added by setup tooling');
+    for (const key of missing.sort()) {
+      out.push(`${key}=${updates[key]}`);
+    }
   }
 
   return removeDuplicateTemplateHeader(out).join('\n');

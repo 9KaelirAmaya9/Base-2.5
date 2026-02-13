@@ -8,27 +8,45 @@
 
 ## Validate Guard and Parity (Local)
 
+## Parity Verification Checklist
+
+Use these commands to confirm every script in `scripts/bash` has a matching name in `scripts/powershell` (and vice versa). No output means parity is clean.
+
+### PowerShell (Windows)
+
+```powershell
+$bash = Get-ChildItem scripts/bash -Filter *.sh | ForEach-Object { $_.BaseName } | Sort-Object -Unique
+$ps = Get-ChildItem scripts/powershell -Filter *.ps1 | ForEach-Object { $_.BaseName } | Sort-Object -Unique
+Compare-Object $bash $ps
+```
+
+### Bash (Mac/Linux)
+
+```bash
+comm -3 <(ls scripts/bash/*.sh | xargs -n1 basename | sed 's/\.sh$//' | sort) <(ls scripts/powershell/*.ps1 | xargs -n1 basename | sed 's/\.ps1$//' | sort)
+```
+
 ### PowerShell (Windows)
 
 1. Run the guard:
    - `node scripts/guard-shell-parity.js`
 2. Run primary commands via PowerShell entrypoints:
-   - `./scripts/first-start.ps1`
-   - `./scripts/start.ps1`
-   - `./scripts/logs.ps1`
-   - `./scripts/test.ps1`
-   - `./scripts/stop.ps1`
+   - `./scripts/powershell/first-start.ps1`
+   - `./scripts/powershell/start.ps1`
+   - `./scripts/powershell/logs.ps1`
+   - `./scripts/powershell/test.ps1`
+   - `./scripts/powershell/stop.ps1`
 
 ### Bash (Mac/Linux)
 
 1. Run the guard:
    - `node scripts/guard-shell-parity.js`
 2. Run primary commands via Bash entrypoints:
-   - `./scripts/first-start.sh`
-   - `./scripts/start.sh`
-   - `./scripts/logs.sh`
-   - `./scripts/test.sh`
-   - `./scripts/stop.sh`
+   - `./scripts/bash/first-start.sh`
+   - `./scripts/bash/start.sh`
+   - `./scripts/bash/logs.sh`
+   - `./scripts/bash/test.sh`
+   - `./scripts/bash/stop.sh`
 
 ## DigitalOcean MVP (Bash)
 
