@@ -78,6 +78,9 @@ def log(msg):
 def err(msg):
     print(f"\033[1;31m[ERROR]\033[0m {msg}", flush=True)
 
+def stage(msg):
+    log(f"[STAGE] {msg}")
+
 def log_json(label, data):
     print(f"\033[1;36m[DEBUG]\033[0m {label}: {json.dumps(data, indent=2)}")
 
@@ -114,6 +117,8 @@ SSH_TIMEOUT = 15  # seconds
 LOG_POLL_ATTEMPTS = 60
 LOG_POLL_TIMEOUT = 30  # seconds
 LOG_POLL_INTERVAL = 15  # seconds
+IP_POLL_TIMEOUT = int(os.getenv("DO_IP_POLL_TIMEOUT_SECONDS", "120"))
+IP_POLL_INTERVAL = int(os.getenv("DO_IP_POLL_INTERVAL_SECONDS", "5"))
 REBOOT_MARKERS = [
     "Cloud-init v. 25.2-0ubuntu1~22.04.1 finished at"
 ]
@@ -206,18 +211,58 @@ def _plan_artifact_rename(ip_address: str) -> None:
     _pending_artifact_rename = target
 
 
+def _reset_tee_stream(new_log_path: str) -> None:
+    global _tee_stream
+    try:
+        primary_out = _tee_stream._primary if isinstance(_tee_stream, _TeeStream) else sys.stdout
+        primary_err = sys.stderr
+        if isinstance(primary_err, _TeeStream):
+            primary_err = primary_err._primary
+        if _tee_stream:
+            _tee_stream.close()
+        log_file = open(new_log_path, "a", encoding="utf-8", errors="replace")
+        _tee_stream = _TeeStream(primary_out, log_file)
+        sys.stdout = _tee_stream
+        sys.stderr = _TeeStream(primary_err, log_file)
+    except Exception:
+        pass
+
+
 def _apply_artifact_rename() -> None:
     global artifact_dir_path, deploy_console_path, do_userdata_json_path, _pending_artifact_rename
     if not artifact_dir_path or not _pending_artifact_rename:
         return
+    original_path = artifact_dir_path
+    target_path = _pending_artifact_rename
     try:
-        if not _pending_artifact_rename.exists():
-            artifact_dir_path.rename(_pending_artifact_rename)
-        artifact_dir_path = _pending_artifact_rename
+        if not target_path.exists():
+            original_path.rename(target_path)
+        artifact_dir_path = target_path
         deploy_console_path = str(artifact_dir_path / "deploy-console.log")
         do_userdata_json_path = str(artifact_dir_path / "DO_userdata.json")
         os.environ["DEPLOY_ARTIFACT_DIR"] = str(artifact_dir_path)
         _pending_artifact_rename = None
+        _reset_tee_stream(deploy_console_path)
+        return
+    except Exception:
+        pass
+
+    try:
+        target_path.mkdir(parents=True, exist_ok=True)
+        for entry in original_path.iterdir():
+            if entry.is_file():
+                try:
+                    shutil.copy2(entry, target_path / entry.name)
+                except Exception:
+                    pass
+        with open(target_path / "artifact-alias.txt", "w", encoding="utf-8") as f:
+            f.write(f"Original artifact path: {original_path}\n")
+        artifact_dir_path = target_path
+        deploy_console_path = str(artifact_dir_path / "deploy-console.log")
+        do_userdata_json_path = str(artifact_dir_path / "DO_userdata.json")
+        os.environ["DEPLOY_ARTIFACT_DIR"] = str(artifact_dir_path)
+        _pending_artifact_rename = None
+        _reset_tee_stream(deploy_console_path)
     except Exception:
         return
 
@@ -261,6 +306,15 @@ def _write_deploy_metadata(*, droplet_id: int | None, ip_address: str | None, up
             json.dump(payload, f, indent=2)
     except Exception:
         pass
+
+
+def _record_ip_early(*, droplet_id: int | None, ip_address: str | None, update_only: bool) -> None:
+    if not droplet_id or not ip_address:
+        return
+    log(f"[EARLY IP] Droplet {droplet_id} public IPv4: {ip_address}")
+    _plan_artifact_rename(ip_address)
+    _apply_artifact_rename()
+    _write_deploy_metadata(droplet_id=droplet_id, ip_address=ip_address, update_only=update_only)
 
 
 def _find_powershell_exe() -> str | None:
@@ -321,7 +375,10 @@ def _run_all_tests_suite() -> None:
 atexit.register(_finalize_artifacts)
 _init_artifacts()
 
+stage("initialize artifacts and env")
 
+
+stage("check ssh keys")
 log(f"Checking for SSH key at {ssh_key_path} and {pub_key_path}")
 if not os.path.exists(ssh_key_path):
     err(f"SSH key file {ssh_key_path} does not exist. Please check your key path and permissions.")
@@ -337,12 +394,14 @@ else:
     log(f"SSH key already exists: {ssh_key_path}")
 
 
+stage("load ssh public key")
 log(f"Reading public key from {pub_key_path}")
 with open(pub_key_path) as f:
     pubkey = f.read().strip()
 print(f"[public key]: {pubkey}")
 
 
+stage("update env with ssh key")
 log(f"Updating DO_API_SSH_KEYS in .env at {env_path}")
 with open(env_path) as f:
     lines = f.readlines()
@@ -674,6 +733,27 @@ def wait_for_public_ipv6(client: Client, droplet_id: int, timeout_sec: int, inte
         time.sleep(max(1, int(interval_sec)))
     raise RuntimeError(f"Timed out waiting for public IPv6 on droplet {droplet_id} after {timeout_sec}s")
 
+
+def wait_for_public_ipv4(client: Client, droplet_id: int, timeout_sec: int, interval_sec: int = 5) -> tuple[str, dict]:
+    """Poll the Droplet until a public IPv4 address is assigned.
+
+    Returns: (ipv4_address, droplet_info)
+    Raises RuntimeError on timeout.
+    """
+    deadline = time.time() + max(0, int(timeout_sec))
+    last_log = 0.0
+    while time.time() <= deadline:
+        droplet_info = client.droplets.get(droplet_id)["droplet"]
+        ipv4_address = _get_public_ipv4(droplet_info)
+        if ipv4_address:
+            return ipv4_address, droplet_info
+        now = time.time()
+        if now - last_log >= 15:
+            log(f"Waiting for IPv4 assignment on droplet {droplet_id}...")
+            last_log = now
+        time.sleep(max(1, int(interval_sec)))
+    raise RuntimeError(f"Timed out waiting for public IPv4 on droplet {droplet_id} after {timeout_sec}s")
+
 # CLI flags
 parser = argparse.ArgumentParser(description="Orchestrate DO deploy and post-deploy actions")
 parser.add_argument("--dry-run", action="store_true", help="Print actions without making changes")
@@ -755,6 +835,17 @@ to a per-run folder (unknown-<timestamp>) and rename it to <ip>-<timestamp> once
 def write_do_userdata(payload: dict):
     with open(do_userdata_json_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
+    ip_address = payload.get("ip_address")
+    droplet_id = payload.get("droplet_id")
+    if ip_address:
+        _plan_artifact_rename(ip_address)
+        _apply_artifact_rename()
+        if droplet_id:
+            try:
+                update_only = bool(UPDATE_ONLY)
+            except NameError:
+                update_only = False
+            _write_deploy_metadata(droplet_id=droplet_id, ip_address=ip_address, update_only=update_only)
 
 try:
     existing_userdata = {}
@@ -962,6 +1053,7 @@ def run_post_reboot() -> None:
 
         # Copy local .env to remote repo (AFTER any git sync)
         remote_env_path = f"{repo_path}/.env"
+        stage("upload .env")
         log(f"Uploading .env to {remote_env_path}")
         sftp = ssh_client.open_sftp()
         sftp.put(env_path.replace('\\', '/'), remote_env_path)
@@ -977,6 +1069,7 @@ def run_post_reboot() -> None:
 
         # Push local script updates that may not exist in the remote repo yet.
         # This is required for create flows when the repo clone doesn't include newer scripts.
+        stage("upload script updates")
         log("Uploading local script updates...")
         sftp = ssh_client.open_sftp()
         upload_pairs = [
@@ -1000,6 +1093,7 @@ def run_post_reboot() -> None:
 
         # Run post_reboot_complete.sh to finalize config (with reconnect on drop)
         post_reboot_path = f"{repo_path}/digital_ocean/scripts/bash/post_reboot_complete.sh"
+        stage("run post-reboot script")
         log(f"Running post-reboot script: {post_reboot_path}")
         try:
             run_ssh_cmd(f"bash {post_reboot_path}", "post-reboot script", artifact_name="post-reboot.txt")
@@ -1020,6 +1114,7 @@ def run_post_reboot() -> None:
             f"START_COMPOSE_PARALLEL_LIMIT=1 START_COMPOSE_HTTP_TIMEOUT=1200 "
             f"POST_DEPLOY_LOGS_FOLLOW_SECONDS=60 bash scripts/bash/start.sh --build --follow-logs"
         )
+        stage("start services")
         log(f"Starting services: {start_cmd}")
         try:
             run_ssh_cmd_stream(start_cmd, "start services", artifact_name="start-services.txt")
@@ -1042,6 +1137,7 @@ def run_post_reboot() -> None:
             f"else echo 'Missing test script: scripts/bash/test.sh'; exit 127; fi; "
             f"timeout {test_timeout} bash $TEST_SCRIPT"
         )
+        stage("run remote tests")
         log(f"Running tests: {test_cmd}")
         try:
             run_ssh_cmd(test_cmd, "remote tests", artifact_name="remote-tests.txt")
@@ -1071,6 +1167,7 @@ def run_post_reboot() -> None:
                     summary[name] = status_field
             return summary
 
+        stage("collect compose status")
         log("Fetching docker compose status...")
         _, ps_output, ps_err = run_ssh_cmd(
             f"cd {repo_path} && docker compose -f development.docker.yml ps",
@@ -1129,6 +1226,7 @@ def run_post_reboot() -> None:
                             paths[p] = paths.get(p, 0) + 1
             return errors_4xx, errors_5xx, paths
 
+        stage("collect service logs")
         log("Fetching key service logs (last 100 lines) and summarizing...")
         svc_errors: dict[str, dict[str, object]] = {}
         for svc in ["traefik", "nginx", "api", "django", "postgres", "pgadmin", "nginx-static"]:
@@ -1176,6 +1274,7 @@ def run_post_reboot() -> None:
 
 # --- 1. Create Droplet ---
 
+stage("prepare droplet spec")
 log("Preparing droplet spec...")
 droplet_spec = {
     "name": DO_DROPLET_NAME,
@@ -1196,6 +1295,7 @@ droplet_info = None
 
 fallback_to_create = False
 if UPDATE_ONLY:
+    stage("locate existing droplet")
     log("[UPDATE-ONLY] Skipping creation; locating existing droplet by name...")
     try:
         lst = client.droplets.list(per_page=200)
@@ -1218,9 +1318,17 @@ if UPDATE_ONLY:
 
             droplet_id = matched["id"]
             droplet_info = client.droplets.get(droplet_id)["droplet"]
-            v4_list = droplet_info.get("networks", {}).get("v4", [])
-            public_v4 = next((n for n in v4_list if n.get("type") == "public" and n.get("ip_address")), None)
-            ip_address = (public_v4 or (v4_list[0] if v4_list else {})).get("ip_address")
+            ip_address = _get_public_ipv4(droplet_info)
+            if ip_address:
+                _record_ip_early(droplet_id=droplet_id, ip_address=ip_address, update_only=True)
+            if not ip_address:
+                ip_address, droplet_info = wait_for_public_ipv4(
+                    client,
+                    droplet_id,
+                    timeout_sec=IP_POLL_TIMEOUT,
+                    interval_sec=IP_POLL_INTERVAL,
+                )
+            _record_ip_early(droplet_id=droplet_id, ip_address=ip_address, update_only=True)
             if not ip_address:
                 raise RuntimeError(f"Could not determine public IPv4 for droplet {droplet_id}")
             log(f"Using existing droplet {droplet_id} at {ip_address}")
@@ -1251,6 +1359,7 @@ if UPDATE_ONLY:
         exit(1)
 
 if not UPDATE_ONLY:
+    stage("create droplet")
     log("Creating droplet via DigitalOcean API...")
     try:
         log_json("API Request - droplets.create", droplet_spec)
@@ -1258,6 +1367,20 @@ if not UPDATE_ONLY:
         log_json("API Response - droplets.create", droplet)
         droplet_id = droplet["droplet"]["id"]
         log(f"Droplet created with ID: {droplet_id}")
+        try:
+            droplet_info = client.droplets.get(droplet_id)["droplet"]
+            ip_address = _get_public_ipv4(droplet_info)
+            if ip_address:
+                _record_ip_early(droplet_id=droplet_id, ip_address=ip_address, update_only=False)
+            ip_address, droplet_info = wait_for_public_ipv4(
+                client,
+                droplet_id,
+                timeout_sec=IP_POLL_TIMEOUT,
+                interval_sec=IP_POLL_INTERVAL,
+            )
+            _record_ip_early(droplet_id=droplet_id, ip_address=ip_address, update_only=False)
+        except Exception as e:
+            log(f"Early IPv4 poll did not return yet: {e}")
         # Wait active and set ip
         while True:
             droplet_info = client.droplets.get(droplet_id)["droplet"]
@@ -1289,6 +1412,7 @@ if not UPDATE_ONLY:
         err(f"Droplet creation failed: {e}")
         exit(1)
 
+    stage("ensure dns records")
     # Always ensure required DNS records exist/update to current droplet IP.
     try:
         ensure_dns_records_for_droplet(client=client, droplet_id=int(droplet_id), ipv4_address=str(ip_address))
@@ -1296,6 +1420,7 @@ if not UPDATE_ONLY:
         recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path)
         exit(1)
 
+    stage("wait for ssh availability")
     log(f"Using SSH user: {SSH_USER}")
     ssh_cmd = [
         "ssh",

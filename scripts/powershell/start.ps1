@@ -8,6 +8,11 @@ $ErrorActionPreference = 'Stop'
 
 $projectRoot = (Resolve-Path (Join-Path (Join-Path $PSScriptRoot '..') '..')).Path
 
+function Write-Stage {
+    param([string]$Label)
+    Write-Host ("[STAGE] {0}" -f $Label)
+}
+
 function Resolve-ComposeFilePath {
     param(
         [string]$Path,
@@ -42,6 +47,7 @@ $composeFile = Resolve-ComposeFilePath -Path $ComposeFile -Root $projectRoot
 $envFile = Resolve-EnvFilePath -Path $EnvFile -Root $projectRoot
 $envExample = Join-Path $projectRoot '.env.example'
 
+Write-Stage "Start.ps1 initialization"
 if (-not (Test-Path $envFile)) {
     if (Test-Path $envExample) {
         Copy-Item $envExample $envFile
@@ -54,8 +60,10 @@ if (-not (Test-Path $envFile)) {
 Push-Location $projectRoot
 try {
     if ($Build) {
+        Write-Stage "Docker compose up --build"
         docker compose --env-file $envFile -f $composeFile up -d --build
     } else {
+        Write-Stage "Docker compose up"
         docker compose --env-file $envFile -f $composeFile up -d
     }
 } finally {

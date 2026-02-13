@@ -10,11 +10,17 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$PROJECT_DIR"
 
+stage() {
+    echo "[STAGE] $1"
+}
+
 # Platform compatibility note
+stage "start.sh initialization"
 echo "â„¹ï¸  This script requires Bash and is tested on Mac, Linux, and Windows (WSL/Git Bash)."
 echo "   For Windows, use WSL or Git Bash for best results."
 
 # Docker Compose version check
+stage "docker compose version check"
 REQUIRED_COMPOSE_VERSION="2.0.0"
 compose_cmd=(docker-compose)
 if command -v docker >/dev/null 2>&1 && docker compose version --short >/dev/null 2>&1; then
@@ -40,6 +46,7 @@ echo "ðŸš€ Starting Docker Environment..."
 echo "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
 
 # Check if env file exists and validate required variables
+stage "env file validation"
 if [ ! -f "$ENV_FILE" ]; then
     echo "âš ï¸  Warning: env file not found: $ENV_FILE. Creating from .env.example..."
     if [ -f .env.example ]; then
@@ -62,6 +69,7 @@ for VAR in "${REQUIRED_VARS[@]}"; do
 done
 
 # Parse command line arguments
+stage "parse CLI args"
 BUILD=false
 DETACHED=true
 SELF_TEST=false
@@ -115,6 +123,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Synchronize configuration with .env before starting
+stage "sync configuration"
 echo "ðŸ”„ Synchronizing configuration..."
 if [ -f "$SCRIPT_DIR/sync-env.sh" ]; then
     "$SCRIPT_DIR/sync-env.sh" --compose-file "$COMPOSE_FILE" --env-file "$ENV_FILE"
@@ -169,6 +178,7 @@ if [ "$SELF_TEST" = true ]; then
 fi
 
 # Ensure Traefik ACME storage exists and is writable by the Traefik user.
+stage "prepare traefik acme storage"
 ACME_DIR="$PROJECT_DIR/letsencrypt"
 mkdir -p "$ACME_DIR"
 touch "$ACME_DIR/acme.json" "$ACME_DIR/acme-staging.json"
@@ -178,6 +188,7 @@ chown -R 1000:1000 "$ACME_DIR" || true
 
 # Build if requested
 if [ "$BUILD" = true ]; then
+    stage "docker compose build"
     echo "ðŸ”¨ Building services..."
     build_args=()
     compose_build_cmd=("${compose_cmd[@]}")
@@ -193,6 +204,7 @@ fi
 
 # Start services
 if [ "$DETACHED" = true ]; then
+    stage "docker compose up (detached)"
     echo "ðŸ³ Starting services in detached mode..."
     "${compose_cmd[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d
 
@@ -222,6 +234,7 @@ if [ "$DETACHED" = true ]; then
     # Optionally follow logs for a short window (useful for orchestrated deploys)
     if [ "$FOLLOW_LOGS" = true ] || [ "${START_FOLLOW_LOGS:-}" = "true" ]; then
         DURATION=${POST_DEPLOY_LOGS_FOLLOW_SECONDS:-60}
+        stage "follow service logs"
         echo "\nðŸ”Ž Following logs for ${DURATION}s (traefik, api, django, nginx, pgadmin)..."
         # Use timeout to avoid hanging forever; fallback if timeout is not available
         if command -v timeout >/dev/null 2>&1; then
@@ -234,6 +247,7 @@ if [ "$DETACHED" = true ]; then
         fi
     fi
 else
+    stage "docker compose up (foreground)"
     echo "ðŸ³ Starting services in foreground mode..."
     "${compose_cmd[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up
 fi
