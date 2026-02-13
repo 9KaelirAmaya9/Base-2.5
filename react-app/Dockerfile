@@ -11,6 +11,7 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
+COPY .npmrc ./
 COPY scripts/postinstall.js ./scripts/postinstall.js
 COPY patches ./patches
 RUN npm ci --legacy-peer-deps --no-audit --no-fund && npm cache clean --force
