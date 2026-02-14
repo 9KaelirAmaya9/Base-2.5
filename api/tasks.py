@@ -1,8 +1,11 @@
 import logging
 import os
+from contextlib import suppress
+from uuid import UUID
 
 from celery import Celery
-from contextlib import suppress
+
+from api.services.email_service import process_outbox_email
 
 
 logger = logging.getLogger("api.tasks")
@@ -38,6 +41,13 @@ def add(x: int, y: int) -> int:
     return int(x) + int(y)
 
 
-# Register additional tasks (keep import failures from breaking app startup)
-with suppress(Exception):
-    from api.tasks import email_tasks as _email_tasks  # noqa: F401
+@app.task(bind=True, name="app.send_email_outbox")
+def send_email_outbox(self, outbox_id: str, request_id: str | None = None) -> str:
+    with suppress(Exception):
+        logger.info(
+            "send_email_outbox",
+            extra={"task_id": self.request.id, "request_id": request_id, "outbox_id": outbox_id},
+        )
+
+    process_outbox_email(outbox_id=UUID(outbox_id))
+    return outbox_id
