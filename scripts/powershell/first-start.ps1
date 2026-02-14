@@ -1,6 +1,6 @@
 <#!
 .SYNOPSIS
-    One-time onboarding orchestrator for local tooling and .env generation.
+    One-time onboarding orchestrator for local tooling and .env.build generation.
 
 .DESCRIPTION
     Runs the full local bootstrap in a single, ordered flow:
@@ -8,11 +8,11 @@
     2) Activate .venv for the current PowerShell session
     3) scripts/powershell/install-python-deps.ps1 (Python deps for automation)
     4) scripts/powershell/install-node-deps.ps1 (Node deps for root/react-app/e2e)
-    5) scripts/powershell/setup.ps1 (guided .env generation from .env.example)
+    5) scripts/powershell/setup.ps1 (guided .env.build generation from .env.example)
 
-    The setup step may prompt to overwrite .env and/or request required values
+    The setup step may prompt to overwrite .env.build and/or request required values
     (DigitalOcean token, domain, emails, etc.). You can also edit .env manually
-    after it is generated.
+    after it is generated via setup.js --render-env.
 
 .PARAMETER ForceVenv
     Recreate the .venv even if one already exists.
@@ -26,13 +26,13 @@
 
     -NonInteractive   Run setup.js in non-interactive mode (best for CI).
     -SkipSetupJs      Skip setup.js and only run secret generation + DO SSH sync.
-    -EnvPath <path>   Target a different .env file (default: repo root .env).
+    -EnvPath <path>   Target a different .env file (default: repo root .env.build).
     -DoSyncDryRun     Dry-run the DigitalOcean SSH key sync step.
     <args...>         Any extra args are passed to setup.js (ValueFromRemainingArguments).
 
     Why these exist:
     - NonInteractive lets automation run without prompts.
-    - SkipSetupJs is useful if .env already exists and you only want secrets/SSH sync.
+    - SkipSetupJs is useful if .env.build already exists and you only want secrets/SSH sync.
     - EnvPath lets you manage multiple environments (e.g., .env.staging).
     - DoSyncDryRun lets you verify SSH key actions without touching DO.
     - Extra args let you control setup.js prompts/behavior.
@@ -86,7 +86,7 @@ $setupScript = Join-Path $PSScriptRoot 'setup.ps1'
 Push-Location $repoRoot
 try {
     Write-Host '==> Starting first-start orchestration' -ForegroundColor Cyan
-    Write-Host '==> Steps: bootstrap-venv, activate .venv, install python deps, install node deps, run setup (.env generation)' -ForegroundColor DarkGray
+    Write-Host '==> Steps: bootstrap-venv, activate .venv, install python deps, install node deps, run setup (.env.build generation)' -ForegroundColor DarkGray
     $bootstrapArgs = @()
     if ($ForceVenv) { $bootstrapArgs += '-Force' }
     Write-Host '==> Bootstrapping virtual environment' -ForegroundColor Cyan
@@ -135,8 +135,8 @@ try {
     }
 
     if (-not $SkipSetup) {
-        Write-Host '==> Running guided setup (.env generation)' -ForegroundColor Cyan
-        Write-Host 'NOTE: setup.ps1 may prompt to overwrite .env and ask for required values (e.g., DO token, domain, emails).' -ForegroundColor DarkGray
+        Write-Host '==> Running guided setup (.env.build generation)' -ForegroundColor Cyan
+        Write-Host 'NOTE: setup.ps1 may prompt to overwrite .env.build and ask for required values (e.g., DO token, domain, emails).' -ForegroundColor DarkGray
         try {
             & $setupScript
             if ($LASTEXITCODE -ne 0) {

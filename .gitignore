@@ -26,6 +26,8 @@ local_run_logs/
 
 # Environment variables with sensitive data
 .env
+.env.build
+.env.build.*
 .env.local
 .env.*.local
 .env.development.local

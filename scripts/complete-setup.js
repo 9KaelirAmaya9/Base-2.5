@@ -4,16 +4,15 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
-const { fileExists, readText, parseEnv, applyToTemplate, backupFile } = require('./lib/envFile');
+const { fileExists, readText, parseEnv, applyToTemplate, backupFile, expandEnvContent, findUnresolvedPlaceholders } = require('./lib/envFile');
 const { detectPublicIpv4 } = require('./lib/ipDetect');
 const { redactEnvMap } = require('./lib/redact');
 const { validateEnv, requiredCategories, normalizeEnv, normalizeDeployMode, CATEGORY } = require('./envRules');
 const { isPlaceholder } = require('./lib/placeholders');
-
 function printHelp() {
   console.log('Usage: npm run setup:complete -- [--dry-run] [--no-print]');
   console.log('');
-  console.log('Validate required configuration, generate missing credentials, and apply safe defaults.');
+  console.log('Validate required configuration, generate missing credentials, and render .env.');
   console.log('');
   console.log('Options:');
   console.log('  --dry-run   Validate and print planned changes without writing files');
@@ -25,12 +24,16 @@ function repoRoot() {
   return path.resolve(__dirname, '..');
 }
 
-function envPath(rootDir) {
-  return path.join(rootDir, '.env');
+function envBuildPath(rootDir) {
+  return path.join(rootDir, '.env.build');
 }
 
 function envExamplePath(rootDir) {
   return path.join(rootDir, '.env.example');
+}
+
+function envFinalPath(rootDir) {
+  return path.join(rootDir, '.env');
 }
 
 function parseArgs(argv) {
@@ -92,6 +95,10 @@ async function ensureAllowlists({ envMap, ipDetector, plannedChanges }) {
   if (!needsIp && needsAllowlists.length === 0) return;
 
   if (needsIp) {
+    if (typeof ipDetector !== 'function') {
+      plannedChanges.push({ key: tpKey, action: 'ip-detect-skipped' });
+      return;
+    }
     try {
       const res = await ipDetector();
       ip = res && res.ip ? String(res.ip).trim() : '';
@@ -222,7 +229,7 @@ async function runCompleteSetup(options = {}) {
   const argv = options.argv ?? process.argv.slice(2);
   const stdout = options.stdout ?? console.log;
   const stderr = options.stderr ?? console.error;
-  const ipDetector = options.ipDetector ?? (() => detectPublicIpv4());
+  const ipDetector = options.ipDetector ?? null;
   const hashPassword = options.hashPassword ?? defaultHashPassword;
   const randomBytes = options.randomBytes ?? crypto.randomBytes;
 
@@ -236,9 +243,9 @@ async function runCompleteSetup(options = {}) {
   if (!fileExists(example)) {
     throw new Error('Missing .env.example (required).');
   }
-  const envFile = envPath(rootDir);
+  const envFile = envBuildPath(rootDir);
   if (!fileExists(envFile)) {
-    throw new Error('Missing .env. Run: npm run setup');
+    throw new Error('Missing .env.build. Run: npm run setup');
   }
 
   const template = readText(example);
@@ -273,9 +280,30 @@ async function runCompleteSetup(options = {}) {
     }
   }
 
+  const deployMode = normalizeDeployMode(envMap.DEPLOY_MODE);
+  const doKeys = ['DIGITAL_OCEAN_API_TOKEN', 'DIGITAL_OCEAN_SSH_KEY_ID', 'DIGITAL_OCEAN_API_SSH_KEYS'];
+  const doMissing = [];
+  if (deployMode === 'digitalocean') {
+    for (const key of doKeys) {
+      const value = envMap[key];
+      if (!value || String(value).trim() === '' || isPlaceholder(value, key)) {
+        doMissing.push({ key, message: `${key} is required for DigitalOcean deploys`, required: true });
+      }
+    }
+  }
+
   if (gitMissing.length > 0) {
     report[CATEGORY.Core] = report[CATEGORY.Core] ?? [];
     for (const item of gitMissing) {
+      report[CATEGORY.Core].push(item);
+    }
+    requiredIssues = requiredIssues.filter(([category]) => category !== CATEGORY.Core);
+    requiredIssues.push([CATEGORY.Core, report[CATEGORY.Core]]);
+  }
+
+  if (doMissing.length > 0) {
+    report[CATEGORY.Core] = report[CATEGORY.Core] ?? [];
+    for (const item of doMissing) {
       report[CATEGORY.Core].push(item);
     }
     requiredIssues = requiredIssues.filter(([category]) => category !== CATEGORY.Core);
@@ -304,18 +332,33 @@ async function runCompleteSetup(options = {}) {
     }
   }
 
-  // 5) Write .env (unless dry-run)
+  // 5) Render final .env (unless dry-run)
   const nextEnvText = applyToTemplate(template, envMap);
-  const changed = nextEnvText !== envText;
+  const expansionMap = { ...process.env, ...envMap };
+  const expanded = expandEnvContent(nextEnvText, expansionMap);
+  const unresolved = findUnresolvedPlaceholders(expanded);
+  if (unresolved.length > 0) {
+    stdout('');
+    stdout('Validation failed (unresolved placeholders):');
+    for (const item of unresolved) {
+      stdout(`- ${item.key}: ${item.placeholders.join(', ')}`);
+    }
+    return { changed: false, plannedChanges, validation: { report, exitCode: 2 } };
+  }
+
+  const envFinalFile = envFinalPath(rootDir);
+  const changed = expanded !== envText || !fileExists(envFinalFile);
 
   if (!args.dryRun && changed) {
-    backupFile(envFile, 'pre-complete');
-    fs.writeFileSync(envFile, nextEnvText, 'utf8');
+    if (fileExists(envFinalFile)) {
+      backupFile(envFinalFile, 'pre-complete');
+    }
+    fs.writeFileSync(envFinalFile, expanded, 'utf8');
     stdout('');
-    stdout('✅ Updated .env');
+    stdout('✅ Rendered .env');
   } else if (args.dryRun && changed) {
     stdout('');
-    stdout('ℹ dry-run: .env would be updated');
+    stdout('ℹ dry-run: .env would be rendered');
   } else {
     stdout('');
     stdout('✅ No changes needed');

@@ -36,6 +36,77 @@ function parseEnv(content) {
   return env;
 }
 
+const ENV_VAR_PATTERN = /\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
+
+/**
+ * Expand ${VAR} templates using the provided map.
+ * Unknown vars are left unchanged.
+ * @param {string} value
+ * @param {Record<string, string>} envMap
+ */
+function expandEnvValue(value, envMap) {
+  if (value === null || value === undefined) return value;
+  let current = String(value);
+  for (let i = 0; i < 5; i += 1) {
+    const next = current.replace(ENV_VAR_PATTERN, (match, key) => {
+      if (Object.prototype.hasOwnProperty.call(envMap, key)) {
+        return String(envMap[key]);
+      }
+      return match;
+    });
+    if (next === current) break;
+    current = next;
+  }
+  return current;
+}
+
+/**
+ * Expand ${VAR} templates in a full env file while preserving comments/order.
+ * @param {string} content
+ * @param {Record<string, string>} envMap
+ */
+function expandEnvContent(content, envMap) {
+  const lines = content.split(/\r?\n/);
+  const out = [];
+  for (const line of lines) {
+    const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+    if (!m) {
+      out.push(line);
+      continue;
+    }
+    const key = m[1];
+    const value = m[2];
+    const expanded = expandEnvValue(value, envMap);
+    out.push(`${key}=${expanded}`);
+  }
+  return out.join('\n');
+}
+
+/**
+ * Find any unresolved ${VAR} placeholders after expansion.
+ * @param {string} content
+ */
+function findUnresolvedPlaceholders(content) {
+  const unresolved = [];
+  const lines = content.split(/\r?\n/);
+  for (const line of lines) {
+    const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+    if (!m) continue;
+    const key = m[1];
+    const value = m[2];
+    const placeholders = [];
+    let match;
+    ENV_VAR_PATTERN.lastIndex = 0;
+    while ((match = ENV_VAR_PATTERN.exec(value))) {
+      placeholders.push(match[1]);
+    }
+    if (placeholders.length > 0) {
+      unresolved.push({ key, value, placeholders });
+    }
+  }
+  return unresolved;
+}
+
 function timestampId(d = new Date()) {
   const pad = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
@@ -148,6 +219,9 @@ module.exports = {
   readText,
   fileExists,
   parseEnv,
+  expandEnvValue,
+  expandEnvContent,
+  findUnresolvedPlaceholders,
   applyToTemplate,
   backupFile,
 };

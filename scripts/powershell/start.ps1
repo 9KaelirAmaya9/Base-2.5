@@ -46,15 +46,20 @@ function Resolve-EnvFilePath {
 $composeFile = Resolve-ComposeFilePath -Path $ComposeFile -Root $projectRoot
 $envFile = Resolve-EnvFilePath -Path $EnvFile -Root $projectRoot
 $envExample = Join-Path $projectRoot '.env.example'
+$envBuild = Join-Path $projectRoot '.env.build'
 
 Write-Stage "Start.ps1 initialization"
 if (-not (Test-Path $envFile)) {
-    if (Test-Path $envExample) {
-        Copy-Item $envExample $envFile
-        Write-Host 'Created .env from .env.example (review values before deploying).'
-    } else {
-        throw 'Missing .env and .env.example'
+    if (Test-Path $envBuild) {
+        throw 'Missing .env. Run: node scripts/setup.js --render-env'
     }
+    if (Test-Path $envExample) {
+        Copy-Item $envExample $envBuild
+        Write-Host 'Created .env.build from .env.example.'
+        Write-Host 'Run: node scripts/setup.js (fill values), then node scripts/setup.js --render-env'
+        throw 'Missing .env (build file created).'
+    }
+    throw 'Missing .env, .env.build, and .env.example'
 }
 
 Push-Location $projectRoot

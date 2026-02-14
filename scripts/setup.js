@@ -2,9 +2,20 @@
 
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
-const { fileExists, readText, parseEnv, applyToTemplate, backupFile } = require('./lib/envFile');
-const { deriveIdentifiers, sanitizeProjectName } = require('./lib/derived');
+const {
+  fileExists,
+  readText,
+  parseEnv,
+  applyToTemplate,
+  backupFile,
+  expandEnvContent,
+  findUnresolvedPlaceholders,
+} = require('./lib/envFile');
+const { sanitizeProjectName } = require('./lib/derived');
+const { detectPublicIpv4 } = require('./lib/ipDetect');
+const { isPlaceholder } = require('./lib/placeholders');
 const { validateEnv, CATEGORY } = require('./envRules');
 
 function repoRoot() {
@@ -13,6 +24,10 @@ function repoRoot() {
 
 function envPath(rootDir) {
   return path.join(rootDir, '.env');
+}
+
+function envBuildPath(rootDir) {
+  return path.join(rootDir, '.env.build');
 }
 
 function envExamplePath(rootDir) {
@@ -83,28 +98,28 @@ async function runSetup(options = {}) {
     process.exit(2);
   }
 
-  const envFile = envPath(rootDir);
-  const hasEnv = fileExists(envFile);
+  const envBuildFile = envBuildPath(rootDir);
+  const hasEnvBuild = fileExists(envBuildFile);
 
-  if (hasEnv) {
-    stdout('==> .env already exists; asking whether to overwrite');
+  if (hasEnvBuild) {
+    stdout('==> .env.build already exists; asking whether to overwrite');
     const { overwrite } = await prompt([
       {
         type: 'confirm',
         name: 'overwrite',
         default: false,
-        message: '.env already exists. Overwrite it (a timestamped backup will be created)?',
+        message: '.env.build already exists. Overwrite it (a timestamped backup will be created)?',
       },
     ]);
     if (!overwrite) {
       stdout('No changes made.');
       return { changed: false };
     }
-    const backup = backupFile(envFile, 'pre-setup');
+    const backup = backupFile(envBuildFile, 'pre-setup');
     stdout(`Backup created: ${path.basename(backup)}`);
   }
 
-  stdout('==> Gathering required settings for .env');
+  stdout('==> Gathering required settings for .env.build');
   const {
     projectName,
     websiteDomain,
@@ -114,8 +129,6 @@ async function runSetup(options = {}) {
     applyPasswordDefaults,
     userMainName,
     applyUserDefaults,
-    gitRepo,
-    gitRepoBranch,
     env,
     deployMode,
     applyDevDefaults,
@@ -182,16 +195,6 @@ async function runSetup(options = {}) {
       when: (a) => String(a.userMainName || '').trim() !== '',
     },
     {
-      type: 'input',
-      name: 'gitRepo',
-      message: 'Git repo URL (optional, used for deploy automation):',
-    },
-    {
-      type: 'input',
-      name: 'gitRepoBranch',
-      message: 'Git repo branch (optional, used for deploy automation):',
-    },
-    {
       type: 'list',
       name: 'env',
       message: 'Environment:',
@@ -217,20 +220,38 @@ async function runSetup(options = {}) {
     },
   ]);
 
-  const identifiers = deriveIdentifiers({ projectName });
-
   const templateContent = readText(example);
-  const existingEnv = hasEnv ? parseEnv(readText(envFile)) : {};
+  const existingEnv = hasEnvBuild ? parseEnv(readText(envBuildFile)) : {};
+
+  const allowedKeys = new Set([
+    'PROJECT_NAME',
+    'WEBSITE_DOMAIN',
+    'ENV',
+    'DEPLOY_MODE',
+    'APPLY_DEV_DEFAULTS',
+    'USER_MAIN_EMAIL',
+    'USER_MAIN_PASSWORD',
+    'USER_MAIN_NAME',
+    'APPLY_USER_NAME_DEFAULTS',
+    'APPLY_USER_EMAIL_DEFAULTS',
+    'APPLY_USER_PASSWORD_DEFAULTS',
+    'TP_USER_IP_ADDRESS',
+  ]);
+
+  const base = {};
+  for (const [key, value] of Object.entries(existingEnv)) {
+    if (allowedKeys.has(key)) {
+      base[key] = value;
+    }
+  }
 
   const emailValue = String(userMainEmail || '').trim();
   const passwordValue = String(userMainPassword || '').trim();
   const nameValue = String(userMainName || '').trim();
-  const gitRepoValue = String(gitRepo || '').trim();
-  const gitRepoBranchValue = String(gitRepoBranch || '').trim();
 
   const updates = {
-    ...existingEnv,
-    ...identifiers,
+    ...base,
+    PROJECT_NAME: sanitizeProjectName(projectName),
     WEBSITE_DOMAIN: websiteDomain.trim(),
     ENV: env,
     DEPLOY_MODE: deployMode,
@@ -243,17 +264,6 @@ async function runSetup(options = {}) {
 
   if (emailValue) {
     updates.USER_MAIN_EMAIL = emailValue;
-    if (applyEmailDefaults) {
-      updates.TRAEFIK_CERT_EMAIL = emailValue;
-      updates.DJANGO_SUPERUSER_EMAIL = emailValue;
-      updates.PGADMIN_DEFAULT_EMAIL = emailValue;
-      updates.DEFAULT_FROM_EMAIL = emailValue;
-      updates.EMAIL_FROM = emailValue;
-      updates.SEED_ADMIN_EMAIL = emailValue;
-      updates.EMAIL_HOST_USER = emailValue;
-      updates.EMAIL_USER = emailValue;
-      updates.DO_ALERT_EMAIL = emailValue;
-    }
   }
 
   if (typeof applyPasswordDefaults === 'boolean') {
@@ -262,18 +272,6 @@ async function runSetup(options = {}) {
 
   if (passwordValue) {
     updates.USER_MAIN_PASSWORD = passwordValue;
-    if (applyPasswordDefaults) {
-      updates.TP_REDIS_PASSWORD = passwordValue;
-      updates.TP_POSTGRES_PASSWORD = passwordValue;
-      updates.TP_PGADMIN_PASSWORD = passwordValue;
-      updates.TP_DJANGO_SUPERUSER_PASSWORD = passwordValue;
-      updates.TP_SEED_ADMIN_PASSWORD = passwordValue;
-      updates.TP_SEED_DEMO_PASSWORD = passwordValue;
-      updates.TP_FLOWER_PASSWORD = passwordValue;
-      updates.TP_TRAEFIK_PASSWORD = passwordValue;
-      updates.EMAIL_HOST_PASSWORD = passwordValue;
-      updates.EMAIL_PASSWORD = passwordValue;
-    }
   }
 
   if (typeof applyUserDefaults === 'boolean') {
@@ -282,47 +280,133 @@ async function runSetup(options = {}) {
 
   if (nameValue) {
     updates.USER_MAIN_NAME = nameValue;
-    if (applyUserDefaults) {
-      updates.POSTGRES_USER = nameValue;
-      updates.DB_USER = nameValue;
-      updates.DJANGO_SUPERUSER_NAME = nameValue;
-      updates.FLOWER_USER = nameValue;
-      updates.TRAEFIK_DASH_USER = nameValue;
-      updates.FLOWER_USER_NAME = nameValue;
-      updates.TRAEFIK_USER_NAME = nameValue;
+  }
+
+  const tpSecretKeys = [
+    'TP_DJANGO_SECRET_KEY',
+    'TP_JWT_SECRET',
+    'TP_TOKEN_PEPPER',
+    'TP_OAUTH_STATE_SECRET',
+    'TP_SEED_ADMIN_PASSWORD',
+    'TP_SEED_DEMO_PASSWORD',
+    'TP_DJANGO_SUPERUSER_PASSWORD',
+    'TP_REDIS_PASSWORD',
+    'TP_POSTGRES_PASSWORD',
+    'TP_PGADMIN_PASSWORD',
+    'TP_FLOWER_PASSWORD',
+    'TP_TRAEFIK_PASSWORD',
+  ];
+
+  const passwordDefaultsEnabled = String(applyPasswordDefaults || '').trim().toLowerCase() === 'true';
+  const nameDefaultsEnabled = String(applyUserDefaults || '').trim().toLowerCase() === 'true';
+  const passwordDefaultsKeys = new Set([
+    'TP_SEED_ADMIN_PASSWORD',
+    'TP_SEED_DEMO_PASSWORD',
+    'TP_DJANGO_SUPERUSER_PASSWORD',
+    'TP_REDIS_PASSWORD',
+    'TP_POSTGRES_PASSWORD',
+    'TP_PGADMIN_PASSWORD',
+    'TP_FLOWER_PASSWORD',
+    'TP_TRAEFIK_PASSWORD',
+    'TP_EMAIL_HOST_PASSWORD',
+  ]);
+
+  for (const key of tpSecretKeys) {
+    const current = existingEnv[key];
+    if (!isPlaceholder(current, key)) {
+      continue;
+    }
+    if (passwordDefaultsEnabled && passwordValue && passwordDefaultsKeys.has(key)) {
+      updates[key] = passwordValue;
+      continue;
+    }
+    updates[key] = crypto.randomBytes(32).toString('hex');
+  }
+
+  const existingFlowerUser = existingEnv.TP_FLOWER_USERNAME;
+  if (isPlaceholder(existingFlowerUser, 'TP_FLOWER_USERNAME') && nameDefaultsEnabled && nameValue) {
+    updates.TP_FLOWER_USERNAME = nameValue;
+  }
+
+  const existingTraefikUser = existingEnv.TP_TRAEFIK_USERNAME;
+  if (isPlaceholder(existingTraefikUser, 'TP_TRAEFIK_USERNAME') && nameDefaultsEnabled && nameValue) {
+    updates.TP_TRAEFIK_USERNAME = nameValue;
+  }
+
+  const existingIp = existingEnv.TP_USER_IP_ADDRESS;
+  if (isPlaceholder(existingIp, 'TP_USER_IP_ADDRESS')) {
+    try {
+      const detected = await detectPublicIpv4();
+      if (detected && detected.ip) {
+        updates.TP_USER_IP_ADDRESS = detected.ip;
+        stdout(`OK: Detected public IP ${detected.ip}`);
+      }
+    } catch (e) {
+      stdout('WARN: Unable to detect public IP for TP_USER_IP_ADDRESS. Set it manually if needed.');
     }
   }
 
-  if (gitRepoValue) {
-    updates.GIT_REPO = gitRepoValue;
-    updates.GIT_REMOTE = gitRepoValue;
-    updates.DO_GIT_REPO = gitRepoValue;
-  }
-
-  if (gitRepoBranchValue) {
-    updates.GIT_REPO_BRANCH = gitRepoBranchValue;
-    updates.DO_APP_BRANCH = gitRepoBranchValue;
-  }
-
-  updates.DO_TAGS = `${projectName},automation`;
-
   const out = applyToTemplate(templateContent, updates);
-  fs.writeFileSync(envFile, out, 'utf8');
+  fs.writeFileSync(envBuildFile, out, 'utf8');
 
   const merged = parseEnv(out);
 
-  stdout('OK: Wrote .env');
+  stdout('OK: Wrote .env.build');
   printChecklist({ envMap: merged, stdout });
 
   stdout('');
   stdout('Recommended commands:');
   stdout('  - npm run setup:complete');
+  stdout('  - node scripts/setup.js --render-env');
   stdout('  - npm run doctor');
 
-  return { changed: true, envPath: envFile };
+  return { changed: true, envPath: envBuildFile };
+}
+
+/**
+ * @param {{ rootDir?: string, stdout?: Function, stderr?: Function }} options
+ */
+async function renderFinalEnv(options = {}) {
+  const rootDir = options.rootDir ?? repoRoot();
+  const stdout = options.stdout ?? console.log;
+  const stderr = options.stderr ?? console.error;
+
+  const envBuildFile = envBuildPath(rootDir);
+  if (!fileExists(envBuildFile)) {
+    stderr('ERROR: .env.build is required but was not found. Run setup first.');
+    process.exit(2);
+  }
+
+  const envFile = envPath(rootDir);
+  if (fileExists(envFile)) {
+    const backup = backupFile(envFile, 'pre-render');
+    stdout(`Backup created: ${path.basename(backup)}`);
+  }
+
+  const buildContent = readText(envBuildFile);
+  const envMap = parseEnv(buildContent);
+  const expansionMap = { ...process.env, ...envMap };
+  const expanded = expandEnvContent(buildContent, expansionMap);
+  const unresolved = findUnresolvedPlaceholders(expanded);
+
+  if (unresolved.length > 0) {
+    stderr('ERROR: Unresolved placeholders remain in .env.build.');
+    for (const item of unresolved) {
+      stderr(`- ${item.key}: ${item.placeholders.join(', ')}`);
+    }
+    process.exit(2);
+  }
+
+  fs.writeFileSync(envFile, expanded, 'utf8');
+  stdout('OK: Wrote .env from .env.build');
 }
 
 async function main() {
+  const args = process.argv.slice(2);
+  if (args.includes('--render-env')) {
+    await renderFinalEnv();
+    return;
+  }
   await runSetup();
 }
 
@@ -333,4 +417,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { runSetup };
+module.exports = { runSetup, renderFinalEnv };

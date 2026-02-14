@@ -20,7 +20,7 @@ if ($Help) {
   Write-Host 'Options:'
   Write-Host '  -NonInteractive   Run setup.js without prompts (fails if required values are missing)'
   Write-Host '  -SkipSetupJs      Skip setup.js and only run secret generation + DO SSH sync'
-  Write-Host '  -EnvPath <path>   Target a different .env file (default: repo root .env)'
+  Write-Host '  -EnvPath <path>   Target a different .env file (default: repo root .env.build)'
   Write-Host '  -DoSyncDryRun     Dry-run the DigitalOcean SSH key sync step'
   Write-Host '  -Help, -h         Show this help'
   Write-Host ''
@@ -62,9 +62,9 @@ if (-not $SkipSetupJs) {
   Write-Host 'OK: setup.js completed' -ForegroundColor Green
 }
 
-$envPath = if ($EnvPath) { Resolve-Path $EnvPath } else { Join-Path $repoRoot '.env' }
+$envPath = if ($EnvPath) { Resolve-Path $EnvPath } else { Join-Path $repoRoot '.env.build' }
 if (-not (Test-Path $envPath)) {
-  Write-Warning 'Missing .env; skipping secret generation.'
+  Write-Warning 'Missing .env.build; skipping secret generation.'
   exit 0
 }
 

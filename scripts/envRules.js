@@ -95,11 +95,13 @@ function requiredCategories({ env, deployMode }) {
   const normalizedDeployMode = normalizeDeployMode(deployMode);
   const required = new Set([CATEGORY.Core, CATEGORY.Secrets, CATEGORY.Admin, CATEGORY.Access]);
 
-  const needsTlsAndSmtp =
-    normalizedEnv === ENVS.PRODUCTION || normalizedDeployMode === DEPLOY_MODES.DIGITALOCEAN;
+  const needsTls = normalizedEnv === ENVS.PRODUCTION || normalizedDeployMode === DEPLOY_MODES.DIGITALOCEAN;
+  const needsSmtp = normalizedEnv !== ENVS.DEVELOPMENT && normalizedDeployMode !== DEPLOY_MODES.LOCAL;
 
-  if (needsTlsAndSmtp) {
+  if (needsTls) {
     required.add(CATEGORY.TLS);
+  }
+  if (needsSmtp) {
     required.add(CATEGORY.SMTP);
   }
 
