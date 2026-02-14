@@ -28,7 +28,11 @@ app.conf.update(
     accept_content=["json"],
     timezone="UTC",
     enable_utc=True,
+    include=["api.tasks"],
 )
+
+# Ensure tasks are registered even when Celery starts before module import.
+app.autodiscover_tasks(["api"])
 
 @app.task(name="app.ping")
 def ping(request_id: str | None = None):

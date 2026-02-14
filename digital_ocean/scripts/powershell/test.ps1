@@ -787,7 +787,7 @@ function Check-DoDns([string]$artifactDir, [string]$domain, [string]$expectedIpv
     swagger = $swaggerLabel
   }
 
-  $payload = [ordered]@{ domain = $domain; expectedIpv4 = $expectedIpv4; expectedIpv6 = $expectedIpv6; names = @{}; } 
+  $payload = [ordered]@{ domain = $domain; expectedIpv4 = $expectedIpv4; expectedIpv6 = $expectedIpv6; names = @{}; }
   try {
     foreach ($k in $labels.Keys) {
       $name = $labels[$k]
