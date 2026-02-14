@@ -9,7 +9,7 @@ Design and ship a cohesive glassmorphism UI system and calc-driven App Shell in 
 
 ## Technical Context
 
-**Language/Version**: JavaScript (React 18), Node 18 (repo-default)  
+**Language/Version**: JavaScript (React 18), Node 24.13.1 (repo-default)  
 **Primary Dependencies**: React, Storybook, React Testing Library, Playwright, jest-axe; backend present (Django, FastAPI) but unchanged for this feature  
 **Storage**: N/A (frontend-only; theme stored via client cookie; backend profile override when authenticated)  
 **Testing**: RTL + jest-axe (unit/accessibility), Storybook (visual contracts), Playwright (E2E), CI via deploy script AllTests  

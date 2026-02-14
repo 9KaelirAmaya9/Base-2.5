@@ -4,10 +4,10 @@ Auto-generated from all feature plans. Last updated: 2025-12-24
 
 ## Active Technologies
 
-- PowerShell 7+, Bash, Node.js 18+, Python 3.12 + Node.js repo tooling, Python-based DigitalOcean orchestration, Docker Compose 2+ (004-scripting-update)
+- PowerShell 7+, Bash, Node.js 24.13.1+, Python 3.12 + Node.js repo tooling, Python-based DigitalOcean orchestration, Docker Compose 2+ (004-scripting-update)
 - N/A (configuration and script files) (004-scripting-update)
 
-- Python 3.12 (Django + FastAPI), Node 18 (React), PowerShell 5.1 (deploy/test) + Docker Compose, Traefik v3.1, Django + Gunicorn, FastAPI + Uvicorn, React 18, Nginx, Postgres 16, Redis 7.2, Celery, Flower (001-django-fastapi-react)
+- Python 3.12 (Django + FastAPI), Node 24.13.1 (React), PowerShell 5.1 (deploy/test) + Docker Compose, Traefik v3.1, Django + Gunicorn, FastAPI + Uvicorn, React 18, Nginx, Postgres 16, Redis 7.2, Celery, Flower (001-django-fastapi-react)
 - PostgreSQL 16 (service `postgres`; Django migrations are canonical) (001-django-fastapi-react)
 
 - (001-django-fastapi-react)
@@ -29,9 +29,9 @@ tests/
 
 ## Recent Changes
 
-- 004-scripting-update: Added PowerShell 7+, Bash, Node.js 18+, Python 3.12 + Node.js repo tooling, Python-based DigitalOcean orchestration, Docker Compose 2+
+- 004-scripting-update: Added PowerShell 7+, Bash, Node.js 24.13.1+, Python 3.12 + Node.js repo tooling, Python-based DigitalOcean orchestration, Docker Compose 2+
 
-- 001-django-fastapi-react: Added Python 3.12 (Django + FastAPI), Node 18 (React), PowerShell 5.1 (deploy/test) + Docker Compose, Traefik v3.1, Django + Gunicorn, FastAPI + Uvicorn, React 18, Nginx, Postgres 16, Redis 7.2, Celery, Flower
+- 001-django-fastapi-react: Added Python 3.12 (Django + FastAPI), Node 24.13.1 (React), PowerShell 5.1 (deploy/test) + Docker Compose, Traefik v3.1, Django + Gunicorn, FastAPI + Uvicorn, React 18, Nginx, Postgres 16, Redis 7.2, Celery, Flower
 
 - 001-django-fastapi-react: Added
 

@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Windows PowerShell 7+ or Bash on Mac/Linux
-- Node.js 18+ (for guard and make-like interface)
+- Node.js 24.13.1+ (for guard and make-like interface)
 - Python 3.12 (for existing repo scripts)
 
 ## Validate Guard and Parity (Local)

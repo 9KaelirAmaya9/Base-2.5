@@ -9,7 +9,7 @@ Standardize script routing so local PowerShell and Bash entrypoints never cross-
 
 ## Technical Context
 
-**Language/Version**: PowerShell 7+, Bash, Node.js 18+, Python 3.12  
+**Language/Version**: PowerShell 7+, Bash, Node.js 24.13.1+, Python 3.12  
 **Primary Dependencies**: Node.js repo tooling, Python-based DigitalOcean orchestration, Docker Compose 2+  
 **Storage**: N/A (configuration and script files)  
 **Testing**: `node --test` for script tests, `pytest` for Python, shell-level smoke commands  

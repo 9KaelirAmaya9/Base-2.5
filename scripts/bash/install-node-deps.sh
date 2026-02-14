@@ -10,30 +10,57 @@ if [[ -z "${VIRTUAL_ENV:-}" ]]; then
 fi
 
 if ! command -v node >/dev/null 2>&1; then
-  echo "node executable not found in PATH. Install Node.js 18+ and retry." >&2
+  echo "node executable not found in PATH. Install Node.js 24.13.1+ and retry." >&2
   exit 1
 fi
 
 if ! command -v npm >/dev/null 2>&1; then
-  echo "npm executable not found in PATH. Install npm 9+ and retry." >&2
+  echo "npm executable not found in PATH. Install npm 11.10.0+ and retry." >&2
   exit 1
 fi
 
-get_major() {
+parse_version() {
   local version="$1"
   version="${version#v}"
-  echo "$version" | cut -d. -f1
+  IFS='.' read -r major minor patch <<<"$version"
+  echo "${major:-0} ${minor:-0} ${patch:-0}"
 }
 
-node_major="$(get_major "$(node --version)")"
-if [[ -z "$node_major" || "$node_major" -lt 18 ]]; then
-  echo "Node.js major version 18+ is required but found ${node_major:-unknown}." >&2
+version_ge() {
+  local left="$1"
+  local right="$2"
+  local l_major l_minor l_patch r_major r_minor r_patch
+  read -r l_major l_minor l_patch <<<"$(parse_version "$left")"
+  read -r r_major r_minor r_patch <<<"$(parse_version "$right")"
+  if ((l_major > r_major)); then
+    return 0
+  fi
+  if ((l_major < r_major)); then
+    return 1
+  fi
+  if ((l_minor > r_minor)); then
+    return 0
+  fi
+  if ((l_minor < r_minor)); then
+    return 1
+  fi
+  if ((l_patch >= r_patch)); then
+    return 0
+  fi
+  return 1
+}
+
+required_node="24.13.1"
+node_version="$(node --version)"
+if ! version_ge "$node_version" "$required_node"; then
+  echo "Node.js version ${required_node}+ is required but found ${node_version}." >&2
   exit 1
 fi
 
-npm_major="$(get_major "$(npm --version)")"
-if [[ -z "$npm_major" || "$npm_major" -lt 9 ]]; then
-  echo "npm version 9+ required but found ${npm_major:-unknown}." >&2
+required_npm="11.10.0"
+npm_version="$(npm --version)"
+if ! version_ge "$npm_version" "$required_npm"; then
+  echo "npm version ${required_npm}+ required but found ${npm_version}." >&2
   exit 1
 fi
 

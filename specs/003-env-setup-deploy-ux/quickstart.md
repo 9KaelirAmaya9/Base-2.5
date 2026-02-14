@@ -4,7 +4,7 @@ See the feature specification at `specs/003-env-setup-deploy-ux/spec.md` and imp
 
 ## Prerequisites
 
-- Node.js 18+ (repo root `package.json` engines)
+- Node.js 24.13.1+ (repo root `package.json` engines)
 - Docker Engine + Docker Compose v2
 - Windows users:
   - PowerShell is supported

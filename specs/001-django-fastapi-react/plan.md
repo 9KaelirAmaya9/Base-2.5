@@ -9,7 +9,7 @@ Deliver a production-like, staging-safe full stack behind Traefik (staging-only 
 
 ## Technical Context
 
-**Language/Version**: Python 3.12 (Django + FastAPI), Node 18 (React), PowerShell 5.1 (deploy/test)
+**Language/Version**: Python 3.12 (Django + FastAPI), Node 24.13.1 (React), PowerShell 5.1 (deploy/test)
 
 **Primary Dependencies**: Docker Compose, Traefik v3.1, Django + Gunicorn, FastAPI + Uvicorn, React 18, Nginx, Postgres 16, Redis 7.2, Celery, Flower
 

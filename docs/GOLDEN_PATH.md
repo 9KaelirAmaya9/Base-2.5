@@ -7,7 +7,7 @@ This is the recommended end-to-end sequence to get a full green run: local boots
 - Git
 - PowerShell 7+ (Windows) or pwsh (macOS/Linux)
 - Docker Desktop (running)
-- Node.js 18+
+- Node.js 24.13.1+
 - Python 3.12+
 
 ## 1) First-start (local bootstrap)
