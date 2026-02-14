@@ -1075,8 +1075,10 @@ def run_post_reboot() -> None:
         upload_pairs = [
             (str(repo_root / "scripts" / "bash" / "sync-env.sh"), f"{repo_path}/scripts/bash/sync-env.sh"),
             (str(repo_root / "scripts" / "bash" / "start.sh"), f"{repo_path}/scripts/bash/start.sh"),
+            (str(repo_root / "scripts" / "bash" / "test.sh"), f"{repo_path}/scripts/bash/test.sh"),
             (str(repo_root / "traefik" / "entrypoint.sh"), f"{repo_path}/traefik/entrypoint.sh"),
             (str(repo_root / "digital_ocean" / "scripts" / "bash" / "post_reboot_complete.sh"), f"{repo_path}/digital_ocean/scripts/bash/post_reboot_complete.sh"),
+            (str(repo_root / "digital_ocean" / "scripts" / "bash" / "test.sh"), f"{repo_path}/digital_ocean/scripts/bash/test.sh"),
         ]
         for src, dest in upload_pairs:
             if os.path.isfile(src):
@@ -1132,9 +1134,9 @@ def run_post_reboot() -> None:
             f"cd {repo_path} && "
             f"(cd react-app && NODE_OPTIONS=--max-old-space-size=1024 "
             f"npm ci --no-audit --no-fund --omit=optional --legacy-peer-deps) && "
-            f"if [ -f scripts/bash/test.sh ]; then TEST_SCRIPT=scripts/bash/test.sh; "
-            f"elif [ -f digital_ocean/scripts/bash/test.sh ]; then TEST_SCRIPT=digital_ocean/scripts/bash/test.sh; "
-            f"else echo 'Missing test script: scripts/bash/test.sh'; exit 127; fi; "
+            f"if [ -x scripts/bash/test.sh ]; then TEST_SCRIPT=scripts/bash/test.sh; "
+            f"elif [ -x digital_ocean/scripts/bash/test.sh ]; then TEST_SCRIPT=digital_ocean/scripts/bash/test.sh; "
+            f"else echo 'Missing test script: scripts/bash/test.sh or digital_ocean/scripts/bash/test.sh'; exit 127; fi; "
             f"timeout {test_timeout} bash $TEST_SCRIPT"
         )
         stage("run remote tests")

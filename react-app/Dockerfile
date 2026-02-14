@@ -19,6 +19,7 @@ RUN npm ci --legacy-peer-deps --no-audit --no-fund && npm cache clean --force
 COPY . .
 
 # Speed up CRA production builds on small machines
+ENV CI=true
 ENV GENERATE_SOURCEMAP=false
 
 ARG REACT_APP_GOOGLE_CLIENT_ID
