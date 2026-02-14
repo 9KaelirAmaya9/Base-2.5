@@ -1,5 +1,5 @@
 """
-pytest for info/query script (digital_ocean/info.py)
+pytest for info/query script (digital_ocean/scripts/python/info.py)
 Validates listing of namespaces, domains, and resource metadata.
 """
 import os
@@ -35,8 +35,8 @@ def test_info_lists(monkeypatch):
             @staticmethod
             def list():
                 return {"volumes": [{"name": "vol1"}]}
-    monkeypatch.setattr("digital_ocean.info.Client", MockClient)
-    import digital_ocean.info as info
+    monkeypatch.setattr("digital_ocean.scripts.python.info.Client", MockClient)
+    import digital_ocean.scripts.python.info as info
     client = info.get_client()
     assert info.list_namespaces(client) == ["proj1", "proj2"]
     assert info.list_domains(client) == ["domain1.com", "domain2.com"]
@@ -49,6 +49,6 @@ def test_info_lists(monkeypatch):
 @mock.patch.dict(os.environ, {})
 def test_info_missing_env():
     import importlib
-    info = importlib.import_module("digital_ocean.info")
+    info = importlib.import_module("digital_ocean.scripts.python.info")
     with pytest.raises(SystemExit):
         info.validate_env()

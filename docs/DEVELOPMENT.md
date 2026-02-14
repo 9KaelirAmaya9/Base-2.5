@@ -3,7 +3,7 @@
 ## Tool Versions
 
 - Python: 3.12 (see .python-version)
-- Node.js: 18.x (see react-app/.nvmrc)
+- Node.js: 24.13.1 (see react-app/.nvmrc)
 
 ## Python Dependencies (local venv)
 

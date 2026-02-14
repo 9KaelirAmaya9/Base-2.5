@@ -5,7 +5,7 @@ Checks that missing required variables cause failure and all set variables pass.
 """
 import pytest
 
-from digital_ocean import env_check
+from digital_ocean.scripts.python import env_check
 
 
 @pytest.mark.parametrize("missing_var", env_check.REQUIRED_VARS)

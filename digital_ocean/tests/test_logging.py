@@ -1,4 +1,4 @@
-from digital_ocean.logging import logger
+from digital_ocean.scripts.python.logging import logger
 
 
 def test_logger_info(caplog):

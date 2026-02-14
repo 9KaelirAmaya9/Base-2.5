@@ -20,7 +20,7 @@ function Write-Info([string]$msg) {
 }
 
 function Get-DoKeysByName([string]$name) {
-  $args = @('-m', 'digital_ocean.DO_ssh_keys', '--find', '--name', $name, '--json')
+  $args = @('-m', 'digital_ocean.scripts.python.DO_ssh_keys', '--find', '--name', $name, '--json')
   $tmpStdout = Join-Path $env:TEMP "do-ssh-find-out-$PID.txt"
   $tmpStderr = Join-Path $env:TEMP "do-ssh-find-err-$PID.txt"
   $argLine = $args -join ' '
@@ -51,7 +51,7 @@ function Get-DoKeysByName([string]$name) {
 }
 
 function Remove-DoKey([string]$keyId, [string]$fingerprint) {
-  $args = @('-m', 'digital_ocean.DO_ssh_keys', '--delete', '--yes', '--json')
+  $args = @('-m', 'digital_ocean.scripts.python.DO_ssh_keys', '--delete', '--yes', '--json')
   if ($keyId) {
     $args += @('--id', $keyId)
   } elseif ($fingerprint) {
@@ -234,7 +234,7 @@ try {
     if ($RecreateRemote) {
       Write-Info "Dry-run: would delete existing DigitalOcean SSH key(s) named $KeyName"
     }
-    Write-Info "Dry-run: would run $PythonExe -m digital_ocean.DO_ssh_keys --add --name $KeyName --public-key-path $publicKeyPath"
+    Write-Info "Dry-run: would run $PythonExe -m digital_ocean.scripts.python.DO_ssh_keys --add --name $KeyName --public-key-path $publicKeyPath"
     return
   }
 
@@ -292,7 +292,7 @@ try {
 
   Write-Step 'Registering SSH key with DigitalOcean'
   $addArgs = @(
-    '-m', 'digital_ocean.DO_ssh_keys',
+    '-m', 'digital_ocean.scripts.python.DO_ssh_keys',
     '--add',
     '--name', $KeyName,
     '--public-key-path', $publicKeyPath,
@@ -335,7 +335,7 @@ try {
   if ($createdRemote -and ($createdKeyId -or $createdFingerprint)) {
     Write-Step 'Cleanup: deleting DigitalOcean SSH key'
     $delArgs = @(
-      '-m', 'digital_ocean.DO_ssh_keys',
+      '-m', 'digital_ocean.scripts.python.DO_ssh_keys',
       '--delete',
       '--yes',
       '--json'

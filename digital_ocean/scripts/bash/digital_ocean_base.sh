@@ -38,10 +38,10 @@ apt-get autoremove -y
 dpkg_lock_wait
 apt-get install -y curl python3-pip python3-venv make build-essential wget git
 
-# --- Node.js and npm Install (Node 18+) ---
+# --- Node.js and npm Install (Node 24.13.1+) ---
 dpkg_lock_wait
 apt-get install -y ca-certificates curl gnupg
-curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
 apt-get install -y nodejs
 
 # --- Application Setup ---

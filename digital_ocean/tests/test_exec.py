@@ -1,5 +1,5 @@
 """
-pytest for exec script (digital_ocean/exec.py)
+pytest for exec script (digital_ocean/scripts/python/exec.py)
 Validates argument parsing, error handling, and logging for exec operations.
 """
 import os
@@ -15,8 +15,8 @@ def test_exec_droplet(monkeypatch, capsys):
     class MockClient:
         def __init__(self, token=None):
             pass
-    monkeypatch.setattr("digital_ocean.exec.Client", MockClient)
-    import digital_ocean.exec as exec_mod
+    monkeypatch.setattr("digital_ocean.scripts.python.exec.Client", MockClient)
+    import digital_ocean.scripts.python.exec as exec_mod
     # Patch exec_on_droplet to check call
     called = {}
     def fake_exec_on_droplet(client, droplet_id, command):
@@ -34,7 +34,7 @@ def test_exec_droplet(monkeypatch, capsys):
 
 @mock.patch.dict(os.environ, {"DO_API_TOKEN": "test-token"})
 def test_exec_app_missing_service(monkeypatch, capsys):
-    import digital_ocean.exec as exec_mod
+    import digital_ocean.scripts.python.exec as exec_mod
     test_args = ["exec.py", "--app", "app-123", "--cmd", "ls"]
     monkeypatch.setattr(sys, "argv", test_args)
     with pytest.raises(SystemExit) as e:
@@ -45,7 +45,7 @@ def test_exec_app_missing_service(monkeypatch, capsys):
 
 @mock.patch.dict(os.environ, {})
 def test_exec_missing_env(monkeypatch):
-    import digital_ocean.exec as exec_mod
+    import digital_ocean.scripts.python.exec as exec_mod
     test_args = ["exec.py", "--droplet", "droplet-123", "--cmd", "ls"]
     monkeypatch.setattr(sys, "argv", test_args)
     with pytest.raises(SystemExit) as e:

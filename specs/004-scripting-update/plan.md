@@ -212,7 +212,7 @@ package.json
 
 **Entry point routing**:
 
-- All DigitalOcean deploy/test entrypoints (Bash or PowerShell) MUST route through `digital_ocean/orchestrate_deploy.py` to satisfy single-entrypoint operations.
+- All DigitalOcean deploy/test entrypoints (Bash or PowerShell) MUST route through `digital_ocean/scripts/python/orchestrate_deploy.py` to satisfy single-entrypoint operations.
 
 **Files to update**:
 

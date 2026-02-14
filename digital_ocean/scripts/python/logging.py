@@ -2,7 +2,7 @@
 
 Important: this file is named `logging.py`, so if Python's import search path includes
 the `digital_ocean/` directory itself (common when running scripts like
-`python digital_ocean/validate_dns.py`), third-party libraries that do `import logging`
+`python digital_ocean/scripts/python/validate_dns.py`), third-party libraries that do `import logging`
 can accidentally import *this* module instead of the stdlib `logging`.
 
 To make CLI scripts reliable, we detect that case and transparently forward to the

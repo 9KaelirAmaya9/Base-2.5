@@ -427,7 +427,7 @@
 - [x] T088 Add contract test in CI: OpenAPI contract vs runtime, plus “no missing auth endpoints”.
   - **Touch**:
     - `.github/workflows/ci-contract.yml` (new)
-    - Reuse/port logic from `digital_ocean/scripts/powershell/test.ps1` (or write a small Python script in `scripts/contract_check.py`)
+    - Reuse/port logic from `digital_ocean/scripts/powershell/test.ps1` (or write a small Python script in `scripts/python/contract_check.py`)
   - **How**:
     - Stand up stack in CI with `docker compose up -d`.
     - Fetch `/api/openapi.json` and compare required routes from `specs/.../contracts/openapi.yaml`.
@@ -1504,14 +1504,14 @@
 - **Touch**:
   - `api/tests/contract/test_openapi_runtime.py`
   - `.github/workflows/ci-contract.yml`
-  - `scripts/contract_check.py`
+  - `scripts/python/contract_check.py`
 - **Verify**:
   - Runtime `/openapi.json` matches contract
 
 - [x] T207 Add lightweight performance smoke tests
 - **Touch**:
   - `.github/workflows/ci-perf-smoke.yml`
-  - `scripts/perf_smoke.py`
+  - `scripts/python/perf_smoke.py`
   - `docs/TESTING.md`
 - **Verify**:
   - CI enforces latency budgets (p95)
@@ -1644,7 +1644,7 @@
 
 - [x] T231 Add log volume + error-rate SLO smoke checks
 - **Touch**:
-  - `scripts/perf_smoke.py` (extend) or `scripts/slo_smoke.py` (new)
+  - `scripts/python/perf_smoke.py` (extend) or `scripts/python/slo_smoke.py` (new)
   - `docs/OBSERVABILITY.md`
 - **Verify**:
   - Smoke run asserts error rate < threshold and logs do not explode

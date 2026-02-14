@@ -47,19 +47,19 @@ log "Setting sensible system defaults for builds/runtime..."
 sysctl -w fs.inotify.max_user_watches=524288 || true
 sysctl -w fs.inotify.max_user_instances=1024 || true
 
-stage "ensure nodejs 18"
-log "Ensuring Node.js 18+ is installed for frontend tests..."
+stage "ensure nodejs 24"
+log "Ensuring Node.js 24.13.1+ is installed for frontend tests..."
 if command -v node >/dev/null 2>&1; then
 	NODE_MAJOR=$(node -v | sed 's/^v//' | cut -d'.' -f1)
 else
 	NODE_MAJOR=0
 fi
-if [ "${NODE_MAJOR}" -lt 18 ]; then
+if [ "${NODE_MAJOR}" -lt 24 ]; then
 	apt-get update -y
 	apt-get install -y ca-certificates curl gnupg
 	# Remove distro-provided node packages that conflict with NodeSource.
 	apt-get remove -y nodejs libnode-dev libnode72 nodejs-doc npm || true
-	curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+	curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
 	apt-get install -y nodejs
 fi
 

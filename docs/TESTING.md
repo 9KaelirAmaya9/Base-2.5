@@ -60,7 +60,7 @@ This should return no matches.
 
 ## Performance Smoke
 
-- Script: `python scripts/perf_smoke.py` (env `PERF_BASE_URL`, `PERF_P95_BUDGET_MS`)
+- Script: `python scripts/python/perf_smoke.py` (env `PERF_BASE_URL`, `PERF_P95_BUDGET_MS`)
 
 ## Pre-commit
 

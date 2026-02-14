@@ -27,12 +27,12 @@ Phase 0/1 outputs for this plan:
 ## Technical Context
 
 Language: JavaScript (Node.js tooling) + shell scripts (Bash/PowerShell)
-Language/Version: JavaScript (Node.js >= 18), Bash, PowerShell 5.1+, Python (existing services/tools)
+Language/Version: JavaScript (Node.js >= 24.13.1), Bash, PowerShell 5.1+, Python (existing services/tools)
 
 **Language**: JavaScript (Node.js tooling)  
 **Language/Version**:
 
-- Node.js >= 18 (root `package.json` engines)
+- Node.js >= 24.13.1 (root `package.json` engines)
 - Bash (existing `scripts/*.sh` utilities)
 - PowerShell 5.1+ (existing `scripts/*.ps1` wrappers + deploy entrypoint)
 - Python (already used for API/Django/DigitalOcean automation)

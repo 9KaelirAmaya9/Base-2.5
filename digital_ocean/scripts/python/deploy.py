@@ -1,5 +1,5 @@
 
-"""digital_ocean/deploy.py
+"""digital_ocean/scripts/python/deploy.py
 
 Minimal DigitalOcean droplet deployment script.
 
@@ -21,8 +21,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from pydo import Client
 
-from digital_ocean.do_logging import logger
-from digital_ocean.env_check import REQUIRED_VARS
+from digital_ocean.scripts.python.do_logging import logger
+from digital_ocean.scripts.python.env_check import REQUIRED_VARS
 
 
 def main():

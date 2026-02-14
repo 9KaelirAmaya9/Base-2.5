@@ -34,7 +34,7 @@ if (-not $env:VIRTUAL_ENV) {
 
 $node = Get-Command node -ErrorAction SilentlyContinue
 if (-not $node) {
-  Write-Error 'node is required. Install Node.js 18+ and re-run.'
+  Write-Error 'node is required. Install Node.js 24.13.1+ and re-run.'
   exit 127
 }
 
@@ -160,7 +160,7 @@ function Update-EnvLine([string[]]$content, [string]$key, [string]$value) {
 }
 
 function Invoke-DoSshFind([string]$pythonExe, [string]$name) {
-  $args = @('-m', 'digital_ocean.DO_ssh_keys', '--find', '--name', $name, '--json')
+  $args = @('-m', 'digital_ocean.scripts.python.DO_ssh_keys', '--find', '--name', $name, '--json')
   $tmpStdout = Join-Path $env:TEMP "do-ssh-find-out-$PID.txt"
   $tmpStderr = Join-Path $env:TEMP "do-ssh-find-err-$PID.txt"
   $argLine = $args -join ' '

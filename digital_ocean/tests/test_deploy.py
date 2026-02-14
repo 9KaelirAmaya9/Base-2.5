@@ -4,7 +4,7 @@ from unittest import mock
 
 import pytest
 
-from digital_ocean import deploy
+from digital_ocean.scripts.python import deploy
 
 
 def test_deploy_env_missing(monkeypatch):
@@ -35,7 +35,7 @@ def test_deploy_api_error(monkeypatch):
     monkeypatch.setenv("DO_API_IMAGE", "docker-20-04")
     monkeypatch.setenv("DO_APP_NAME", "app")
     # Patch Client to raise error
-    with mock.patch("digital_ocean.deploy.Client") as MockClient:
+    with mock.patch("digital_ocean.scripts.python.deploy.Client") as MockClient:
         MockClient.return_value.droplets.create.side_effect = Exception("API fail")
         test_args = ["deploy.py"]
         with mock.patch.object(sys, 'argv', test_args):
@@ -49,12 +49,12 @@ def test_deploy_rollback(monkeypatch, capsys):
     monkeypatch.setenv("DO_API_IMAGE", "docker-20-04")
     monkeypatch.setenv("DO_APP_NAME", "app")
     # Simulate droplet creation succeeds, but error occurs in post-creation step
-    with mock.patch("digital_ocean.deploy.Client") as MockClient:
+    with mock.patch("digital_ocean.scripts.python.deploy.Client") as MockClient:
         mock_client = MockClient.return_value
         # Simulate droplet creation returns a droplet with id
         mock_client.droplets.create.return_value = {"droplet": {"id": 12345}}
         # Patch post_creation_hook to raise exception
-        with mock.patch("digital_ocean.deploy.post_creation_hook", side_effect=Exception("Simulated failure after droplet creation")):
+        with mock.patch("digital_ocean.scripts.python.deploy.post_creation_hook", side_effect=Exception("Simulated failure after droplet creation")):
             test_args = ["deploy.py"]
             with mock.patch.object(sys, 'argv', test_args):
                 with pytest.raises(SystemExit):

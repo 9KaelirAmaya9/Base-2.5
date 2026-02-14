@@ -75,7 +75,7 @@ Tip: `scripts/powershell/first-start.ps1 -Help` and `scripts/powershell/setup.ps
 
 ### DigitalOcean SSH key sync (runs during setup)
 
-This step runs inside [scripts/powershell/setup.ps1](scripts/powershell/setup.ps1) after .env is written. It calls [digital_ocean/scripts/powershell/add-ssh-key.ps1](digital_ocean/scripts/powershell/add-ssh-key.ps1) and uses [digital_ocean/DO_ssh_keys.py](digital_ocean/DO_ssh_keys.py).
+This step runs inside [scripts/powershell/setup.ps1](scripts/powershell/setup.ps1) after .env is written. It calls [digital_ocean/scripts/powershell/add-ssh-key.ps1](digital_ocean/scripts/powershell/add-ssh-key.ps1) and uses [digital_ocean/scripts/python/DO_ssh_keys.py](digital_ocean/scripts/python/DO_ssh_keys.py).
 
 What it does (ordered):
 
@@ -119,7 +119,7 @@ Afterward, keep the PowerShell session open so `.venv` stays active for any Pyth
 Digital Ocean automation specifics:
 
 - Ensure `.env` includes `DO_API_TOKEN`, `DO_API_REGION`, `DO_API_IMAGE`, `DO_APP_NAME`, etc.
-- Use the `.venv` Python for commands: `(.venv) python digital_ocean/deploy.py [--dry-run]`, etc.
+- Use the `.venv` Python for commands: `(.venv) python digital_ocean/scripts/python/deploy.py [--dry-run]`, etc.
 - Cross-platform notes: PowerShell on Windows, `pwsh`/Bash elsewhere. Scripts run in containers as well.
 - See digital_ocean/README.md for troubleshooting, rate limits, and advanced usage.
 
@@ -142,11 +142,11 @@ Follow these steps to get started quickly:
 
 4. **Run automation scripts**
 
-- Deploy: `./digital_ocean/scripts/bash/deploy.sh [--dry-run]` or `(.venv) python digital_ocean/deploy.py [--dry-run]`
-- Teardown: `./digital_ocean/scripts/bash/teardown.sh [--dry-run]` or `(.venv) python digital_ocean/teardown.py [--dry-run]`
-- Edit/Maintain: `./digital_ocean/scripts/bash/edit.sh` or `(.venv) python digital_ocean/edit.py`
-- Info/Query: `./digital_ocean/scripts/bash/info.sh` or `(.venv) python digital_ocean/info.py`
-- Exec: `./digital_ocean/scripts/bash/exec.sh` or `(.venv) python digital_ocean/exec.py`
+- Deploy: `./digital_ocean/scripts/bash/deploy.sh [--dry-run]` or `(.venv) python digital_ocean/scripts/python/deploy.py [--dry-run]`
+- Teardown: `./digital_ocean/scripts/bash/teardown.sh [--dry-run]` or `(.venv) python digital_ocean/scripts/python/teardown.py [--dry-run]`
+- Edit/Maintain: `./digital_ocean/scripts/bash/edit.sh` or `(.venv) python digital_ocean/scripts/python/edit.py`
+- Info/Query: `./digital_ocean/scripts/bash/info.sh` or `(.venv) python digital_ocean/scripts/python/info.py`
+- Exec: `./digital_ocean/scripts/bash/exec.sh` or `(.venv) python digital_ocean/scripts/python/exec.py`
 
 3. **Validate and troubleshoot**
    - Use `--dry-run` to preview actions without changes.
@@ -209,7 +209,7 @@ What it does:
 
 - Creates/uses `.venv` and installs `digital_ocean/requirements.txt`
 - Updates `PGADMIN_ALLOWLIST` to your public IP
-- Runs `digital_ocean/orchestrate_deploy.py` (update-only by default)
+- Runs `digital_ocean/scripts/python/orchestrate_deploy.py` (update-only by default)
 - Verifies Traefik by fetching rendered configs and logs to local files:
   - Saves to `local_run_logs/`: `compose-ps.txt`, `traefik-env.txt`, `traefik-static.yml`, `traefik-dynamic.yml`, `traefik-logs.txt`
 
@@ -241,10 +241,10 @@ Manual invocation (advanced):
 
 ```bash
 # Preview actions
-python digital_ocean/orchestrate_deploy.py --dry-run
+python digital_ocean/scripts/python/orchestrate_deploy.py --dry-run
 
 # Full deploy
-python digital_ocean/orchestrate_deploy.py
+python digital_ocean/scripts/python/orchestrate_deploy.py
 ```
 
 After deploy:

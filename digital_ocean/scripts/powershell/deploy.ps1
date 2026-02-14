@@ -2110,14 +2110,15 @@ try {
 
   if ($RunTests) {
     Write-Section "Running post-deploy tests"
+    $artifactDir = Ensure-ArtifactDir -ip $script:ResolvedIp
+    try { $env:DEPLOY_ARTIFACT_DIR = $artifactDir } catch {}
     if ($TestsJson) {
-      $testArgs = @{ EnvPath = $EnvPath; LogsDir = $LogsDir; UseLatestTimestamp = $true; Json = $true; CheckDjangoAdmin = $true; ResolveIp = $script:ResolvedIp; ExpectedIpv4 = $script:ResolvedIp }
+      $testArgs = @{ EnvPath = $EnvPath; LogsDir = $artifactDir; UseLatestTimestamp = $false; Json = $true; CheckDjangoAdmin = $true; ResolveIp = $script:ResolvedIp; ExpectedIpv4 = $script:ResolvedIp }
       if ($RunRateLimitTest) { $testArgs.CheckRateLimit = $true; $testArgs.RateLimitBurst = $RateLimitBurst }
       if ($RunCeleryCheck) { $testArgs.CheckCelery = $true }
       if ($AllTests) { $testArgs.All = $true }
       $jsonOut = & .\digital_ocean\scripts\powershell\test.ps1 @testArgs
       $exitCode = $LASTEXITCODE
-      $artifactDir = Ensure-ArtifactDir
       $metaDir = Join-Path $artifactDir 'meta'
       if (-not (Test-Path $metaDir)) { New-Item -ItemType Directory -Path $metaDir -Force | Out-Null }
       $reportPath = Join-Path $metaDir $ReportName
@@ -2138,7 +2139,7 @@ try {
         throw $script:EarlyExitSentinel
       }
     } else {
-      $testArgs2 = @{ EnvPath = $EnvPath; LogsDir = $LogsDir; UseLatestTimestamp = $true; CheckDjangoAdmin = $true; ResolveIp = $script:ResolvedIp; ExpectedIpv4 = $script:ResolvedIp }
+      $testArgs2 = @{ EnvPath = $EnvPath; LogsDir = $artifactDir; UseLatestTimestamp = $false; CheckDjangoAdmin = $true; ResolveIp = $script:ResolvedIp; ExpectedIpv4 = $script:ResolvedIp }
       if ($RunRateLimitTest) { $testArgs2.CheckRateLimit = $true; $testArgs2.RateLimitBurst = $RateLimitBurst }
       if ($RunCeleryCheck) { $testArgs2.CheckCelery = $true }
       if ($AllTests) { $testArgs2.All = $true }

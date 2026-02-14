@@ -108,5 +108,5 @@ This map lists script moves and known callers. Callers are best-effort and will 
 | digital_ocean/orchestrate_teardown.py              | digital_ocean/scripts/python/orchestrate_teardown.py | direct CLI usage                                                             |
 | digital_ocean/DO_ssh_keys.py                       | digital_ocean/scripts/python/DO_ssh_keys.py          | scripts/setup.ps1, digital_ocean/scripts/powershell/add-ssh-key.ps1          |
 | digital_ocean/destroy_droplet.py                   | digital_ocean/scripts/python/destroy_droplet.py      | direct CLI usage                                                             |
-| digital_ocean/do_logging.py                        | digital_ocean/scripts/python/do_logging.py           | digital_ocean/\*.py                                                          |
-| digital_ocean/logging.py                           | digital_ocean/scripts/python/logging.py              | digital_ocean/\*.py                                                          |
+| digital_ocean/do_logging.py                        | digital_ocean/scripts/python/do_logging.py           | digital_ocean/scripts/python/\*.py                                           |
+| digital_ocean/logging.py                           | digital_ocean/scripts/python/logging.py              | digital_ocean/scripts/python/\*.py                                           |

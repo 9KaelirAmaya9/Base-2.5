@@ -3,7 +3,7 @@ from unittest import mock
 
 import pytest
 
-from digital_ocean import teardown
+from digital_ocean.scripts.python import teardown
 
 
 def test_teardown_rollback(monkeypatch, capsys):
@@ -11,7 +11,7 @@ def test_teardown_rollback(monkeypatch, capsys):
     monkeypatch.setenv("DO_APP_NAME", "app")
     monkeypatch.setenv("DO_API_REGION", "nyc3")
     monkeypatch.setenv("DO_API_IMAGE", "docker-20-04")
-    with mock.patch("digital_ocean.teardown.Client") as MockClient:
+    with mock.patch("digital_ocean.scripts.python.teardown.Client") as MockClient:
         mock_client = MockClient.return_value
         mock_client.droplets.list.return_value = {"droplets": [{"id": 12345, "name": "app"}]}
         mock_client.droplets.delete.side_effect = Exception("Delete failed")
@@ -36,7 +36,7 @@ def test_teardown_droplet_not_found(monkeypatch):
     monkeypatch.setenv("DO_APP_NAME", "app")
     monkeypatch.setenv("DO_API_REGION", "nyc3")
     monkeypatch.setenv("DO_API_IMAGE", "docker-20-04")
-    with mock.patch("digital_ocean.teardown.Client") as MockClient:
+    with mock.patch("digital_ocean.scripts.python.teardown.Client") as MockClient:
         mock_client = MockClient.return_value
         mock_client.droplets.list.return_value = {"droplets": []}
         test_args = ["teardown.py"]
@@ -50,7 +50,7 @@ def test_teardown_dry_run(monkeypatch, capsys):
     monkeypatch.setenv("DO_APP_NAME", "app")
     monkeypatch.setenv("DO_API_REGION", "nyc3")
     monkeypatch.setenv("DO_API_IMAGE", "docker-20-04")
-    with mock.patch("digital_ocean.teardown.Client") as MockClient:
+    with mock.patch("digital_ocean.scripts.python.teardown.Client") as MockClient:
         mock_client = MockClient.return_value
         mock_client.droplets.list.return_value = {"droplets": [{"id": 12345, "name": "app"}]}
         test_args = ["teardown.py", "--dry-run"]
@@ -66,7 +66,7 @@ def test_teardown_delete(monkeypatch, capsys):
     monkeypatch.setenv("DO_APP_NAME", "app")
     monkeypatch.setenv("DO_API_REGION", "nyc3")
     monkeypatch.setenv("DO_API_IMAGE", "docker-20-04")
-    with mock.patch("digital_ocean.teardown.Client") as MockClient:
+    with mock.patch("digital_ocean.scripts.python.teardown.Client") as MockClient:
         mock_client = MockClient.return_value
         mock_client.droplets.list.return_value = {"droplets": [{"id": 12345, "name": "app"}]}
         test_args = ["teardown.py"]
@@ -81,7 +81,7 @@ def test_teardown_api_error(monkeypatch):
     monkeypatch.setenv("DO_APP_NAME", "app")
     monkeypatch.setenv("DO_API_REGION", "nyc3")
     monkeypatch.setenv("DO_API_IMAGE", "docker-20-04")
-    with mock.patch("digital_ocean.teardown.Client") as MockClient:
+    with mock.patch("digital_ocean.scripts.python.teardown.Client") as MockClient:
         MockClient.return_value.droplets.list.side_effect = Exception("API fail")
         test_args = ["teardown.py"]
         with mock.patch.object(sys, 'argv', test_args):

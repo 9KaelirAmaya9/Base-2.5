@@ -5,7 +5,7 @@ Tear down DigitalOcean droplet and related resources for this project.
 - Optionally cleans A/AAAA records for @, www, traefik if --clean-dns is provided
 Requirements: pydo, python-dotenv
 Usage:
-  python digital_ocean/orchestrate_teardown.py [--clean-dns]
+    python digital_ocean/scripts/python/orchestrate_teardown.py [--clean-dns]
 """
 import os
 import re

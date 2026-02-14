@@ -1,11 +1,11 @@
 """Manage DigitalOcean SSH keys.
 
 Usage examples:
-    python -m digital_ocean.DO_ssh_keys --list
-    python -m digital_ocean.DO_ssh_keys --add --name project1 --public-key-path ~/.ssh/project1.pub
-    python -m digital_ocean.DO_ssh_keys --delete --id 123456 --yes
-    python -m digital_ocean.DO_ssh_keys --delete --fingerprint "aa:bb:cc:..." --yes
-    python -m digital_ocean.DO_ssh_keys --find --name project1
+    python -m digital_ocean.scripts.python.DO_ssh_keys --list
+    python -m digital_ocean.scripts.python.DO_ssh_keys --add --name project1 --public-key-path ~/.ssh/project1.pub
+    python -m digital_ocean.scripts.python.DO_ssh_keys --delete --id 123456 --yes
+    python -m digital_ocean.scripts.python.DO_ssh_keys --delete --fingerprint "aa:bb:cc:..." --yes
+    python -m digital_ocean.scripts.python.DO_ssh_keys --find --name project1
 """
 
 import argparse
@@ -17,7 +17,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from pydo import Client
 
-from digital_ocean.do_logging import logger
+from digital_ocean.scripts.python.do_logging import logger
 
 
 def load_env():

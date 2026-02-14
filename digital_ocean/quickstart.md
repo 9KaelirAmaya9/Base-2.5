@@ -100,7 +100,7 @@ Experimental or stubbed scripts live in [digital_ocean/experimental](experimenta
 
 ### DigitalOcean SSH key sync (runs during setup)
 
-This step runs inside [scripts/powershell/setup.ps1](../scripts/powershell/setup.ps1) after .env is written. It calls [scripts/powershell/add-ssh-key.ps1](scripts/powershell/add-ssh-key.ps1) and uses [DO_ssh_keys.py](DO_ssh_keys.py).
+This step runs inside [scripts/powershell/setup.ps1](../scripts/powershell/setup.ps1) after .env is written. It calls [scripts/powershell/add-ssh-key.ps1](scripts/powershell/add-ssh-key.ps1) and uses [scripts/python/DO_ssh_keys.py](scripts/python/DO_ssh_keys.py).
 
 What it does (ordered):
 

@@ -164,7 +164,7 @@ Tip: `scripts/powershell/first-start.ps1 -Help` and `scripts/powershell/setup.ps
 
 ### DigitalOcean SSH key sync (runs during setup)
 
-This step runs inside [scripts/powershell/setup.ps1](scripts/powershell/setup.ps1) after .env is written. It calls [digital_ocean/scripts/powershell/add-ssh-key.ps1](digital_ocean/scripts/powershell/add-ssh-key.ps1) and uses [digital_ocean/DO_ssh_keys.py](digital_ocean/DO_ssh_keys.py).
+This step runs inside [scripts/powershell/setup.ps1](scripts/powershell/setup.ps1) after .env is written. It calls [digital_ocean/scripts/powershell/add-ssh-key.ps1](digital_ocean/scripts/powershell/add-ssh-key.ps1) and uses [digital_ocean/scripts/python/DO_ssh_keys.py](digital_ocean/scripts/python/DO_ssh_keys.py).
 
 What it does (ordered):
 
@@ -425,7 +425,7 @@ To enable web access to pgAdmin:
 ## Development Versions
 
 - **Python**: 3.12 (pin via .python-version)
-- **Node.js**: 18.x (pin via react-app/.nvmrc)
+- **Node.js**: 24.13.1 (pin via react-app/.nvmrc)
 
 Fresh clone: install these versions before running builds/tests.
 

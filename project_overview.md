@@ -41,7 +41,7 @@ The build process composes services with Traefik as the only public entrypoint.
 - PostgreSQL and pgAdmin are internal-only
 - Health checks enabled across services
 
-DigitalOcean automation (`digital_ocean/orchestrate_deploy.py`) provisions a droplet, applies cloud-init (`digital_ocean/scripts/digital_ocean_base.sh`), runs post-reboot config, starts the stack, and summarizes health/logs.
+DigitalOcean automation (`digital_ocean/scripts/python/orchestrate_deploy.py`) provisions a droplet, applies cloud-init (`digital_ocean/scripts/digital_ocean_base.sh`), runs post-reboot config, starts the stack, and summarizes health/logs.
 
 ## 7. Authentication & Security
 
