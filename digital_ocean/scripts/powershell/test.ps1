@@ -743,7 +743,7 @@ function Get-ExpectedGuardedNoAuthOk([int]$status) {
 }
 
 function Invoke-ValidateDnsJson([string]$domain, [string]$recordType, [string]$name) {
-  $args = @('.\\digital_ocean\\validate_dns.py','--domain',$domain,'--json')
+  $args = @('.\\digital_ocean\\scripts\\python\\validate_dns.py','--domain',$domain,'--json')
   if ($recordType) { $args += @('--record-type',$recordType) }
   if ($name) { $args += @('--name',$name) }
 
