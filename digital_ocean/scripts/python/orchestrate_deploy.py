@@ -14,6 +14,7 @@ import os
 import re
 import shutil
 import socket
+import stat
 import subprocess
 import sys
 import time
@@ -352,13 +353,16 @@ def _run_all_tests_suite() -> None:
         env_path,
         "-LogsDir",
         str(artifact_dir_path),
-        "-UseLatestTimestamp:$false",
+        "-UseLatestTimestamp",
+        "0",
         "-Json",
         "-All",
     ]
     domain = os.getenv("WEBSITE_DOMAIN", "").strip()
     if domain:
         args += ["-Domain", domain]
+    if ip_address:
+        args += ["-ResolveIp", str(ip_address), "-ExpectedIpv4", str(ip_address)]
 
     log(f"Running all-tests suite via {ps_exe}...")
     result = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace")
@@ -964,6 +968,36 @@ def run_post_reboot() -> None:
             if exit_status != 0:
                 raise RuntimeError(f"{label} failed with exit status {exit_status}")
 
+        def download_remote_dir(remote_dir: str, local_dir: Path) -> None:
+            if not artifact_dir_path:
+                return
+            sftp = None
+            try:
+                sftp = ssh_client.open_sftp()
+                def _walk(rpath: str, lpath: Path) -> None:
+                    try:
+                        entries = sftp.listdir_attr(rpath)
+                    except Exception:
+                        return
+                    lpath.mkdir(parents=True, exist_ok=True)
+                    for entry in entries:
+                        rchild = f"{rpath}/{entry.filename}"
+                        lchild = lpath / entry.filename
+                        if stat.S_ISDIR(entry.st_mode):
+                            _walk(rchild, lchild)
+                        else:
+                            try:
+                                sftp.get(rchild, str(lchild))
+                            except Exception:
+                                pass
+                _walk(remote_dir, local_dir)
+            finally:
+                try:
+                    if sftp:
+                        sftp.close()
+                except Exception:
+                    pass
+
         try:
             droplet_status = client.droplets.get(int(droplet_id))["droplet"].get("status")
             if droplet_status and droplet_status != "active":
@@ -1079,6 +1113,7 @@ def run_post_reboot() -> None:
             (str(repo_root / "traefik" / "entrypoint.sh"), f"{repo_path}/traefik/entrypoint.sh"),
             (str(repo_root / "digital_ocean" / "scripts" / "bash" / "post_reboot_complete.sh"), f"{repo_path}/digital_ocean/scripts/bash/post_reboot_complete.sh"),
             (str(repo_root / "digital_ocean" / "scripts" / "bash" / "test.sh"), f"{repo_path}/digital_ocean/scripts/bash/test.sh"),
+            (str(repo_root / "digital_ocean" / "scripts" / "bash" / "remote_verify_min.sh"), f"{repo_path}/digital_ocean/scripts/bash/remote_verify_min.sh"),
         ]
         for src, dest in upload_pairs:
             if os.path.isfile(src):
@@ -1149,6 +1184,17 @@ def run_post_reboot() -> None:
             if not ssh_connect_with_retry():
                 raise RuntimeError("SSH reconnect failed after test error") from e
             run_ssh_cmd(test_cmd, "remote tests (retry)", artifact_name="remote-tests.txt")
+
+        stage("remote verify artifacts")
+        log("Generating remote verification artifacts under /root/logs...")
+        run_remote_verify = (
+            f"cd {repo_path} && RUN_CELERY_CHECK={'1' if RUN_ALL_TESTS else '0'} "
+            f"bash digital_ocean/scripts/bash/remote_verify_min.sh"
+        )
+        run_ssh_cmd(run_remote_verify, "remote verify artifacts", artifact_name="remote-verify-min.txt")
+        if artifact_dir_path:
+            log("Downloading /root/logs into local artifacts...")
+            download_remote_dir("/root/logs", artifact_dir_path / "logs")
 
         # Check status and logs
         def parse_ps_health(ps_text: str) -> dict[str, str]:
