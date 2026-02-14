@@ -41,6 +41,7 @@ $composeFile = Resolve-ComposeFilePath -Path $ComposeFile -Root $projectRoot
 $envFile = Resolve-EnvFilePath -Path $EnvFile -Root $projectRoot
 $composeArgs = @('--env-file', $envFile, '-f', $composeFile)
 $coverageArgs = @('-e', 'COVERAGE_FILE=/tmp/.coverage')
+$yamlEnvArgs = @('-e', 'PYTHONYAML_FORCE_PURE=1')
 $pytestArgs = @('-m', 'not integration and not perf')
 $pytestCacheArgs = @('-o', 'cache_dir=/tmp/pytest-cache')
 $apiPytestConfig = @('-c', 'api/pytest.ini')
@@ -75,8 +76,8 @@ try {
         }
     }
 
-    docker compose --env-file $envFile -f $composeFile exec -T @coverageArgs api pytest @pytestArgs @pytestCacheArgs @apiPytestConfig
-    docker compose --env-file $envFile -f $composeFile exec -T @coverageArgs django pytest @pytestArgs @pytestCacheArgs @djangoPytestConfig
+    docker compose --env-file $envFile -f $composeFile exec -T @coverageArgs @yamlEnvArgs api pytest @pytestArgs @pytestCacheArgs @apiPytestConfig
+    docker compose --env-file $envFile -f $composeFile exec -T @coverageArgs @yamlEnvArgs django pytest @pytestArgs @pytestCacheArgs @djangoPytestConfig
 
     Push-Location (Join-Path $projectRoot 'react-app')
     try {
