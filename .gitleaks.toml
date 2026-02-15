@@ -1,0 +1,4 @@
+[allowlist]
+paths = [
+  '''digital_ocean/DigitalOcean-public\.v2\.yaml''',
+]
