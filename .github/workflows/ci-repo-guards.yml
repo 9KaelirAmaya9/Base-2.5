@@ -16,6 +16,6 @@ jobs:
         run: |
           node scripts/validate-command-matrix.js
           node scripts/guard-shell-parity.js
-          pwsh -Command "$t=Measure-Command { node scripts/guard-shell-parity.js }; if ($t.TotalSeconds -gt 30) { throw 'Guard exceeded 30s' }"
+          pwsh -Command '$t=Measure-Command { node scripts/guard-shell-parity.js }; if ($t.TotalSeconds -gt 30) { throw "Guard exceeded 30s" }'
           chmod +x scripts/bash/repo_guard.sh
           bash scripts/bash/repo_guard.sh
