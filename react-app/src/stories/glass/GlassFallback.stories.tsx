@@ -9,4 +9,10 @@ export default meta;
 
 type Story = StoryObj<typeof GlassCard>;
 
-export const NoBackdrop: Story = { render: () => <GlassCard><p>Fallback mode</p></GlassCard> };
+export const NoBackdrop: Story = {
+  render: () => (
+    <GlassCard>
+      <p>Fallback mode</p>
+    </GlassCard>
+  ),
+};

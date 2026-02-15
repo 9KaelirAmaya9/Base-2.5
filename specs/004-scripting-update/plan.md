@@ -9,14 +9,14 @@ Standardize script routing so local PowerShell and Bash entrypoints never cross-
 
 ## Technical Context
 
-**Language/Version**: PowerShell 7+, Bash, Node.js 24.13.1+, Python 3.12  
-**Primary Dependencies**: Node.js repo tooling, Python-based DigitalOcean orchestration, Docker Compose 2+  
-**Storage**: N/A (configuration and script files)  
-**Testing**: `node --test` for script tests, `pytest` for Python, shell-level smoke commands  
-**Target Platform**: Windows (PowerShell), Mac/Linux (Bash), CI runners (Linux)  
-**Project Type**: Monorepo with scripts and multi-service Docker Compose  
-**Performance Goals**: Guard completes in under 30 seconds on CI (SC-003)  
-**Constraints**: No local cross-shell calls, keep CI green during migration, preserve flags/exit codes  
+**Language/Version**: PowerShell 7+, Bash, Node.js 24.13.1+, Python 3.12
+**Primary Dependencies**: Node.js repo tooling, Python-based DigitalOcean orchestration, Docker Compose 2+
+**Storage**: N/A (configuration and script files)
+**Testing**: `node --test` for script tests, `pytest` for Python, shell-level smoke commands
+**Target Platform**: Windows (PowerShell), Mac/Linux (Bash), CI runners (Linux)
+**Project Type**: Monorepo with scripts and multi-service Docker Compose
+**Performance Goals**: Guard completes in under 30 seconds on CI (SC-003)
+**Constraints**: No local cross-shell calls, keep CI green during migration, preserve flags/exit codes
 **Scale/Scope**: Hundreds of scripts across repo + DigitalOcean tooling
 
 ## Constitution Check

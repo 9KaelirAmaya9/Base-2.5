@@ -63,7 +63,9 @@ function e2eKey() {
 }
 
 async function fetchLatestOutboxEmail(request, toEmail, subjectContains) {
-  const url = `${apiUrl('/test-support/outbox/latest')}?to_email=${encodeURIComponent(toEmail)}&subject_contains=${encodeURIComponent(subjectContains)}`;
+  const url = `${apiUrl('/test-support/outbox/latest')}?to_email=${encodeURIComponent(
+    toEmail
+  )}&subject_contains=${encodeURIComponent(subjectContains)}`;
   const r = await request.get(url, { headers: { 'x-e2e-key': e2eKey() } });
   expect(r.ok()).toBeTruthy();
   return await r.json();
@@ -76,7 +78,7 @@ test('register → verify (mocked via outbox) → login → me → logout', asyn
 
   // Register
   const reg = await request.post(apiUrl('/auth/register'), {
-    data: { email, password: PASSWORD }
+    data: { email, password: PASSWORD },
   });
   expect(reg.status()).toBe(201);
   const regBody = await reg.json();
@@ -85,7 +87,7 @@ test('register → verify (mocked via outbox) → login → me → logout', asyn
   // Trigger verify email issuance (email-change endpoint issues verify email)
   const patch = await request.patch(apiUrl('/users/me'), {
     data: { email },
-    headers: { Authorization: `Bearer ${regBody.access_token}` }
+    headers: { Authorization: `Bearer ${regBody.access_token}` },
   });
   expect(patch.ok()).toBeTruthy();
 
@@ -105,7 +107,7 @@ test('register → verify (mocked via outbox) → login → me → logout', asyn
 
   // Me
   const me = await request.get(apiUrl('/auth/me'), {
-    headers: { Authorization: `Bearer ${loginBody.access_token}` }
+    headers: { Authorization: `Bearer ${loginBody.access_token}` },
   });
   expect(me.ok()).toBeTruthy();
   const meBody = await me.json();
@@ -115,7 +117,9 @@ test('register → verify (mocked via outbox) → login → me → logout', asyn
   const refreshFromBody = loginBody.refresh_token || null;
   let logout;
   if (refreshFromBody) {
-    logout = await request.post(apiUrl('/auth/logout'), { data: { refresh_token: refreshFromBody } });
+    logout = await request.post(apiUrl('/auth/logout'), {
+      data: { refresh_token: refreshFromBody },
+    });
   } else {
     // cookie-mode: best-effort parse from Set-Cookie
     const loginSetCookie = login.headers()['set-cookie'];
@@ -123,7 +127,8 @@ test('register → verify (mocked via outbox) → login → me → logout', asyn
 
     const refreshName = detectCookieNameBySuffix(loginSetCookie, '_refresh');
     const csrfName =
-      detectCookieNameBySuffix(loginSetCookie, '_csrf') || detectCookieNameBySuffix(regSetCookie, '_csrf');
+      detectCookieNameBySuffix(loginSetCookie, '_csrf') ||
+      detectCookieNameBySuffix(regSetCookie, '_csrf');
 
     const refreshCookie = refreshName ? parseCookieValue(loginSetCookie, refreshName) : null;
     const csrfCookie = csrfName
@@ -136,8 +141,8 @@ test('register → verify (mocked via outbox) → login → me → logout', asyn
     logout = await request.post(apiUrl('/auth/logout'), {
       headers: {
         Cookie: `${refreshName}=${refreshCookie}; ${csrfName}=${csrfCookie}`,
-        'X-CSRF-Token': String(csrfCookie)
-      }
+        'X-CSRF-Token': String(csrfCookie),
+      },
     });
   }
   expect(logout.status()).toBe(204);
@@ -148,7 +153,7 @@ test('forgot → reset → login with new password', async ({ request }) => {
 
   // Create account
   const reg = await request.post(apiUrl('/auth/register'), {
-    data: { email, password: PASSWORD }
+    data: { email, password: PASSWORD },
   });
   expect(reg.status()).toBe(201);
 
@@ -163,11 +168,13 @@ test('forgot → reset → login with new password', async ({ request }) => {
 
   const newPassword = 'Newpass123';
   const reset = await request.post(apiUrl('/auth/reset-password'), {
-    data: { token: resetToken, password: newPassword }
+    data: { token: resetToken, password: newPassword },
   });
   expect(reset.ok()).toBeTruthy();
 
-  const login = await request.post(apiUrl('/auth/login'), { data: { email, password: newPassword } });
+  const login = await request.post(apiUrl('/auth/login'), {
+    data: { email, password: newPassword },
+  });
   expect(login.ok()).toBeTruthy();
 });
 
@@ -175,11 +182,13 @@ test('refresh token rotation rejects reuse', async ({ request }) => {
   const email = uniqueEmail('refresh');
 
   const reg = await request.post(apiUrl('/auth/register'), {
-    data: { email, password: PASSWORD }
+    data: { email, password: PASSWORD },
   });
   const regSetCookie = reg.headers()['set-cookie'];
   const csrfNameFromRegister = detectCookieNameBySuffix(regSetCookie, '_csrf');
-  const csrfFromRegister = csrfNameFromRegister ? parseCookieValue(regSetCookie, csrfNameFromRegister) : null;
+  const csrfFromRegister = csrfNameFromRegister
+    ? parseCookieValue(regSetCookie, csrfNameFromRegister)
+    : null;
 
   const login = await request.post(apiUrl('/auth/login'), { data: { email, password: PASSWORD } });
   expect(login.ok()).toBeTruthy();
@@ -204,10 +213,10 @@ test('refresh token rotation rejects reuse', async ({ request }) => {
     headers: refresh1
       ? {
           Cookie: `${refreshName}=${refresh1}; ${csrfName}=${csrf1}`,
-          'X-CSRF-Token': String(csrf1)
+          'X-CSRF-Token': String(csrf1),
         }
       : undefined,
-    data: refresh1 ? undefined : { refresh_token: refreshToken1 }
+    data: refresh1 ? undefined : { refresh_token: refreshToken1 },
   });
   expect(refreshResp.ok()).toBeTruthy();
 
@@ -225,10 +234,10 @@ test('refresh token rotation rejects reuse', async ({ request }) => {
     headers: refresh1
       ? {
           Cookie: `${refreshName}=${refresh1}; ${csrfName}=${csrf1}`,
-          'X-CSRF-Token': String(csrf1)
+          'X-CSRF-Token': String(csrf1),
         }
       : undefined,
-    data: refresh1 ? undefined : { refresh_token: refreshToken1 }
+    data: refresh1 ? undefined : { refresh_token: refreshToken1 },
   });
   expect(reuse.status()).toBe(401);
 
@@ -237,10 +246,10 @@ test('refresh token rotation rejects reuse', async ({ request }) => {
     headers: refresh2
       ? {
           Cookie: `${refreshName2}=${refresh2}; ${csrfName2}=${csrf2}`,
-          'X-CSRF-Token': String(csrf2)
+          'X-CSRF-Token': String(csrf2),
         }
       : undefined,
-    data: refresh2 ? undefined : { refresh_token: refreshToken2 }
+    data: refresh2 ? undefined : { refresh_token: refreshToken2 },
   });
   expect(good.ok()).toBeTruthy();
 });

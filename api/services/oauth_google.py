@@ -20,25 +20,29 @@ def verify_google_id_token(*, id_token: str, audience: str) -> GoogleIdentity:
     """
 
     if not id_token or not str(id_token).strip():
-        raise ValueError("invalid_token")
+        raise ValueError('invalid_token')
 
     try:
         from google.auth.transport import requests as google_requests
         from google.oauth2 import id_token as google_id_token
 
         req = google_requests.Request()
-        claims: dict[str, Any] = google_id_token.verify_oauth2_token(str(id_token), req, str(audience))
+        claims: dict[str, Any] = google_id_token.verify_oauth2_token(
+            str(id_token), req, str(audience)
+        )
     except Exception as e:
         # Do not leak details; treat as invalid.
-        raise ValueError("invalid_token") from e
+        raise ValueError('invalid_token') from e
 
-    sub = str(claims.get("sub") or "")
-    email = str(claims.get("email") or "").strip().lower()
-    email_verified = bool(claims.get("email_verified") is True)
-    name = str(claims.get("name") or "")
-    picture = str(claims.get("picture") or "")
+    sub = str(claims.get('sub') or '')
+    email = str(claims.get('email') or '').strip().lower()
+    email_verified = bool(claims.get('email_verified') is True)
+    name = str(claims.get('name') or '')
+    picture = str(claims.get('picture') or '')
 
     if not sub or not email:
-        raise ValueError("invalid_token")
+        raise ValueError('invalid_token')
 
-    return GoogleIdentity(sub=sub, email=email, email_verified=email_verified, name=name, picture=picture)
+    return GoogleIdentity(
+        sub=sub, email=email, email_verified=email_verified, name=name, picture=picture
+    )

@@ -7,7 +7,13 @@ const { spawnSync } = require('child_process');
 const { fileExists, readText, parseEnv } = require('./lib/envFile');
 const { scanLegacyIdentifiers } = require('./lib/legacyIdentifierScan');
 const { deriveIdentifiers } = require('./lib/derived');
-const { validateEnv, normalizeEnv, normalizeDeployMode, CATEGORY, requiredCategories } = require('./envRules');
+const {
+  validateEnv,
+  normalizeEnv,
+  normalizeDeployMode,
+  CATEGORY,
+  requiredCategories,
+} = require('./envRules');
 
 function printHelp() {
   console.log('Usage: npm run doctor -- [--json] [--strict]');
@@ -40,7 +46,8 @@ function parseArgs(argv) {
 function checkCommand(command, args = ['--version']) {
   const res = spawnSync(command, args, { encoding: 'utf8' });
   if (res.error) return { ok: false, message: res.error.message };
-  if (res.status !== 0) return { ok: false, message: (res.stderr || res.stdout || '').trim() || `exit ${res.status}` };
+  if (res.status !== 0)
+    return { ok: false, message: (res.stderr || res.stdout || '').trim() || `exit ${res.status}` };
   return { ok: true, message: (res.stdout || '').trim() };
 }
 
@@ -84,10 +91,16 @@ function recommend({ hasEnv, requiredIssues, deployMode }) {
     return { command: 'npm run setup', reason: 'No .env found; create one from .env.example' };
   }
   if (requiredIssues) {
-    return { command: 'npm run setup:complete', reason: 'Required configuration is incomplete or invalid' };
+    return {
+      command: 'npm run setup:complete',
+      reason: 'Required configuration is incomplete or invalid',
+    };
   }
   if (deployMode === 'digitalocean') {
-    return { command: './digital_ocean/scripts/powershell/deploy.ps1', reason: 'DEPLOY_MODE=digitalocean' };
+    return {
+      command: './digital_ocean/scripts/powershell/deploy.ps1',
+      reason: 'DEPLOY_MODE=digitalocean',
+    };
   }
   return { command: './scripts/bash/start.sh --build', reason: 'Local run is ready' };
 }
@@ -130,24 +143,49 @@ function runDoctor(options = {}) {
   const env = normalizeEnv(envMap.ENV);
   const deployMode = normalizeDeployMode(envMap.DEPLOY_MODE);
 
-  const validation = hasEnv ? validateEnv(envMap) : { required: new Set(), missing: [], placeholders: [], invalid: [] };
+  const validation = hasEnv
+    ? validateEnv(envMap)
+    : { required: new Set(), missing: [], placeholders: [], invalid: [] };
   const derivedFindings = hasEnv ? derivedConsistencyFindings(envMap) : [];
 
   const prerequisites = [];
   const docker = check('docker');
   if (!docker.ok) {
-    prerequisites.push(makeFinding({ category: CATEGORY.Other, key: 'docker', message: `Docker not available: ${docker.message}`, required: true }));
+    prerequisites.push(
+      makeFinding({
+        category: CATEGORY.Other,
+        key: 'docker',
+        message: `Docker not available: ${docker.message}`,
+        required: true,
+      })
+    );
   }
   const compose = check('docker', ['compose', 'version']);
   if (!compose.ok) {
-    prerequisites.push(makeFinding({ category: CATEGORY.Other, key: 'docker compose', message: `Docker Compose not available: ${compose.message}`, required: true }));
+    prerequisites.push(
+      makeFinding({
+        category: CATEGORY.Other,
+        key: 'docker compose',
+        message: `Docker Compose not available: ${compose.message}`,
+        required: true,
+      })
+    );
   }
 
   if (!hasEnv) {
-    prerequisites.push(makeFinding({ category: CATEGORY.Other, key: '.env', message: '.env is missing', required: true }));
+    prerequisites.push(
+      makeFinding({
+        category: CATEGORY.Other,
+        key: '.env',
+        message: '.env is missing',
+        required: true,
+      })
+    );
   }
 
-  const legacyTokens = parseTokenList(envMap.LEGACY_IDENTIFIER_TOKENS ?? process.env.LEGACY_IDENTIFIER_TOKENS);
+  const legacyTokens = parseTokenList(
+    envMap.LEGACY_IDENTIFIER_TOKENS ?? process.env.LEGACY_IDENTIFIER_TOKENS
+  );
   const hardcodedIdentifiers = legacyTokens.length > 0 ? scan(rootDir, legacyTokens) : [];
 
   // strict evaluation: any required finding => not ok

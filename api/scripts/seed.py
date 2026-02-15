@@ -37,10 +37,10 @@ def _ensure_user(u: SeedUser) -> None:
             set_user_email_verified(user_id=created.id)
         insert_audit_event(
             user_id=created.id,
-            action="seed.user_created",
-            ip="seed",
-            user_agent="seed-script",
-            metadata={"email": u.email},
+            action='seed.user_created',
+            ip='seed',
+            user_agent='seed-script',
+            metadata={'email': u.email},
         )
         return
 
@@ -51,10 +51,10 @@ def _ensure_user(u: SeedUser) -> None:
 
     insert_audit_event(
         user_id=existing.id,
-        action="seed.user_updated",
-        ip="seed",
-        user_agent="seed-script",
-        metadata={"email": u.email},
+        action='seed.user_updated',
+        ip='seed',
+        user_agent='seed-script',
+        metadata={'email': u.email},
     )
 
 
@@ -69,38 +69,43 @@ def main() -> int:
             exists = cur.fetchone()[0] is not None
         if not exists:
             print(
-                "Seed failed: required tables are missing. Run Django migrations first: "
-                "`python manage.py migrate` (using project.settings.production against Postgres).",
+                'Seed failed: required tables are missing. Run Django migrations first: '
+                '`python manage.py migrate` (using project.settings.production against Postgres).',
                 file=sys.stderr,
             )
             return 2
     except Exception as e:
-        print(f"Seed failed: unable to verify schema ({e})", file=sys.stderr)
+        print(f'Seed failed: unable to verify schema ({e})', file=sys.stderr)
         raise
 
-    admin_email = _env("SEED_ADMIN_EMAIL")
-    admin_password = _env("SEED_ADMIN_PASSWORD")
-    if admin_email is None or admin_password is None or not admin_email.strip() or not admin_password.strip():
+    admin_email = _env('SEED_ADMIN_EMAIL')
+    admin_password = _env('SEED_ADMIN_PASSWORD')
+    if (
+        admin_email is None
+        or admin_password is None
+        or not admin_email.strip()
+        or not admin_password.strip()
+    ):
         print(
-            "Missing SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD. Set them in .env before running seed.",
+            'Missing SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD. Set them in .env before running seed.',
             file=sys.stderr,
         )
         return 2
 
-    demo_password = _env("SEED_DEMO_PASSWORD", admin_password) or admin_password
+    demo_password = _env('SEED_DEMO_PASSWORD', admin_password) or admin_password
 
     users = [
         SeedUser(email=admin_email, password=admin_password, verified=True),
-        SeedUser(email="demo1@local.test", password=demo_password, verified=True),
-        SeedUser(email="demo2@local.test", password=demo_password, verified=True),
+        SeedUser(email='demo1@local.test', password=demo_password, verified=True),
+        SeedUser(email='demo2@local.test', password=demo_password, verified=True),
     ]
 
     for u in users:
         _ensure_user(u)
 
-    print(f"Seed complete: ensured {len(users)} users")
+    print(f'Seed complete: ensured {len(users)} users')
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     raise SystemExit(main())

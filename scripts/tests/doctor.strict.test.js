@@ -14,7 +14,13 @@ function writeEnv(root, lines) {
 
 test('doctor --strict exits nonzero when required findings exist', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'doctor-strict-fail-'));
-  writeEnv(root, ['PROJECT_NAME=alpha', 'ENV=development', 'WEBSITE_DOMAIN=example.com', 'DEPLOY_MODE=local', 'APPLY_DEV_DEFAULTS=false']);
+  writeEnv(root, [
+    'PROJECT_NAME=alpha',
+    'ENV=development',
+    'WEBSITE_DOMAIN=example.com',
+    'DEPLOY_MODE=local',
+    'APPLY_DEV_DEFAULTS=false',
+  ]);
 
   const { exitCode, payload } = runDoctor({
     rootDir: root,

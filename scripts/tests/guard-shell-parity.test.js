@@ -30,21 +30,11 @@ test('guard reports Bash calling PowerShell', () => {
 test('guard allows allowlisted payloads only in allowed contexts', () => {
   const allowedRoot = path.join(fixturesRoot, 'allowlist-allowed');
   const allowedFile = path.join(allowedRoot, 'allowed.ps1');
-  const allowedResult = runGuard([
-    '--roots',
-    allowedRoot,
-    '--allowlist-contexts',
-    allowedFile,
-  ]);
+  const allowedResult = runGuard(['--roots', allowedRoot, '--allowlist-contexts', allowedFile]);
   assert.equal(allowedResult.status, 0, allowedResult.stdout + allowedResult.stderr);
 
   const blockedRoot = path.join(fixturesRoot, 'allowlist-blocked');
-  const blockedResult = runGuard([
-    '--roots',
-    blockedRoot,
-    '--allowlist-contexts',
-    allowedFile,
-  ]);
+  const blockedResult = runGuard(['--roots', blockedRoot, '--allowlist-contexts', allowedFile]);
   assert.notEqual(blockedResult.status, 0);
   assert.match(blockedResult.stdout + blockedResult.stderr, /ps_calls_sh/);
 });

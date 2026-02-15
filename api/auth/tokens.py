@@ -15,22 +15,22 @@ def _utcnow() -> datetime:
 
 
 def _default_project_claim() -> str:
-    raw = (os.getenv("PROJECT_NAME") or os.getenv("COMPOSE_PROJECT_NAME") or "").strip().lower()
-    raw = re.sub(r"[^a-z0-9_-]+", "-", raw).strip("-_")
-    return raw or "app"
+    raw = (os.getenv('PROJECT_NAME') or os.getenv('COMPOSE_PROJECT_NAME') or '').strip().lower()
+    raw = re.sub(r'[^a-z0-9_-]+', '-', raw).strip('-_')
+    return raw or 'app'
 
 
 def get_token_pepper() -> str:
-    pepper = (os.getenv("TOKEN_PEPPER") or "").strip()
-    env = (os.getenv("ENV") or "development").strip().lower()
-    if env in {"staging", "production"} and not pepper:
-        raise RuntimeError("Missing TOKEN_PEPPER")
+    pepper = (os.getenv('TOKEN_PEPPER') or '').strip()
+    env = (os.getenv('ENV') or 'development').strip().lower()
+    if env in {'staging', 'production'} and not pepper:
+        raise RuntimeError('Missing TOKEN_PEPPER')
     return pepper
 
 
 def hash_token(token: str) -> str:
     pepper = get_token_pepper()
-    raw = (token + pepper).encode("utf-8")
+    raw = (token + pepper).encode('utf-8')
     return hashlib.sha256(raw).hexdigest()
 
 
@@ -40,34 +40,34 @@ def new_refresh_token() -> str:
 
 
 def create_access_token(*, subject: str, email: str, ttl_minutes: int) -> str:
-    secret = (os.getenv("JWT_SECRET") or "").strip()
+    secret = (os.getenv('JWT_SECRET') or '').strip()
     if not secret:
-        raise RuntimeError("Missing JWT_SECRET")
+        raise RuntimeError('Missing JWT_SECRET')
 
     default_claim = _default_project_claim()
-    issuer = (os.getenv("JWT_ISSUER") or default_claim).strip() or default_claim
-    audience = (os.getenv("JWT_AUDIENCE") or default_claim).strip() or default_claim
+    issuer = (os.getenv('JWT_ISSUER') or default_claim).strip() or default_claim
+    audience = (os.getenv('JWT_AUDIENCE') or default_claim).strip() or default_claim
 
     now = _utcnow()
     exp = now + timedelta(minutes=ttl_minutes)
     payload: Dict[str, Any] = {
-        "sub": subject,
-        "email": email,
-        "iss": issuer,
-        "aud": audience,
-        "iat": int(now.timestamp()),
-        "exp": int(exp.timestamp()),
-        "jti": secrets.token_hex(16),
+        'sub': subject,
+        'email': email,
+        'iss': issuer,
+        'aud': audience,
+        'iat': int(now.timestamp()),
+        'exp': int(exp.timestamp()),
+        'jti': secrets.token_hex(16),
     }
-    return jwt.encode(payload, secret, algorithm="HS256")
+    return jwt.encode(payload, secret, algorithm='HS256')
 
 
 def decode_access_token(token: str) -> Dict[str, Any]:
-    secret = (os.getenv("JWT_SECRET") or "").strip()
+    secret = (os.getenv('JWT_SECRET') or '').strip()
     if not secret:
-        raise RuntimeError("Missing JWT_SECRET")
+        raise RuntimeError('Missing JWT_SECRET')
 
     default_claim = _default_project_claim()
-    issuer = (os.getenv("JWT_ISSUER") or default_claim).strip() or default_claim
-    audience = (os.getenv("JWT_AUDIENCE") or default_claim).strip() or default_claim
-    return jwt.decode(token, secret, algorithms=["HS256"], issuer=issuer, audience=audience)
+    issuer = (os.getenv('JWT_ISSUER') or default_claim).strip() or default_claim
+    audience = (os.getenv('JWT_AUDIENCE') or default_claim).strip() or default_claim
+    return jwt.decode(token, secret, algorithms=['HS256'], issuer=issuer, audience=audience)

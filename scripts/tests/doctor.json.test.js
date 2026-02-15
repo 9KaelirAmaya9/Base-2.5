@@ -14,7 +14,13 @@ test('doctor --json payload matches contract shape (basic)', () => {
   // Minimal env that still fails validation (fine for shape test)
   fs.writeFileSync(
     path.join(root, '.env'),
-    ['PROJECT_NAME=alpha', 'ENV=development', 'WEBSITE_DOMAIN=example.com', 'DEPLOY_MODE=local', 'APPLY_DEV_DEFAULTS=false'].join('\n'),
+    [
+      'PROJECT_NAME=alpha',
+      'ENV=development',
+      'WEBSITE_DOMAIN=example.com',
+      'DEPLOY_MODE=local',
+      'APPLY_DEV_DEFAULTS=false',
+    ].join('\n'),
     'utf8'
   );
 

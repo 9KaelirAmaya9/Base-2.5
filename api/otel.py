@@ -10,7 +10,7 @@ def configure_otel(app) -> None:
     the app should still run.
     """
 
-    enabled = os.getenv("OTEL_ENABLED", "").strip().lower() in {"1", "true", "yes", "on"}
+    enabled = os.getenv('OTEL_ENABLED', '').strip().lower() in {'1', 'true', 'yes', 'on'}
     if not enabled:
         return
 
@@ -19,16 +19,20 @@ def configure_otel(app) -> None:
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
         from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export import (
+            BatchSpanProcessor,
+            ConsoleSpanExporter,
+            SimpleSpanProcessor,
+        )
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-        service_name = os.getenv("OTEL_SERVICE_NAME", "api")
-        resource = Resource.create({"service.name": service_name})
+        service_name = os.getenv('OTEL_SERVICE_NAME', 'api')
+        resource = Resource.create({'service.name': service_name})
 
         provider = TracerProvider(resource=resource)
         trace.set_tracer_provider(provider)
 
-        endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "").strip()
+        endpoint = os.getenv('OTEL_EXPORTER_OTLP_ENDPOINT', '').strip()
         if endpoint:
             exporter = OTLPSpanExporter(endpoint=endpoint)
             provider.add_span_processor(BatchSpanProcessor(exporter))

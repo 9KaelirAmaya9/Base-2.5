@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 from api.db import db_conn
 
 
-logger = logging.getLogger("api.email")
+logger = logging.getLogger('api.email')
 
 
 @dataclass(frozen=True)
@@ -30,7 +30,9 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def create_outbox_email(*, to_email: str, subject: str, body_text: str, body_html: str = "") -> EmailOutboxRow:
+def create_outbox_email(
+    *, to_email: str, subject: str, body_text: str, body_html: str = ''
+) -> EmailOutboxRow:
     outbox_id = uuid4()
     with db_conn() as conn:
         conn.autocommit = True
@@ -41,7 +43,7 @@ def create_outbox_email(*, to_email: str, subject: str, body_text: str, body_htm
                 VALUES (%s, %s, %s, %s, %s)
                 RETURNING id, to_email, subject, body_text, body_html, status, provider, provider_message_id, error, created_at, sent_at
                 """,
-                (str(outbox_id), to_email, subject, body_text, body_html or ""),
+                (str(outbox_id), to_email, subject, body_text, body_html or ''),
             )
             row = cur.fetchone()
 
@@ -50,11 +52,11 @@ def create_outbox_email(*, to_email: str, subject: str, body_text: str, body_htm
         to_email=row[1],
         subject=row[2],
         body_text=row[3],
-        body_html=row[4] or "",
+        body_html=row[4] or '',
         status=row[5],
         provider=row[6],
-        provider_message_id=row[7] or "",
-        error=row[8] or "",
+        provider_message_id=row[7] or '',
+        error=row[8] or '',
         created_at=row[9],
         sent_at=row[10],
     )
@@ -80,11 +82,11 @@ def get_outbox_email(outbox_id: UUID) -> EmailOutboxRow | None:
         to_email=row[1],
         subject=row[2],
         body_text=row[3],
-        body_html=row[4] or "",
+        body_html=row[4] or '',
         status=row[5],
         provider=row[6],
-        provider_message_id=row[7] or "",
-        error=row[8] or "",
+        provider_message_id=row[7] or '',
+        error=row[8] or '',
         created_at=row[9],
         sent_at=row[10],
     )
@@ -93,8 +95,8 @@ def get_outbox_email(outbox_id: UUID) -> EmailOutboxRow | None:
 def mark_outbox_sent(
     *,
     outbox_id: UUID,
-    provider: str = "local_outbox",
-    provider_message_id: str = "local",
+    provider: str = 'local_outbox',
+    provider_message_id: str = 'local',
 ) -> None:
     with db_conn() as conn:
         conn.autocommit = True
@@ -105,7 +107,7 @@ def mark_outbox_sent(
                 SET status='sent', sent_at=NOW(), provider=%s, provider_message_id=%s, error=''
                 WHERE id=%s
                 """,
-                (provider, provider_message_id or "", str(outbox_id)),
+                (provider, provider_message_id or '', str(outbox_id)),
             )
 
 
@@ -132,13 +134,13 @@ def process_outbox_email(*, outbox_id: UUID) -> None:
 
     existing = get_outbox_email(outbox_id)
     if existing is None:
-        raise RuntimeError("outbox_not_found")
+        raise RuntimeError('outbox_not_found')
 
-    if existing.sent_at is not None or existing.status == "sent":
+    if existing.sent_at is not None or existing.status == 'sent':
         return
 
     # In later tasks we can add real provider integrations here.
-    mark_outbox_sent(outbox_id=outbox_id, provider="local_outbox", provider_message_id="local")
+    mark_outbox_sent(outbox_id=outbox_id, provider='local_outbox', provider_message_id='local')
 
 
 def queue_email(
@@ -146,11 +148,13 @@ def queue_email(
     to_email: str,
     subject: str,
     body_text: str,
-    body_html: str = "",
+    body_html: str = '',
     request_id: str | None = None,
     send_async: bool = True,
 ) -> EmailOutboxRow:
-    outbox = create_outbox_email(to_email=to_email, subject=subject, body_text=body_text, body_html=body_html)
+    outbox = create_outbox_email(
+        to_email=to_email, subject=subject, body_text=body_text, body_html=body_html
+    )
 
     if not send_async:
         return outbox
@@ -160,14 +164,17 @@ def queue_email(
         from api.tasks import app as celery_app
 
         celery_app.send_task(
-            "app.send_email_outbox",
+            'app.send_email_outbox',
             args=[str(outbox.id)],
-            kwargs={"request_id": request_id},
+            kwargs={'request_id': request_id},
         )
     except Exception as e:
         # Never fail the request path because the broker is down.
         from contextlib import suppress
+
         with suppress(Exception):
-            logger.warning("email_enqueue_failed", extra={"outbox_id": str(outbox.id), "error": str(e)})
+            logger.warning(
+                'email_enqueue_failed', extra={'outbox_id': str(outbox.id), 'error': str(e)}
+            )
 
     return outbox

@@ -27,17 +27,17 @@ const CATEGORY = /** @type {const} */ ({
 const CATEGORIES = {
   [CATEGORY.Core]: {
     requiredByDefault: true,
-    keys: [
-      'PROJECT_NAME',
-      'ENV',
-      'WEBSITE_DOMAIN',
-      'DEPLOY_MODE',
-      'APPLY_DEV_DEFAULTS',
-    ],
+    keys: ['PROJECT_NAME', 'ENV', 'WEBSITE_DOMAIN', 'DEPLOY_MODE', 'APPLY_DEV_DEFAULTS'],
   },
   [CATEGORY.Secrets]: {
     requiredByDefault: true,
-    keys: ['DJANGO_SECRET_KEY', 'REDIS_PASSWORD', 'JWT_SECRET', 'TOKEN_PEPPER', 'OAUTH_STATE_SECRET'],
+    keys: [
+      'DJANGO_SECRET_KEY',
+      'REDIS_PASSWORD',
+      'JWT_SECRET',
+      'TOKEN_PEPPER',
+      'OAUTH_STATE_SECRET',
+    ],
   },
   [CATEGORY.Admin]: {
     requiredByDefault: true,
@@ -65,7 +65,13 @@ const CATEGORIES = {
   },
   [CATEGORY.SMTP]: {
     requiredByDefault: false,
-    keys: ['EMAIL_HOST', 'EMAIL_PORT', 'EMAIL_HOST_USER', 'EMAIL_HOST_PASSWORD', 'DEFAULT_FROM_EMAIL'],
+    keys: [
+      'EMAIL_HOST',
+      'EMAIL_PORT',
+      'EMAIL_HOST_USER',
+      'EMAIL_HOST_PASSWORD',
+      'DEFAULT_FROM_EMAIL',
+    ],
   },
   [CATEGORY.OAuth]: {
     requiredByDefault: false,
@@ -77,7 +83,8 @@ function normalizeDeployMode(value) {
   if (!value) return 'unknown';
   const v = String(value).trim().toLowerCase();
   if (v === DEPLOY_MODES.LOCAL) return DEPLOY_MODES.LOCAL;
-  if (v === DEPLOY_MODES.DIGITALOCEAN || v === 'digital_ocean' || v === 'do') return DEPLOY_MODES.DIGITALOCEAN;
+  if (v === DEPLOY_MODES.DIGITALOCEAN || v === 'digital_ocean' || v === 'do')
+    return DEPLOY_MODES.DIGITALOCEAN;
   return 'unknown';
 }
 
@@ -95,8 +102,10 @@ function requiredCategories({ env, deployMode }) {
   const normalizedDeployMode = normalizeDeployMode(deployMode);
   const required = new Set([CATEGORY.Core, CATEGORY.Secrets, CATEGORY.Admin, CATEGORY.Access]);
 
-  const needsTls = normalizedEnv === ENVS.PRODUCTION || normalizedDeployMode === DEPLOY_MODES.DIGITALOCEAN;
-  const needsSmtp = normalizedEnv !== ENVS.DEVELOPMENT && normalizedDeployMode !== DEPLOY_MODES.LOCAL;
+  const needsTls =
+    normalizedEnv === ENVS.PRODUCTION || normalizedDeployMode === DEPLOY_MODES.DIGITALOCEAN;
+  const needsSmtp =
+    normalizedEnv !== ENVS.DEVELOPMENT && normalizedDeployMode !== DEPLOY_MODES.LOCAL;
 
   if (needsTls) {
     required.add(CATEGORY.TLS);

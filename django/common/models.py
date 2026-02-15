@@ -23,7 +23,6 @@ User = get_user_model()
 
 
 class ID(models.Model):
-
     pkid = models.AutoField(
         verbose_name=_("Primary Key ID"),
         primary_key=True,
@@ -136,10 +135,7 @@ class UUIDMixin(models.Model):
 
 
 class Timezone(models.Model):
-
-    TIMEZONE_CHOICES = (
-        (x, x) for x in sorted(zoneinfo.available_timezones(), key=str.lower)
-    )
+    TIMEZONE_CHOICES = ((x, x) for x in sorted(zoneinfo.available_timezones(), key=str.lower))
     timezone = models.CharField(
         verbose_name=_("IANA Time Zone"),
         choices=TIMEZONE_CHOICES,
@@ -372,7 +368,6 @@ class Domain(models.Model):
 
 
 class Email(models.Model):
-
     email = models.EmailField(
         verbose_name=_("Email Address"),
         max_length=255,

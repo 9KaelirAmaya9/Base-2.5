@@ -9,14 +9,14 @@ Design and ship a cohesive glassmorphism UI system and calc-driven App Shell in 
 
 ## Technical Context
 
-**Language/Version**: JavaScript (React 18), Node 24.13.1 (repo-default)  
-**Primary Dependencies**: React, Storybook, React Testing Library, Playwright, jest-axe; backend present (Django, FastAPI) but unchanged for this feature  
-**Storage**: N/A (frontend-only; theme stored via client cookie; backend profile override when authenticated)  
-**Testing**: RTL + jest-axe (unit/accessibility), Storybook (visual contracts), Playwright (E2E), CI via deploy script AllTests  
-**Target Platform**: Web (evergreen browsers: Chrome/Edge/Safari/Firefox)  
-**Project Type**: Web application (frontend + backend present; this feature touches frontend)  
-**Performance Goals**: Minimal layout shift (≤ 5%), instant theme toggle (< 1s), smooth animations with reduced-motion respected  
-**Constraints**: CSS `calc()` layout discipline; no JS layout math; WCAG 2.1 AA; vector-only icons; no auth or API changes  
+**Language/Version**: JavaScript (React 18), Node 24.13.1 (repo-default)
+**Primary Dependencies**: React, Storybook, React Testing Library, Playwright, jest-axe; backend present (Django, FastAPI) but unchanged for this feature
+**Storage**: N/A (frontend-only; theme stored via client cookie; backend profile override when authenticated)
+**Testing**: RTL + jest-axe (unit/accessibility), Storybook (visual contracts), Playwright (E2E), CI via deploy script AllTests
+**Target Platform**: Web (evergreen browsers: Chrome/Edge/Safari/Firefox)
+**Project Type**: Web application (frontend + backend present; this feature touches frontend)
+**Performance Goals**: Minimal layout shift (≤ 5%), instant theme toggle (< 1s), smooth animations with reduced-motion respected
+**Constraints**: CSS `calc()` layout discipline; no JS layout math; WCAG 2.1 AA; vector-only icons; no auth or API changes
 **Scale/Scope**: Public Home Page + reusable glass component library; no new API endpoints
 
 ## Constitution Check

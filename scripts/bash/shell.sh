@@ -103,4 +103,3 @@ if [ "$SHELL_TYPE" = "bash" ]; then
 else
     docker exec -it "${container_name}" sh
 fi
-

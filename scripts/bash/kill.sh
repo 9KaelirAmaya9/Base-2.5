@@ -95,7 +95,7 @@ fi
 if [ "$FORCE" = false ]; then
     echo "Type 'DELETE EVERYTHING' to confirm:"
     read -r confirmation
-    
+
     if [ "$confirmation" != "DELETE EVERYTHING" ]; then
         echo ""
         echo "âŒ Operation cancelled"
@@ -185,14 +185,14 @@ if [ -n "$VOLUMES" ]; then
     docker volume ls --filter "name=${COMPOSE_PROJECT_NAME}" --format "table {{.Name}}\t{{.Driver}}\t{{.Mountpoint}}"
     echo ""
     echo "ðŸ—‘ï¸  Forcefully removing volumes..."
-    
+
     # Try to remove each volume individually
     for volume in $VOLUMES; do
         echo "  Removing: $volume"
         docker volume rm -f "$volume" 2>/dev/null || \
             echo "  âš ï¸  Could not remove $volume (may be in use)"
     done
-    
+
     # Check if any volumes remain
     REMAINING=$(docker volume ls -q --filter "name=${COMPOSE_PROJECT_NAME}" 2>/dev/null || true)
     if [ -n "$REMAINING" ]; then
@@ -217,4 +217,3 @@ echo ""
 echo "All Docker resources for this project have been permanently deleted."
 echo ""
 echo "ðŸ’¡ To start fresh: ./scripts/bash/start.sh --build"
-

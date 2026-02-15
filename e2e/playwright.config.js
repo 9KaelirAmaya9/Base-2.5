@@ -9,6 +9,6 @@ module.exports = defineConfig({
   reporter: [['list']],
   use: {
     baseURL: process.env.E2E_BASE_URL || 'http://localhost:8080',
-    trace: 'retain-on-failure'
-  }
+    trace: 'retain-on-failure',
+  },
 });

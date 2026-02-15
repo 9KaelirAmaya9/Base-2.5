@@ -47,7 +47,12 @@ function normalizeTokens(tokens) {
     .map((t) => t.toLowerCase());
 }
 
-function scanLegacyIdentifiers({ rootDir, tokens, excludes = DEFAULT_EXCLUDES, maxBytes = 2_000_000 } = {}) {
+function scanLegacyIdentifiers({
+  rootDir,
+  tokens,
+  excludes = DEFAULT_EXCLUDES,
+  maxBytes = 2_000_000,
+} = {}) {
   if (!rootDir) throw new Error('rootDir is required');
 
   const needles = normalizeTokens(tokens);

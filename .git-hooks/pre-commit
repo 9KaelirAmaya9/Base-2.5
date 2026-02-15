@@ -9,7 +9,7 @@ echo ""
 if [ -f "./scripts/bash/sync-env.sh" ]; then
     echo "📋 Synchronizing environment configuration..."
     ./scripts/bash/sync-env.sh
-    
+
     # Check if sync made any changes
     if git diff --quiet development.docker.yml traefik/traefik.yml .env; then
         echo "✅ Configuration is synchronized"

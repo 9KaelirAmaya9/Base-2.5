@@ -200,9 +200,17 @@ print(json.dumps(payload))" > /root/logs/request-id-log-propagation.json 2> /roo
 set -e
 
 # Optional celery check (for all-tests)
+# Always create placeholder artifacts so the test runner doesn't fail on missing files.
+python3 - <<'PY' > /root/logs/celery-ping.json 2>/dev/null || true
+import json
+print(json.dumps({"skipped": True, "reason": "celery check not executed"}))
+PY
+python3 - <<'PY' > /root/logs/celery-result.json 2>/dev/null || true
+import json
+print(json.dumps({"skipped": True, "reason": "celery check not executed"}))
+PY
+
 if [ "${RUN_CELERY_CHECK:-}" = "1" ] && [ -n "$DOMAIN" ]; then
-  : > /root/logs/celery-ping.json || true
-  : > /root/logs/celery-result.json || true
   curl -sk "${RESOLVE_DOMAIN[@]}" -X POST "https://$DOMAIN/api/celery/ping" -H 'Content-Type: application/json' -d '{}' -o /root/logs/celery-ping.json || true
   TASK_ID=$(python3 - <<'PY'
 import json
@@ -221,5 +229,10 @@ PY
       fi
       sleep 5
     done
+  else
+    python3 - <<'PY' > /root/logs/celery-result.json 2>/dev/null || true
+import json
+print(json.dumps({"ok": False, "reason": "missing task_id"}))
+PY
   fi
 fi

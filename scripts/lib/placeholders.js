@@ -21,7 +21,10 @@ function isAllowlistPlaceholder(value) {
   if (/^\$\{TP_USER_IP_ADDRESS\}\/\d{1,2}$/.test(v)) return false;
   if (v === '0.0.0.0/0') return false;
   // Basic CIDR-ish validation (allow comma-separated list)
-  const parts = v.split(',').map((s) => s.trim()).filter(Boolean);
+  const parts = v
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
   if (parts.length === 0) return true;
   const cidrRe = /^(\d{1,3}\.){3}\d{1,3}\/(\d{1,2})$/;
   for (const p of parts) {

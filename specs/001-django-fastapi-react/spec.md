@@ -1,8 +1,8 @@
 # Feature Specification: Full-stack Baseline
 
-**Feature Branch**: `001-django-fastapi-react`  
-**Created**: 2025-12-24  
-**Status**: Draft  
+**Feature Branch**: `001-django-fastapi-react`
+**Created**: 2025-12-24
+**Status**: Draft
 **Input**: User description: "django-fastapi-react, using this file as a base"
 
 ## User Scenarios & Testing _(mandatory)_

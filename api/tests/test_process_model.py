@@ -11,32 +11,32 @@ import pytest
 
 def _get_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
+        s.bind(('127.0.0.1', 0))
         return int(s.getsockname()[1])
 
 
 def test_gunicorn_serves_health() -> None:
-    if sys.platform.startswith("win"):
-        pytest.skip("gunicorn not supported on Windows (fcntl missing)")
-    if which("gunicorn") is None:
-        pytest.skip("gunicorn not available on PATH")
+    if sys.platform.startswith('win'):
+        pytest.skip('gunicorn not supported on Windows (fcntl missing)')
+    if which('gunicorn') is None:
+        pytest.skip('gunicorn not available on PATH')
 
     port = _get_free_port()
     env = os.environ.copy()
 
     cmd = [
-        "gunicorn",
-        "api.main:app",
-        "-k",
-        "uvicorn.workers.UvicornWorker",
-        "--bind",
-        f"127.0.0.1:{port}",
-        "--workers",
-        "1",
-        "--timeout",
-        "30",
-        "--graceful-timeout",
-        "5",
+        'gunicorn',
+        'api.main:app',
+        '-k',
+        'uvicorn.workers.UvicornWorker',
+        '--bind',
+        f'127.0.0.1:{port}',
+        '--workers',
+        '1',
+        '--timeout',
+        '30',
+        '--graceful-timeout',
+        '5',
     ]
 
     proc = subprocess.Popen(
@@ -48,7 +48,7 @@ def test_gunicorn_serves_health() -> None:
     )
 
     try:
-        url = f"http://127.0.0.1:{port}/api/health"
+        url = f'http://127.0.0.1:{port}/api/health'
         deadline = time.time() + 20
         last_error: Exception | None = None
 
@@ -56,9 +56,9 @@ def test_gunicorn_serves_health() -> None:
             if proc.poll() is not None:
                 out, _ = proc.communicate(timeout=2)
                 raise AssertionError(
-                    "gunicorn exited before becoming ready\n\n"
-                    f"exit_code={proc.returncode}\n\n"
-                    f"output:\n{out}"
+                    'gunicorn exited before becoming ready\n\n'
+                    f'exit_code={proc.returncode}\n\n'
+                    f'output:\n{out}'
                 )
 
             try:
@@ -71,17 +71,17 @@ def test_gunicorn_serves_health() -> None:
 
             time.sleep(0.25)
 
-        out = ""
+        out = ''
         if proc.stdout is not None:
             try:
                 out = proc.stdout.read()
             except Exception:
-                out = ""
+                out = ''
 
         raise AssertionError(
-            "gunicorn did not become ready within 20s\n"
-            f"last_error={last_error!r}\n\n"
-            f"partial_output:\n{out}"
+            'gunicorn did not become ready within 20s\n'
+            f'last_error={last_error!r}\n\n'
+            f'partial_output:\n{out}'
         )
     finally:
         if proc.poll() is None:

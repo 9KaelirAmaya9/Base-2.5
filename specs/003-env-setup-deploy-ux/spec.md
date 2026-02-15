@@ -1,8 +1,8 @@
 # Feature Specification: End-to-End Environment Setup + Deploy UX
 
-**Feature Branch**: `[003-env-setup-deploy-ux]`  
-**Created**: 2026-02-04  
-**Status**: Draft  
+**Feature Branch**: `[003-env-setup-deploy-ux]`
+**Created**: 2026-02-04
+**Status**: Draft
 **Input**: User description: "Feature: End-to-end environment setup + deploy UX (PROJECT_NAME templating, DigitalOcean mode, doctor command, category validation, auth fallbacks, safe dev defaults, zero hardcoded identifiers)"
 
 ## User Scenarios & Testing _(mandatory)_

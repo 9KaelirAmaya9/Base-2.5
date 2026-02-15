@@ -1,8 +1,8 @@
 # Feature Specification: Scripting Update (Shell Parity + Script Routing)
 
-**Feature Branch**: `004-scripting-update`  
-**Created**: 2026-02-12  
-**Status**: Draft  
+**Feature Branch**: `004-scripting-update`
+**Created**: 2026-02-12
+**Status**: Draft
 **Input**: User description: "Standardize script routing so PowerShell calls PowerShell locally, Bash calls Bash locally, allow remote Linux payloads only via allowlisted helpers, ensure parity, and add make-like commands once CI is green."
 
 ## Objective

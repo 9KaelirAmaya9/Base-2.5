@@ -12,7 +12,13 @@ test('add-ssh-key.ps1 dry-run does not create files', () => {
   const sshDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ssh-key-test-'));
   const keyName = 'testkey';
 
-  const scriptPath = path.join(repoRoot, 'digital_ocean', 'scripts', 'powershell', 'add-ssh-key.ps1');
+  const scriptPath = path.join(
+    repoRoot,
+    'digital_ocean',
+    'scripts',
+    'powershell',
+    'add-ssh-key.ps1'
+  );
 
   const result = spawnSync(
     'powershell',

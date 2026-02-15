@@ -21,7 +21,11 @@ describe('glass supports', () => {
   test('adds no-backdrop on detection error', () => {
     (window as any).CSS = null as any;
     const orig = Object.getOwnPropertyDescriptor(window, 'CSS');
-    Object.defineProperty(window, 'CSS', { get(){ throw new Error('fail'); } });
+    Object.defineProperty(window, 'CSS', {
+      get() {
+        throw new Error('fail');
+      },
+    });
     ensureBackdropSupport();
     expect(document.documentElement.classList.contains('no-backdrop')).toBe(true);
     if (orig) Object.defineProperty(window, 'CSS', orig);

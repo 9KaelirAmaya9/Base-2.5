@@ -274,9 +274,7 @@ def _process_oauth_google_callback_flow(
     if user is None:
         base_username = email.split("@", 1)[0] or "user"
         base_username = (
-            "".join(
-                ch for ch in base_username if ch.isalnum() or ch in {"_", ".", "-"}
-            )[:30]
+            "".join(ch for ch in base_username if ch.isalnum() or ch in {"_", ".", "-"})[:30]
             or "user"
         )
         candidate = base_username
@@ -640,6 +638,7 @@ def reset_password(request):
     )
 
     return JsonResponse({"detail": "Password reset. Please log in."}, status=200)
+
 
 @csrf_exempt
 def login_view(request):

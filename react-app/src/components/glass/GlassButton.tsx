@@ -9,7 +9,14 @@ type Props = {
   type?: 'button' | 'submit' | 'reset';
 };
 
-export const GlassButton: React.FC<Props> = ({ variant = 'primary', disabled, className, children, onClick, type = 'button' }) => {
+export const GlassButton: React.FC<Props> = ({
+  variant = 'primary',
+  disabled,
+  className,
+  children,
+  onClick,
+  type = 'button',
+}) => {
   const baseStyles =
     'backdrop-blur-2xl rounded-[var(--radius-lg)] transition-all duration-300 ease-out border px-6 py-3 ' +
     'disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 ' +

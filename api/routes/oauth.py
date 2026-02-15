@@ -15,11 +15,11 @@ class OAuthCallbackRequest(BaseModel):
     state: str
 
 
-@router.post("/oauth/google/start", response_model=OAuthStartResponse)
+@router.post('/oauth/google/start', response_model=OAuthStartResponse)
 async def oauth_google_start() -> OAuthStartResponse:
-    raise HTTPException(status_code=501, detail="OAuth start is not implemented")
+    raise HTTPException(status_code=501, detail='OAuth start is not implemented')
 
 
-@router.post("/oauth/google/callback")
+@router.post('/oauth/google/callback')
 async def oauth_google_callback(_payload: OAuthCallbackRequest):
-    raise HTTPException(status_code=501, detail="OAuth callback is not implemented")
+    raise HTTPException(status_code=501, detail='OAuth callback is not implemented')

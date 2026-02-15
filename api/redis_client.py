@@ -1,8 +1,8 @@
 import os
 import redis
 
-_prefix = os.environ.get("RATE_LIMIT_REDIS_PREFIX", "rate_limit")
-_redis_url = os.environ.get("CELERY_BROKER_URL", "redis://redis:6379/0")
+_prefix = os.environ.get('RATE_LIMIT_REDIS_PREFIX', 'rate_limit')
+_redis_url = os.environ.get('CELERY_BROKER_URL', 'redis://redis:6379/0')
 
 _client: redis.Redis | None = None
 
@@ -22,4 +22,4 @@ def ping() -> bool:
 
 
 def key(*parts: str) -> str:
-    return ":".join([_prefix, *parts])
+    return ':'.join([_prefix, *parts])

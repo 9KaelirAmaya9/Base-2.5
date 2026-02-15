@@ -84,7 +84,6 @@ export const authAPI = {
       fallbackMessage: 'Failed to log out other devices',
     });
   },
-
 };
 
 export default apiClient;

@@ -6,12 +6,12 @@ from pathlib import Path
 from api.db import db_conn
 
 
-_MIGRATIONS_DIR = Path(__file__).resolve().parent / "sql"
+_MIGRATIONS_DIR = Path(__file__).resolve().parent / 'sql'
 
 
 def _read_sql(version: str) -> str:
-    path = _MIGRATIONS_DIR / f"{version}.sql"
-    return path.read_text(encoding="utf-8")
+    path = _MIGRATIONS_DIR / f'{version}.sql'
+    return path.read_text(encoding='utf-8')
 
 
 def apply_migrations() -> None:
@@ -22,14 +22,14 @@ def apply_migrations() -> None:
     """
 
     # Allow disabling in rare cases.
-    if os.getenv("API_DISABLE_MIGRATIONS", "").strip().lower() in {"1", "true", "yes", "on"}:
+    if os.getenv('API_DISABLE_MIGRATIONS', '').strip().lower() in {'1', 'true', 'yes', 'on'}:
         return
 
     migrations = [
-        "001_create_auth_tables",
-        "002_create_email_outbox",
-        "003_add_refresh_token_last_seen",
-        "004_add_user_lockout_fields",
+        '001_create_auth_tables',
+        '002_create_email_outbox',
+        '003_add_refresh_token_last_seen',
+        '004_add_user_lockout_fields',
     ]
 
     with db_conn() as conn:
@@ -46,7 +46,7 @@ def apply_migrations() -> None:
             )
 
             for version in migrations:
-                cur.execute("SELECT 1 FROM api_schema_migrations WHERE version=%s", (version,))
+                cur.execute('SELECT 1 FROM api_schema_migrations WHERE version=%s', (version,))
                 already = cur.fetchone() is not None
                 if already:
                     continue
@@ -54,6 +54,6 @@ def apply_migrations() -> None:
                 sql = _read_sql(version)
                 cur.execute(sql)
                 cur.execute(
-                    "INSERT INTO api_schema_migrations(version) VALUES (%s)",
+                    'INSERT INTO api_schema_migrations(version) VALUES (%s)',
                     (version,),
                 )

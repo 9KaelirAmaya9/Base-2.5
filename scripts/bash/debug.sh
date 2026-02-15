@@ -79,16 +79,16 @@ fi
 
 if [ -n "$SERVICE" ]; then
     container_name="${COMPOSE_PROJECT_NAME}_${SERVICE}"
-    
+
     echo "ðŸ” Debugging service: $SERVICE"
     echo ""
-    
+
     # Check if container exists
     if ! docker ps -a --filter "name=${container_name}" --format "{{.Names}}" | grep -q "${container_name}"; then
         echo "âŒ Container $container_name not found"
         exit 1
     fi
-    
+
     # Container info
     echo "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
     echo "ðŸ“¦ Container Information:"
@@ -99,45 +99,45 @@ Started: {{.State.StartedAt}}
 Health: {{.State.Health.Status}}
 Image: {{.Config.Image}}
 '
-    
+
     # Environment variables
     echo "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
     echo "ðŸ”§ Environment Variables:"
     docker inspect "${container_name}" --format='{{range .Config.Env}}{{println .}}{{end}}' | sort
-    
+
     # Port mappings
     echo ""
     echo "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
     echo "ðŸŒ Port Mappings:"
     docker port "${container_name}" 2>/dev/null || echo "No port mappings"
-    
+
     # Networks
     echo ""
     echo "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
     echo "ðŸ”— Networks:"
     docker inspect "${container_name}" --format='{{range $k, $v := .NetworkSettings.Networks}}{{$k}}: {{$v.IPAddress}}{{println}}{{end}}'
-    
+
     # Volumes
     echo ""
     echo "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
     echo "ðŸ’¾ Volumes:"
     docker inspect "${container_name}" --format='{{range .Mounts}}{{.Type}}: {{.Source}} -> {{.Destination}}{{println}}{{end}}' || echo "No volumes"
-    
+
     # Recent logs
     echo ""
     echo "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
     echo "ðŸ“‹ Recent Logs (last 20 lines):"
     docker logs --tail 20 "${container_name}"
-    
+
 else
     echo "ðŸ” Debugging all services"
     echo ""
-    
+
     # Overall status
     echo "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
     echo "ðŸ“Š Container Status:"
     docker-compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps
-    
+
     # Network info
     echo ""
     echo "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
@@ -150,13 +150,13 @@ Subnet: {{range .IPAM.Config}}{{.Subnet}}{{end}}
 Connected Containers:
 {{range $k, $v := .Containers}}  - {{$v.Name}} ({{$v.IPv4Address}})
 {{end}}' 2>/dev/null || echo "Network not found"
-    
+
     # Volume info
     echo ""
     echo "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
     echo "ðŸ’¾ Volume Information:"
     docker volume ls --filter "name=${COMPOSE_PROJECT_NAME}" --format "table {{.Name}}\t{{.Driver}}\t{{.Mountpoint}}"
-    
+
     # Resource usage
     echo ""
     echo "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
@@ -166,11 +166,10 @@ Connected Containers:
     else
         echo "No running containers"
     fi
-    
+
     echo ""
     echo "ðŸ’¡ Debug specific service: ./scripts/bash/debug.sh [service-name]"
 fi
 
 echo ""
 echo "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
-

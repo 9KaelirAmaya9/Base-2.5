@@ -13,25 +13,25 @@ _pool_lock = threading.Lock()
 
 
 def _project_slug() -> str:
-    raw = (os.getenv("PROJECT_NAME") or os.getenv("COMPOSE_PROJECT_NAME") or "").strip().lower()
-    raw = re.sub(r"[^a-z0-9_-]+", "-", raw).strip("-_")
-    return raw or "app"
+    raw = (os.getenv('PROJECT_NAME') or os.getenv('COMPOSE_PROJECT_NAME') or '').strip().lower()
+    raw = re.sub(r'[^a-z0-9_-]+', '-', raw).strip('-_')
+    return raw or 'app'
 
 
 def _build_dsn() -> str:
     # Prefer an explicit DATABASE_URL if provided
-    database_url = os.getenv("DATABASE_URL")
+    database_url = os.getenv('DATABASE_URL')
     if database_url:
         return database_url
 
-    host = os.getenv("DB_HOST", "postgres")
-    port = os.getenv("DB_PORT", "5432")
-    name = os.getenv("DB_NAME")
-    user = os.getenv("DB_USER")
-    password = os.getenv("DB_PASSWORD")
+    host = os.getenv('DB_HOST', 'postgres')
+    port = os.getenv('DB_PORT', '5432')
+    name = os.getenv('DB_NAME')
+    user = os.getenv('DB_USER')
+    password = os.getenv('DB_PASSWORD')
     if not all([name, user, password]):
-        raise RuntimeError("Missing DB_NAME/DB_USER/DB_PASSWORD")
-    return f"postgresql://{user}:{password}@{host}:{port}/{name}"
+        raise RuntimeError('Missing DB_NAME/DB_USER/DB_PASSWORD')
+    return f'postgresql://{user}:{password}@{host}:{port}/{name}'
 
 
 def _get_pool() -> ThreadedConnectionPool:
@@ -44,14 +44,14 @@ def _get_pool() -> ThreadedConnectionPool:
             return _pool
 
         dsn = _build_dsn()
-        options = f"-c statement_timeout={settings.DB_STATEMENT_TIMEOUT_MS}"
+        options = f'-c statement_timeout={settings.DB_STATEMENT_TIMEOUT_MS}'
         _pool = ThreadedConnectionPool(
             minconn=settings.DB_POOL_MIN,
             maxconn=settings.DB_POOL_MAX,
             dsn=dsn,
             connect_timeout=settings.DB_CONNECT_TIMEOUT_SEC,
             options=options,
-            application_name=f"{_project_slug()}-api",
+            application_name=f'{_project_slug()}-api',
         )
         return _pool
 
@@ -62,7 +62,7 @@ def _get_conn() -> object:
     for _ in range(3):
         conn = pool.getconn()
         try:
-            if getattr(conn, "closed", 0):
+            if getattr(conn, 'closed', 0):
                 with suppress(Exception):
                     pool.putconn(conn, close=True)
                 continue
@@ -102,7 +102,7 @@ def close_pool() -> None:
 def db_ping() -> bool:
     try:
         with db_conn() as conn, conn.cursor() as cur:
-            cur.execute("SELECT 1")
+            cur.execute('SELECT 1')
             cur.fetchone()
         return True
     except Exception:

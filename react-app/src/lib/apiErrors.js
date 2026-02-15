@@ -9,10 +9,7 @@ const _pickMessage = (data) => {
     return null;
   }
   return (
-    _stringOrNull(data.message) ||
-    _stringOrNull(data.detail) ||
-    _stringOrNull(data.error) ||
-    null
+    _stringOrNull(data.message) || _stringOrNull(data.detail) || _stringOrNull(data.error) || null
   );
 };
 
@@ -54,11 +51,10 @@ const _guessFieldsFromAuthMessage = (message, url, status) => {
 
 export const normalizeApiError = (error, opts = {}) => {
   const fallbackMessage =
-    _stringOrNull(opts.fallbackMessage) ||
-    'Something went wrong. Please try again.';
+    _stringOrNull(opts.fallbackMessage) || 'Something went wrong. Please try again.';
 
   // Already normalized?
-  if (_isObject(error) && _stringOrNull(error.message) && _isObject(error.fields || {}) ) {
+  if (_isObject(error) && _stringOrNull(error.message) && _isObject(error.fields || {})) {
     return {
       code: error.code || 'error',
       message: error.message,

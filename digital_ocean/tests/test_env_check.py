@@ -1,8 +1,8 @@
-
 """
 Pytest self-tests for env_check.py
 Checks that missing required variables cause failure and all set variables pass.
 """
+
 import pytest
 
 from digital_ocean.scripts.python import env_check
@@ -20,6 +20,7 @@ def test_missing_env_var(monkeypatch, missing_var):
     with pytest.raises(SystemExit) as e:
         env_check.check_required_env_vars()
     assert e.value.code == 1
+
 
 def test_all_required_vars_set(monkeypatch):
     for var in env_check.REQUIRED_VARS:

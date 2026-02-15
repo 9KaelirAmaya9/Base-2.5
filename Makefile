@@ -70,4 +70,3 @@ seed:
 reset:
 	@if [ "$(CONFIRM)" != "1" ]; then echo "Refusing to reset without CONFIRM=1"; exit 1; fi
 	$(COMPOSE) down -v
-

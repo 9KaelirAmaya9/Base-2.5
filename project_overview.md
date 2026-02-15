@@ -56,7 +56,7 @@ DigitalOcean automation (`digital_ocean/scripts/python/orchestrate_deploy.py`) p
 
 ---
 
-**Summary:**  
+**Summary:**
 This build is a modern, containerized web application with a React frontend, FastAPI API, Django schema/admin service, and PostgreSQL database behind Traefik. The architecture is suitable for scalable, secure web services.
 
 If you want a deeper dive into any specific part (e.g., authentication flow, database schema, deployment), let me know!

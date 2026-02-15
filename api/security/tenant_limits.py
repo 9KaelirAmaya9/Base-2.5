@@ -21,16 +21,16 @@ def _limit_for_scope(scope: str) -> tuple[int, int]:
     1) env overrides: TENANT_RATE_LIMIT_<SCOPE>_WINDOW_MS / TENANT_RATE_LIMIT_<SCOPE>_MAX_REQUESTS
     2) defaults: 60s / 5
     """
-    normalized = (scope or "").strip()
-    env_prefix = f"TENANT_RATE_LIMIT_{normalized.upper()}"
+    normalized = (scope or '').strip()
+    env_prefix = f'TENANT_RATE_LIMIT_{normalized.upper()}'
 
     window_ms = 60_000
     max_requests = 5
 
     with suppress(Exception):
-        window_ms = int(os.environ.get(f"{env_prefix}_WINDOW_MS", str(window_ms)))
+        window_ms = int(os.environ.get(f'{env_prefix}_WINDOW_MS', str(window_ms)))
     with suppress(Exception):
-        max_requests = int(os.environ.get(f"{env_prefix}_MAX_REQUESTS", str(max_requests)))
+        max_requests = int(os.environ.get(f'{env_prefix}_MAX_REQUESTS', str(max_requests)))
 
     return window_ms, max_requests
 
@@ -50,7 +50,7 @@ def incr_and_check_detailed(tenant_id: str, scope: str) -> tuple[int, bool, int]
     This avoids edge flakiness near window boundaries that can occur with
     purely timestamp-bucketed keys.
     """
-    tenant = (tenant_id or "").strip()
+    tenant = (tenant_id or '').strip()
     if not tenant:
         # Treat missing tenant as over-limit to force caller to enforce presence.
         return 0, True, 1
@@ -60,7 +60,7 @@ def incr_and_check_detailed(tenant_id: str, scope: str) -> tuple[int, bool, int]
     # Include current window in the key to avoid cross-test/interference
     # when configuration changes at runtime (e.g., tests overriding window).
     # This also ensures counts reset when window policy changes.
-    k = key("tenant_rl", scope, str(window_ms), tenant)
+    k = key('tenant_rl', scope, str(window_ms), tenant)
     pipe = c.pipeline()
     pipe.incr(k, 1)
     # Only set expiry if the key is new (no TTL yet)
@@ -84,15 +84,17 @@ def incr_and_check_detailed(tenant_id: str, scope: str) -> tuple[int, bool, int]
 
 
 def quota_key(tenant_id: str, quota: str) -> str:
-    return key("tenant_quota", quota.strip(), tenant_id.strip())
+    return key('tenant_quota', quota.strip(), tenant_id.strip())
 
 
-def check_quota_and_incr(tenant_id: str, quota: str, limit: int, window_seconds: int) -> tuple[int, bool, int]:
+def check_quota_and_incr(
+    tenant_id: str, quota: str, limit: int, window_seconds: int
+) -> tuple[int, bool, int]:
     """Increment a tenant quota counter and check exhaustion.
 
     Returns (count, exhausted, seconds_until_reset).
     """
-    tenant = (tenant_id or "").strip()
+    tenant = (tenant_id or '').strip()
     if not tenant:
         return 0, True, window_seconds
     c = get_client()

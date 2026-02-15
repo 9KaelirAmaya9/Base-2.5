@@ -197,7 +197,11 @@ test('regression: legacy identifier scan ignores excluded paths', () => {
   fs.mkdirSync(path.join(root, 'node_modules', 'pkg'), { recursive: true });
 
   fs.writeFileSync(path.join(root, 'src', 'a.txt'), 'Hello legacytoken world\n', 'utf8');
-  fs.writeFileSync(path.join(root, 'node_modules', 'pkg', 'b.txt'), 'legacytoken should be ignored\n', 'utf8');
+  fs.writeFileSync(
+    path.join(root, 'node_modules', 'pkg', 'b.txt'),
+    'legacytoken should be ignored\n',
+    'utf8'
+  );
 
   const results = scanLegacyIdentifiers({ rootDir: root, tokens: ['legacytoken'] });
 

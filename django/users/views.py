@@ -65,15 +65,17 @@ def login_view(request):
     if user is None:
         return JsonResponse({"error": "invalid_credentials"}, status=401)
     login(request, user)
-    return JsonResponse({
-        "success": True,
-        "user": {
-            "id": user.id,
-            "username": getattr(user, "username", None),
-            "email": getattr(user, "email", None),
-            "is_staff": user.is_staff,
+    return JsonResponse(
+        {
+            "success": True,
+            "user": {
+                "id": user.id,
+                "username": getattr(user, "username", None),
+                "email": getattr(user, "email", None),
+                "is_staff": user.is_staff,
+            },
         }
-    })
+    )
 
 
 @csrf_exempt

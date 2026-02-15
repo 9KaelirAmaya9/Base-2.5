@@ -48,9 +48,9 @@ def create_user(*, email: str, password_hash: str) -> User:
         password_hash=row[2],
         is_active=bool(row[3]),
         is_email_verified=bool(row[4]),
-        display_name=row[5] or "",
-        avatar_url=row[6] or "",
-        bio=row[7] or "",
+        display_name=row[5] or '',
+        avatar_url=row[6] or '',
+        bio=row[7] or '',
     )
 
 
@@ -76,9 +76,9 @@ def get_user_by_email(email: str) -> Optional[User]:
         password_hash=row[2],
         is_active=bool(row[3]),
         is_email_verified=bool(row[4]),
-        display_name=row[5] or "",
-        avatar_url=row[6] or "",
-        bio=row[7] or "",
+        display_name=row[5] or '',
+        avatar_url=row[6] or '',
+        bio=row[7] or '',
     )
 
 
@@ -103,31 +103,33 @@ def get_user_by_id(user_id: UUID) -> Optional[User]:
         password_hash=row[2],
         is_active=bool(row[3]),
         is_email_verified=bool(row[4]),
-        display_name=row[5] or "",
-        avatar_url=row[6] or "",
-        bio=row[7] or "",
+        display_name=row[5] or '',
+        avatar_url=row[6] or '',
+        bio=row[7] or '',
     )
 
 
-def update_profile(*, user_id: UUID, display_name: str | None, avatar_url: str | None, bio: str | None) -> User:
+def update_profile(
+    *, user_id: UUID, display_name: str | None, avatar_url: str | None, bio: str | None
+) -> User:
     # Only update provided fields.
     fields: list[str] = []
     values: list[Any] = []
 
     if display_name is not None:
-        fields.append("display_name=%s")
+        fields.append('display_name=%s')
         values.append(display_name)
     if avatar_url is not None:
-        fields.append("avatar_url=%s")
+        fields.append('avatar_url=%s')
         values.append(avatar_url)
     if bio is not None:
-        fields.append("bio=%s")
+        fields.append('bio=%s')
         values.append(bio)
 
     if not fields:
         u = get_user_by_id(user_id)
         if u is None:
-            raise RuntimeError("user_not_found")
+            raise RuntimeError('user_not_found')
         return u
 
     values.append(str(user_id))
@@ -147,7 +149,7 @@ def update_profile(*, user_id: UUID, display_name: str | None, avatar_url: str |
             row = cur.fetchone()
 
     if not row:
-        raise RuntimeError("user_not_found")
+        raise RuntimeError('user_not_found')
 
     return User(
         id=UUID(str(row[0])),
@@ -155,9 +157,9 @@ def update_profile(*, user_id: UUID, display_name: str | None, avatar_url: str |
         password_hash=row[2],
         is_active=bool(row[3]),
         is_email_verified=bool(row[4]),
-        display_name=row[5] or "",
-        avatar_url=row[6] or "",
-        bio=row[7] or "",
+        display_name=row[5] or '',
+        avatar_url=row[6] or '',
+        bio=row[7] or '',
     )
 
 
@@ -173,11 +175,13 @@ def get_user_lock_state(*, user_id: UUID) -> dict[str, Any]:
         )
         row = cur.fetchone()
     if not row:
-        return {"failed_login_attempts": 0, "locked_until": None}
-    return {"failed_login_attempts": int(row[0] or 0), "locked_until": row[1]}
+        return {'failed_login_attempts': 0, 'locked_until': None}
+    return {'failed_login_attempts': int(row[0] or 0), 'locked_until': row[1]}
 
 
-def register_login_failure(*, user_id: UUID, max_failures: int, lock_minutes: int) -> dict[str, Any]:
+def register_login_failure(
+    *, user_id: UUID, max_failures: int, lock_minutes: int
+) -> dict[str, Any]:
     mf = max(1, int(max_failures))
     lm = max(1, int(lock_minutes))
     with db_conn() as conn:
@@ -199,8 +203,8 @@ def register_login_failure(*, user_id: UUID, max_failures: int, lock_minutes: in
             )
             row = cur.fetchone()
     if not row:
-        return {"failed_login_attempts": 0, "locked_until": None}
-    return {"failed_login_attempts": int(row[0] or 0), "locked_until": row[1]}
+        return {'failed_login_attempts': 0, 'locked_until': None}
+    return {'failed_login_attempts': int(row[0] or 0), 'locked_until': row[1]}
 
 
 def reset_login_failures(*, user_id: UUID) -> None:
@@ -219,7 +223,14 @@ def reset_login_failures(*, user_id: UUID) -> None:
             )
 
 
-def insert_audit_event(*, user_id: UUID | None, action: str, ip: str, user_agent: str, metadata: dict[str, Any] | None = None) -> None:
+def insert_audit_event(
+    *,
+    user_id: UUID | None,
+    action: str,
+    ip: str,
+    user_agent: str,
+    metadata: dict[str, Any] | None = None,
+) -> None:
     event_id = uuid4()
     metadata_json = json.dumps(metadata or {})
     with db_conn() as conn:
@@ -230,7 +241,14 @@ def insert_audit_event(*, user_id: UUID | None, action: str, ip: str, user_agent
                 INSERT INTO api_auth_audit_events(id, user_id, action, ip, user_agent, metadata_json)
                 VALUES (%s, %s, %s, %s, %s, %s::jsonb)
                 """,
-                (str(event_id), (str(user_id) if user_id else None), action, ip or "", user_agent or "", metadata_json),
+                (
+                    str(event_id),
+                    (str(user_id) if user_id else None),
+                    action,
+                    ip or '',
+                    user_agent or '',
+                    metadata_json,
+                ),
             )
 
 
@@ -253,7 +271,7 @@ def create_refresh_token(
                 INSERT INTO api_auth_refresh_tokens(id, user_id, token_hash, expires_at, ip, user_agent)
                 VALUES (%s, %s, %s, %s, %s, %s)
                 """,
-                (str(token_id), str(user_id), token_hash, expires_at, ip or "", user_agent or ""),
+                (str(token_id), str(user_id), token_hash, expires_at, ip or '', user_agent or ''),
             )
 
     return token_id, expires_at
@@ -275,16 +293,16 @@ def find_refresh_token(*, token_hash: str) -> Optional[dict[str, Any]]:
         return None
 
     return {
-        "id": UUID(str(row[0])),
-        "user_id": UUID(str(row[1])),
-        "token_hash": row[2],
-        "created_at": row[3],
-        "last_seen_at": row[4],
-        "expires_at": row[5],
-        "revoked_at": row[6],
-        "replaced_by_token_id": (UUID(str(row[7])) if row[7] else None),
-        "user_agent": row[8] or "",
-        "ip": row[9] or "",
+        'id': UUID(str(row[0])),
+        'user_id': UUID(str(row[1])),
+        'token_hash': row[2],
+        'created_at': row[3],
+        'last_seen_at': row[4],
+        'expires_at': row[5],
+        'revoked_at': row[6],
+        'replaced_by_token_id': (UUID(str(row[7])) if row[7] else None),
+        'user_agent': row[8] or '',
+        'ip': row[9] or '',
     }
 
 
@@ -298,7 +316,7 @@ def touch_refresh_token(*, token_id: UUID, ip: str, user_agent: str) -> None:
                 SET last_seen_at=NOW(), ip=%s, user_agent=%s
                 WHERE id=%s
                 """,
-                (ip or "", user_agent or "", str(token_id)),
+                (ip or '', user_agent or '', str(token_id)),
             )
 
 
@@ -321,12 +339,12 @@ def list_active_refresh_sessions(*, user_id: UUID) -> list[dict[str, Any]]:
     for r in rows:
         out.append(
             {
-                "id": UUID(str(r[0])),
-                "created_at": r[1],
-                "last_seen_at": r[2],
-                "expires_at": r[3],
-                "user_agent": r[4] or "",
-                "ip": r[5] or "",
+                'id': UUID(str(r[0])),
+                'created_at': r[1],
+                'last_seen_at': r[2],
+                'expires_at': r[3],
+                'user_agent': r[4] or '',
+                'ip': r[5] or '',
             }
         )
     return out
@@ -403,17 +421,19 @@ def set_user_password_hash(*, user_id: UUID, password_hash: str) -> None:
 
 
 def update_user_email(*, user_id: UUID, email: str) -> None:
-    normalized = (email or "").strip().lower()
+    normalized = (email or '').strip().lower()
     if not normalized:
-        raise ValueError("invalid_email")
+        raise ValueError('invalid_email')
 
     with db_conn() as conn:
         conn.autocommit = True
         with conn.cursor() as cur:
             # Ensure unique email (best-effort; DB unique constraint will also enforce).
-            cur.execute("SELECT 1 FROM api_auth_users WHERE email=%s AND id<>%s", (normalized, str(user_id)))
+            cur.execute(
+                'SELECT 1 FROM api_auth_users WHERE email=%s AND id<>%s', (normalized, str(user_id))
+            )
             if cur.fetchone() is not None:
-                raise ValueError("email_taken")
+                raise ValueError('email_taken')
 
             cur.execute(
                 """
@@ -425,7 +445,9 @@ def update_user_email(*, user_id: UUID, email: str) -> None:
             )
 
 
-def create_one_time_token(*, user_id: UUID | None, token_hash: str, token_type: str, ttl_minutes: int) -> tuple[UUID, datetime]:
+def create_one_time_token(
+    *, user_id: UUID | None, token_hash: str, token_type: str, ttl_minutes: int
+) -> tuple[UUID, datetime]:
     token_id = uuid4()
     expires_at = _utcnow() + timedelta(minutes=max(1, int(ttl_minutes)))
 
@@ -437,7 +459,13 @@ def create_one_time_token(*, user_id: UUID | None, token_hash: str, token_type: 
                 INSERT INTO api_auth_one_time_tokens(id, user_id, token_hash, type, expires_at)
                 VALUES (%s, %s, %s, %s, %s)
                 """,
-                (str(token_id), (str(user_id) if user_id else None), token_hash, token_type, expires_at),
+                (
+                    str(token_id),
+                    (str(user_id) if user_id else None),
+                    token_hash,
+                    token_type,
+                    expires_at,
+                ),
             )
 
     return token_id, expires_at
@@ -459,12 +487,12 @@ def find_one_time_token(*, token_hash: str, token_type: str) -> Optional[dict[st
         return None
 
     return {
-        "id": UUID(str(row[0])),
-        "user_id": (UUID(str(row[1])) if row[1] else None),
-        "token_hash": row[2],
-        "type": row[3],
-        "expires_at": row[4],
-        "consumed_at": row[5],
+        'id': UUID(str(row[0])),
+        'user_id': (UUID(str(row[1])) if row[1] else None),
+        'token_hash': row[2],
+        'type': row[3],
+        'expires_at': row[4],
+        'consumed_at': row[5],
     }
 
 
@@ -498,15 +526,17 @@ def find_oauth_account(*, provider: str, provider_account_id: str) -> Optional[d
         return None
 
     return {
-        "id": UUID(str(row[0])),
-        "user_id": UUID(str(row[1])),
-        "provider": row[2],
-        "provider_account_id": row[3],
-        "email": row[4] or "",
+        'id': UUID(str(row[0])),
+        'user_id': UUID(str(row[1])),
+        'provider': row[2],
+        'provider_account_id': row[3],
+        'email': row[4] or '',
     }
 
 
-def create_oauth_account(*, user_id: UUID, provider: str, provider_account_id: str, email: str = "") -> UUID:
+def create_oauth_account(
+    *, user_id: UUID, provider: str, provider_account_id: str, email: str = ''
+) -> UUID:
     account_id = uuid4()
     with db_conn() as conn:
         conn.autocommit = True
@@ -516,7 +546,7 @@ def create_oauth_account(*, user_id: UUID, provider: str, provider_account_id: s
                 INSERT INTO api_auth_oauth_accounts(id, user_id, provider, provider_account_id, email)
                 VALUES (%s, %s, %s, %s, %s)
                 """,
-                (str(account_id), str(user_id), provider, provider_account_id, (email or "")),
+                (str(account_id), str(user_id), provider, provider_account_id, (email or '')),
             )
 
     return account_id

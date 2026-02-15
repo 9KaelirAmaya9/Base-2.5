@@ -1,4 +1,3 @@
-
 """
 Polish: Usage, error handling, and onboarding comments for vuln_check.py
 T083: Automated vulnerability checks for dependencies (Python, Node, etc.)
@@ -9,9 +8,11 @@ Stub: Integrate with safety, npm audit, etc. in future.
 Error Handling: Prints error if check fails (stub).
 """
 
+
 def check_vulnerabilities():
     # TODO: Run 'safety' for Python, 'npm audit' for Node
     print("[DRY RUN] Would check for dependency vulnerabilities.")
+
 
 if __name__ == "__main__":
     try:

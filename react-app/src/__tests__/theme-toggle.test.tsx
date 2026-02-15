@@ -11,7 +11,8 @@ describe('ThemeToggle', () => {
     jest.spyOn(persistence, 'getThemeCookie').mockImplementation(() => null);
     jest.spyOn(persistence, 'applyThemeClass').mockImplementation((t: 'light' | 'dark') => {
       const root = document.documentElement;
-      if (t === 'dark') root.classList.add('dark'); else root.classList.remove('dark');
+      if (t === 'dark') root.classList.add('dark');
+      else root.classList.remove('dark');
     });
   });
 

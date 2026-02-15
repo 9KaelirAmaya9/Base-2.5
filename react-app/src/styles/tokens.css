@@ -52,7 +52,8 @@
 }
 
 /* Base usage helpers */
-html, body {
+html,
+body {
   font-size: var(--size-text);
 }
 
@@ -67,5 +68,7 @@ h1 {
 
 .glass-focus:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 0.2rem rgba(30, 144, 255, 0.4), 0 0 0.6rem rgba(255, 255, 255, 0.2) inset;
+  box-shadow:
+    0 0 0 0.2rem rgba(30, 144, 255, 0.4),
+    0 0 0.6rem rgba(255, 255, 255, 0.2) inset;
 }

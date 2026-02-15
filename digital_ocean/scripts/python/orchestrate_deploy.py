@@ -5,10 +5,9 @@ Orchestrate Digital Ocean Droplet deployment, DNS update, .env generation, and s
 - Usage: python orchestrate_deploy.py
 """
 
-
 import argparse
-import concurrent.futures
 import atexit
+import concurrent.futures
 import json
 import os
 import re
@@ -18,6 +17,7 @@ import stat
 import subprocess
 import sys
 import time
+from contextlib import suppress
 from pathlib import Path
 
 import paramiko
@@ -25,6 +25,11 @@ from dotenv import dotenv_values, load_dotenv
 from pydo import Client
 
 _ENV_VAR_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 
 def _expand_env_templates(value: str, env: dict | None = None) -> str:
@@ -73,17 +78,31 @@ def _find_env_path() -> str:
             return str(candidate)
     return cwd_candidate
 
+
 def log(msg):
     print(f"\033[1;32m[INFO]\033[0m {msg}")
+
 
 def err(msg):
     print(f"\033[1;31m[ERROR]\033[0m {msg}", flush=True)
 
+
 def stage(msg):
     log(f"[STAGE] {msg}")
 
+
 def log_json(label, data):
     print(f"\033[1;36m[DEBUG]\033[0m {label}: {json.dumps(data, indent=2)}")
+
+
+def _safe_write(text: str, *, is_err: bool = False) -> None:
+    stream = sys.stderr if is_err else sys.stdout
+    try:
+        stream.write(text)
+    except UnicodeEncodeError:
+        stream.buffer.write(text.encode("utf-8", errors="replace"))
+    stream.flush()
+
 
 def _do_api_call(label, func, *args, **kwargs):
     timeout_sec = int(os.getenv("DO_API_TIMEOUT_SECONDS", "30"))
@@ -105,6 +124,7 @@ def _do_api_call(label, func, *args, **kwargs):
             time.sleep(delay_sec)
     raise RuntimeError(f"{label} failed after {retries} attempts: {last_exc}")
 
+
 # Load .env
 load_dotenv()
 
@@ -120,9 +140,7 @@ LOG_POLL_TIMEOUT = 30  # seconds
 LOG_POLL_INTERVAL = 15  # seconds
 IP_POLL_TIMEOUT = int(os.getenv("DO_IP_POLL_TIMEOUT_SECONDS", "120"))
 IP_POLL_INTERVAL = int(os.getenv("DO_IP_POLL_INTERVAL_SECONDS", "5"))
-REBOOT_MARKERS = [
-    "Cloud-init v. 25.2-0ubuntu1~22.04.1 finished at"
-]
+REBOOT_MARKERS = ["Cloud-init v. 25.2-0ubuntu1~22.04.1 finished at"]
 COMPLETION_MARKER = "User data script completed at"
 SUMMARY = []
 PROJECT_NAME = os.getenv("PROJECT_NAME", "app")
@@ -147,26 +165,20 @@ class _TeeStream:
 
     def write(self, data):
         self._primary.write(data)
-        try:
+        with suppress(Exception):
             self._secondary.write(data)
-        except Exception:
-            pass
 
     def flush(self):
         self._primary.flush()
-        try:
+        with suppress(Exception):
             self._secondary.flush()
-        except Exception:
-            pass
 
     def isatty(self):
         return self._primary.isatty()
 
     def close(self):
-        try:
+        with suppress(Exception):
             self._secondary.close()
-        except Exception:
-            pass
 
 
 def _init_artifacts() -> None:
@@ -179,7 +191,7 @@ def _init_artifacts() -> None:
         do_userdata_json_path = str(artifact_dir_path / "DO_userdata.json")
         deploy_console_path = str(artifact_dir_path / "deploy-console.log")
         try:
-            log_file = open(deploy_console_path, "a", encoding="utf-8", errors="replace")
+            log_file = open(deploy_console_path, "a", encoding="utf-8", errors="replace")  # noqa: SIM115
             _tee_stream = _TeeStream(sys.stdout, log_file)
             sys.stdout = _tee_stream
             sys.stderr = _TeeStream(sys.stderr, log_file)
@@ -221,7 +233,7 @@ def _reset_tee_stream(new_log_path: str) -> None:
             primary_err = primary_err._primary
         if _tee_stream:
             _tee_stream.close()
-        log_file = open(new_log_path, "a", encoding="utf-8", errors="replace")
+        log_file = open(new_log_path, "a", encoding="utf-8", errors="replace")  # noqa: SIM115
         _tee_stream = _TeeStream(primary_out, log_file)
         sys.stdout = _tee_stream
         sys.stderr = _TeeStream(primary_err, log_file)
@@ -251,13 +263,17 @@ def _apply_artifact_rename() -> None:
     try:
         target_path.mkdir(parents=True, exist_ok=True)
         for entry in original_path.iterdir():
-            if entry.is_file():
-                try:
-                    shutil.copy2(entry, target_path / entry.name)
-                except Exception:
-                    pass
+            dest = target_path / entry.name
+            if entry.is_dir():
+                with suppress(Exception):
+                    shutil.copytree(entry, dest, dirs_exist_ok=True)
+            elif entry.is_file():
+                with suppress(Exception):
+                    shutil.copy2(entry, dest)
         with open(target_path / "artifact-alias.txt", "w", encoding="utf-8") as f:
             f.write(f"Original artifact path: {original_path}\n")
+        with suppress(Exception):
+            shutil.rmtree(original_path)
         artifact_dir_path = target_path
         deploy_console_path = str(artifact_dir_path / "deploy-console.log")
         do_userdata_json_path = str(artifact_dir_path / "DO_userdata.json")
@@ -291,7 +307,9 @@ def _write_artifact_text(name: str, content: str) -> None:
         pass
 
 
-def _write_deploy_metadata(*, droplet_id: int | None, ip_address: str | None, update_only: bool) -> None:
+def _write_deploy_metadata(
+    *, droplet_id: int | None, ip_address: str | None, update_only: bool
+) -> None:
     if not artifact_dir_path:
         return
     payload = {
@@ -326,19 +344,63 @@ def _find_powershell_exe() -> str | None:
     return None
 
 
-def _run_all_tests_suite() -> None:
+def _run_bash_tests_suite() -> None:
     if not artifact_dir_path:
-        err("All-tests requested but DEPLOY_ARTIFACT_DIR is not set.")
-        raise RuntimeError("DEPLOY_ARTIFACT_DIR is required for all-tests")
+        err("Local tests requested but DEPLOY_ARTIFACT_DIR is not set.")
+        raise RuntimeError("DEPLOY_ARTIFACT_DIR is required for local tests")
+
+    bash_exe = shutil.which("bash")
+    if not bash_exe:
+        err("Local tests requested but no bash executable was found.")
+        raise RuntimeError("Bash is required for local tests")
+
+    candidates = [
+        repo_root / "scripts" / "bash" / "test.sh",
+        repo_root / "digital_ocean" / "scripts" / "bash" / "test.sh",
+    ]
+    test_script = next((c for c in candidates if c.is_file()), None)
+    if not test_script:
+        raise RuntimeError("Local tests script not found (bash test.sh)")
+
+    args = [
+        bash_exe,
+        str(test_script),
+    ]
+    if env_path and test_script == (repo_root / "scripts" / "bash" / "test.sh"):
+        args += ["--env-file", env_path]
+
+    log(f"Running local tests suite via {bash_exe}...")
+    result = subprocess.run(
+        args, capture_output=True, text=True, encoding="utf-8", errors="replace"
+    )
+    stdout_text = result.stdout or ""
+    stderr_text = result.stderr or ""
+    if stdout_text:
+        _write_artifact_text("all-tests.json", stdout_text)
+    if stderr_text:
+        _write_artifact_text("all-tests.stderr.txt", stderr_text)
+    if result.returncode != 0:
+        raise RuntimeError(f"All-tests suite failed with exit code {result.returncode}")
+
+
+def _run_all_tests_suite() -> None:
+    runner = os.getenv("DEPLOY_TEST_RUNNER", "").strip().lower()
+    if runner == "bash":
+        _run_bash_tests_suite()
+        return
+
+    if not artifact_dir_path:
+        err("Local tests requested but DEPLOY_ARTIFACT_DIR is not set.")
+        raise RuntimeError("DEPLOY_ARTIFACT_DIR is required for local tests")
 
     ps_exe = _find_powershell_exe()
     if not ps_exe:
-        err("All-tests requested but no PowerShell executable (pwsh/powershell) was found.")
-        raise RuntimeError("PowerShell is required for all-tests")
+        err("Local tests requested but no PowerShell executable (pwsh/powershell) was found.")
+        raise RuntimeError("PowerShell is required for local tests")
 
     test_script = repo_root / "digital_ocean" / "scripts" / "powershell" / "test.ps1"
     if not test_script.is_file():
-        raise RuntimeError(f"All-tests script not found at {test_script}")
+        raise RuntimeError(f"Local tests script not found at {test_script}")
 
     args = [
         ps_exe,
@@ -364,8 +426,10 @@ def _run_all_tests_suite() -> None:
     if ip_address:
         args += ["-ResolveIp", str(ip_address), "-ExpectedIpv4", str(ip_address)]
 
-    log(f"Running all-tests suite via {ps_exe}...")
-    result = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    log(f"Running local tests suite via {ps_exe}...")
+    result = subprocess.run(
+        args, capture_output=True, text=True, encoding="utf-8", errors="replace"
+    )
     stdout_text = result.stdout or ""
     stderr_text = result.stderr or ""
     if stdout_text:
@@ -390,7 +454,11 @@ if not os.path.exists(ssh_key_path):
 if not os.path.exists(ssh_key_path) or not os.path.exists(pub_key_path):
     os.makedirs(ssh_dir, exist_ok=True)
     log(f"Generating SSH key: {ssh_key_path}")
-    result = subprocess.run(["ssh-keygen", "-t", "ed25519", "-f", ssh_key_path, "-N", ""], capture_output=True, text=True)
+    result = subprocess.run(
+        ["ssh-keygen", "-t", "ed25519", "-f", ssh_key_path, "-N", ""],
+        capture_output=True,
+        text=True,
+    )
     print(f"[ssh-keygen stdout]:\n{result.stdout}")
     if result.stderr:
         print(f"[ssh-keygen stderr]:\n{result.stderr}")
@@ -421,6 +489,7 @@ with open(env_path, "w") as f:
     f.writelines(lines)
 log(".env updated with public key.")
 
+
 # --- Recovery routine, now only called explicitly ---
 def recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path):
     try:
@@ -431,7 +500,9 @@ def recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path):
         # Only check logs, do not rerun any scripts
         for log_path in ["/var/log/cloud-init-output.log"]:
             # Check if file exists before tailing
-            stdin, stdout, stderr = ssh_client.exec_command(f"test -f {log_path} && echo exists || echo missing")
+            stdin, stdout, stderr = ssh_client.exec_command(
+                f"test -f {log_path} && echo exists || echo missing"
+            )
             exists = stdout.read().decode().strip()
             if exists == "exists":
                 print(f"[RECOVERY] Checking {log_path}...")
@@ -445,9 +516,13 @@ def recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path):
         ssh_client.close()
     except Exception as e:
         print(f"[RECOVERY] SSH recovery failed: {e}")
+
+
 DO_API_TOKEN = os.getenv("DO_API_TOKEN")
 DO_DOMAIN = _expand_env_templates(os.getenv("DO_DOMAIN"), _EXPANSION_ENV)  # e.g. example.com
-DO_DROPLET_NAME = _expand_env_templates(os.getenv("DO_DROPLET_NAME", "${PROJECT_NAME}-droplet"), _EXPANSION_ENV)
+DO_DROPLET_NAME = _expand_env_templates(
+    os.getenv("DO_DROPLET_NAME", "${PROJECT_NAME}-droplet"), _EXPANSION_ENV
+)
 DO_API_REGION = os.getenv("DO_API_REGION", "nyc3")
 DO_API_SIZE = os.getenv("DO_API_SIZE", "s-1vcpu-1gb")
 DO_API_IMAGE = os.getenv("DO_API_IMAGE", "ubuntu-22-04-x64")
@@ -465,11 +540,15 @@ def ensure_dns_records_for_droplet(*, client: Client, droplet_id: int, ipv4_addr
     log("Updating DNS A/AAAA records for required hostnames...")
     try:
         log_json("API Request - domains.list_records", {"domain": DO_DOMAIN})
-        records = _do_api_call("domains.list_records", client.domains.list_records, DO_DOMAIN)["domain_records"]
+        records = _do_api_call("domains.list_records", client.domains.list_records, DO_DOMAIN)[
+            "domain_records"
+        ]
         log_json("API Response - domains.list_records", records)
 
         ipv6_enabled = _truthy_env(os.getenv("DO_IPV6_ENABLED"), default=True)
-        ipv6_wait_timeout_sec = int(os.getenv("DO_IPV6_WAIT_TIMEOUT", os.getenv("DO_DEPLOY_TIMEOUT", "180")))
+        ipv6_wait_timeout_sec = int(
+            os.getenv("DO_IPV6_WAIT_TIMEOUT", os.getenv("DO_DEPLOY_TIMEOUT", "180"))
+        )
 
         # Refresh droplet info right before DNS changes.
         droplet_info = _do_api_call("droplets.get", client.droplets.get, int(droplet_id))["droplet"]
@@ -555,16 +634,19 @@ def ensure_dns_records_for_droplet(*, client: Client, droplet_id: int, ipv4_addr
                     if DRY_RUN:
                         log(f"[DRY RUN] Would update A record ({name}) -> {ipv4_address}")
                     else:
-                        log_json("API Request - domains.update_record (A_generic)", {"id": record["id"], "data": ipv4_address})
+                        log_json(
+                            "API Request - domains.update_record (A_generic)",
+                            {"id": record["id"], "data": ipv4_address},
+                        )
                         resp = _do_api_call(
                             "domains.update_record (A_generic)",
                             client.domains.update_record,
                             DO_DOMAIN,
                             record["id"],
                             {
-                            "type": "A",
-                            "name": name,
-                            "data": ipv4_address,
+                                "type": "A",
+                                "name": name,
+                                "data": ipv4_address,
                             },
                         )
                         log_json("API Response - domains.update_record (A_generic)", resp)
@@ -614,16 +696,19 @@ def ensure_dns_records_for_droplet(*, client: Client, droplet_id: int, ipv4_addr
                         if DRY_RUN:
                             log(f"[DRY RUN] Would update AAAA record ({name}) -> {ipv6_address}")
                         else:
-                            log_json("API Request - domains.update_record (AAAA_generic)", {"id": record["id"], "data": ipv6_address})
+                            log_json(
+                                "API Request - domains.update_record (AAAA_generic)",
+                                {"id": record["id"], "data": ipv6_address},
+                            )
                             resp = _do_api_call(
                                 "domains.update_record (AAAA_generic)",
                                 client.domains.update_record,
                                 DO_DOMAIN,
                                 record["id"],
                                 {
-                                "type": "AAAA",
-                                "name": name,
-                                "data": ipv6_address,
+                                    "type": "AAAA",
+                                    "name": name,
+                                    "data": ipv6_address,
                                 },
                             )
                             log_json("API Response - domains.update_record (AAAA_generic)", resp)
@@ -635,7 +720,10 @@ def ensure_dns_records_for_droplet(*, client: Client, droplet_id: int, ipv4_addr
             if DRY_RUN:
                 log(f"[DRY RUN] Would create A record ({label}) -> {ipv4_address}")
                 return
-            log_json("API Request - domains.create_record (A)", {"type": "A", "name": label, "data": ipv4_address})
+            log_json(
+                "API Request - domains.create_record (A)",
+                {"type": "A", "name": label, "data": ipv4_address},
+            )
             resp = _do_api_call(
                 "domains.create_record (A)",
                 client.domains.create_record,
@@ -651,7 +739,10 @@ def ensure_dns_records_for_droplet(*, client: Client, droplet_id: int, ipv4_addr
             if DRY_RUN:
                 log(f"[DRY RUN] Would create AAAA record ({label}) -> {ipv6_address}")
                 return
-            log_json("API Request - domains.create_record (AAAA)", {"type": "AAAA", "name": label, "data": ipv6_address})
+            log_json(
+                "API Request - domains.create_record (AAAA)",
+                {"type": "AAAA", "name": label, "data": ipv6_address},
+            )
             resp = _do_api_call(
                 "domains.create_record (AAAA)",
                 client.domains.create_record,
@@ -701,7 +792,9 @@ def _truthy_env(value: str, default: bool = True) -> bool:
 
 def _get_public_ipv4(droplet: dict) -> str:
     v4_list = (droplet or {}).get("networks", {}).get("v4", []) or []
-    public_v4 = next((n for n in v4_list if n.get("type") == "public" and n.get("ip_address")), None)
+    public_v4 = next(
+        (n for n in v4_list if n.get("type") == "public" and n.get("ip_address")), None
+    )
     if public_v4 and public_v4.get("ip_address"):
         return public_v4["ip_address"]
     # Fall back to first v4 if present
@@ -710,14 +803,18 @@ def _get_public_ipv4(droplet: dict) -> str:
 
 def _get_public_ipv6(droplet: dict) -> str:
     v6_list = (droplet or {}).get("networks", {}).get("v6", []) or []
-    public_v6 = next((n for n in v6_list if n.get("type") == "public" and n.get("ip_address")), None)
+    public_v6 = next(
+        (n for n in v6_list if n.get("type") == "public" and n.get("ip_address")), None
+    )
     if public_v6 and public_v6.get("ip_address"):
         return public_v6["ip_address"]
     # Fall back to first v6 if present
     return (v6_list[0] if v6_list else {}).get("ip_address")
 
 
-def wait_for_public_ipv6(client: Client, droplet_id: int, timeout_sec: int, interval_sec: int = 5) -> tuple[str, dict]:
+def wait_for_public_ipv6(
+    client: Client, droplet_id: int, timeout_sec: int, interval_sec: int = 5
+) -> tuple[str, dict]:
     """Poll the Droplet until a public IPv6 address is assigned.
 
     Returns: (ipv6_address, droplet_info)
@@ -735,10 +832,14 @@ def wait_for_public_ipv6(client: Client, droplet_id: int, timeout_sec: int, inte
             log(f"Waiting for IPv6 assignment on droplet {droplet_id}...")
             last_log = now
         time.sleep(max(1, int(interval_sec)))
-    raise RuntimeError(f"Timed out waiting for public IPv6 on droplet {droplet_id} after {timeout_sec}s")
+    raise RuntimeError(
+        f"Timed out waiting for public IPv6 on droplet {droplet_id} after {timeout_sec}s"
+    )
 
 
-def wait_for_public_ipv4(client: Client, droplet_id: int, timeout_sec: int, interval_sec: int = 5) -> tuple[str, dict]:
+def wait_for_public_ipv4(
+    client: Client, droplet_id: int, timeout_sec: int, interval_sec: int = 5
+) -> tuple[str, dict]:
     """Poll the Droplet until a public IPv4 address is assigned.
 
     Returns: (ipv4_address, droplet_info)
@@ -756,21 +857,38 @@ def wait_for_public_ipv4(client: Client, droplet_id: int, timeout_sec: int, inte
             log(f"Waiting for IPv4 assignment on droplet {droplet_id}...")
             last_log = now
         time.sleep(max(1, int(interval_sec)))
-    raise RuntimeError(f"Timed out waiting for public IPv4 on droplet {droplet_id} after {timeout_sec}s")
+    raise RuntimeError(
+        f"Timed out waiting for public IPv4 on droplet {droplet_id} after {timeout_sec}s"
+    )
+
 
 # CLI flags
 parser = argparse.ArgumentParser(description="Orchestrate DO deploy and post-deploy actions")
 parser.add_argument("--dry-run", action="store_true", help="Print actions without making changes")
-parser.add_argument("--update-only", action="store_true", help="Skip droplet creation; pull latest repo on droplet and rerun post-deploy")
-parser.add_argument("--create-if-missing", action="store_true", help="Create droplet if update-only target is missing")
-parser.add_argument("--all-tests", action="store_true", help="Run full post-deploy verification suite")
+parser.add_argument(
+    "--update-only",
+    action="store_true",
+    help="Skip droplet creation; pull latest repo on droplet and rerun post-deploy",
+)
+parser.add_argument(
+    "--create-if-missing",
+    action="store_true",
+    help="Create droplet if update-only target is missing",
+)
+parser.add_argument(
+    "--all-tests", action="store_true", help="Enable extended remote verification (celery check)"
+)
+parser.add_argument("--local-tests", action="store_true", help="Run local test suite after deploy")
 args = parser.parse_args()
 DRY_RUN = args.dry_run
 UPDATE_ONLY = args.update_only
 CREATE_IF_MISSING = args.create_if_missing
 RUN_ALL_TESTS = args.all_tests
+RUN_LOCAL_TESTS = args.local_tests
 if DRY_RUN:
-    print("\033[1;32m[INFO]\033[0m [DRY RUN] No changes will be made. Printing planned actions only.")
+    print(
+        "\033[1;32m[INFO]\033[0m [DRY RUN] No changes will be made. Printing planned actions only."
+    )
 DO_SSH_KEY_ID = os.getenv("DO_SSH_KEY_ID")
 DO_API_SSH_KEYS = os.getenv("DO_API_SSH_KEYS")
 
@@ -783,10 +901,14 @@ if DO_SSH_KEY_ID and DO_SSH_KEY_ID.strip():
 elif DO_API_SSH_KEYS and DO_API_SSH_KEYS.strip():
     ssh_keys = [DO_API_SSH_KEYS.strip()]
 else:
-    err("No valid SSH key identifier found. Set DO_SSH_KEY_ID (numeric ID or fingerprint) or DO_API_SSH_KEYS (public key string) in your .env file.")
+    err(
+        "No valid SSH key identifier found. Set DO_SSH_KEY_ID (numeric ID or fingerprint) or DO_API_SSH_KEYS (public key string) in your .env file."
+    )
     exit(1)
 log(f"Using SSH keys for droplet: {ssh_keys}")
-LOCAL_ENV_PATH = os.getenv("LOCAL_ENV_PATH", os.path.abspath(os.path.join(os.path.dirname(__file__), "../.env")))
+LOCAL_ENV_PATH = os.getenv(
+    "LOCAL_ENV_PATH", os.path.abspath(os.path.join(os.path.dirname(__file__), "../.env"))
+)
 # Remote repo path is controlled via DEPLOY_PATH/PROJECT_NAME (defaults align with deploy.ps1 remote verification)
 REMOTE_ENV_PATH = _expand_env_templates(
     os.getenv("REMOTE_ENV_PATH", "/opt/apps/${PROJECT_NAME}/.env"),
@@ -797,13 +919,10 @@ SSH_USER = os.getenv("SSH_USER", "root")
 client = Client(token=DO_API_TOKEN)
 
 
-
-
-
-
-
 repo_root = Path(env_path).resolve().parent if env_path else Path(__file__).resolve().parents[3]
-base_script_path = str((repo_root / "digital_ocean" / "scripts" / "bash" / "digital_ocean_base.sh").resolve())
+base_script_path = str(
+    (repo_root / "digital_ocean" / "scripts" / "bash" / "digital_ocean_base.sh").resolve()
+)
 log(f"Loading user_data script from {base_script_path}")
 with open(base_script_path) as f:
     user_data_script = f.read()
@@ -815,13 +934,15 @@ if "REPO_URL" not in env_dict or not env_dict.get("REPO_URL"):
     if repo_url:
         env_dict["REPO_URL"] = repo_url
 
+
 def substitute_env_vars(script, env):
     # Replace $VAR and ${VAR} with env[VAR] if present
     def replacer(match):
         var = match.group(1) or match.group(2)
         return env.get(var, match.group(0))
+
     # $VAR or ${VAR}
-    pattern = re.compile(r'\$(\w+)|\${(\w+)}')
+    pattern = re.compile(r"\$(\w+)|\${(\w+)}")
     return pattern.sub(replacer, script)
 
 
@@ -849,7 +970,10 @@ def write_do_userdata(payload: dict):
                 update_only = bool(UPDATE_ONLY)
             except NameError:
                 update_only = False
-            _write_deploy_metadata(droplet_id=droplet_id, ip_address=ip_address, update_only=update_only)
+            _write_deploy_metadata(
+                droplet_id=droplet_id, ip_address=ip_address, update_only=update_only
+            )
+
 
 try:
     existing_userdata = {}
@@ -868,8 +992,8 @@ def run_post_reboot() -> None:
     # --- Post-reboot configuration and service startup ---
     try:
         SSH_USER = os.getenv("SSH_USER", "root")
-        deploy_root = str(env_dict.get('DEPLOY_PATH', '/opt/apps')).rstrip('/')
-        project_name = str(env_dict.get('PROJECT_NAME', PROJECT_NAME)).strip('/')
+        deploy_root = str(env_dict.get("DEPLOY_PATH", "/opt/apps")).rstrip("/")
+        project_name = str(env_dict.get("PROJECT_NAME", PROJECT_NAME)).strip("/")
         repo_path = f"{deploy_root}/{project_name}"
         log(f"Connecting via SSH to {ip_address} for post-reboot configuration...")
         ssh_client = paramiko.SSHClient()
@@ -907,7 +1031,9 @@ def run_post_reboot() -> None:
                     time.sleep(interval_sec)
             raise RuntimeError(f"SSH port {port} did not become available within {timeout_sec}s")
 
-        def run_ssh_cmd(cmd: str, label: str, *, artifact_name: str | None = None, allow_fail: bool = False) -> tuple[int, str, str]:
+        def run_ssh_cmd(
+            cmd: str, label: str, *, artifact_name: str | None = None, allow_fail: bool = False
+        ) -> tuple[int, str, str]:
             stdin, stdout, stderr = ssh_client.exec_command(cmd)
             out = stdout.read().decode(errors="replace") if stdout else ""
             err_out = stderr.read().decode(errors="replace") if stderr else ""
@@ -917,9 +1043,9 @@ def run_post_reboot() -> None:
             except Exception:
                 exit_status = 0
             if out:
-                print(out)
+                _safe_write(out)
             if err_out:
-                print(err_out)
+                _safe_write(err_out, is_err=True)
             if artifact_name:
                 payload = out
                 if err_out:
@@ -937,13 +1063,13 @@ def run_post_reboot() -> None:
             if artifact_name and artifact_dir_path:
                 path = artifact_dir_path / artifact_name
                 path.parent.mkdir(parents=True, exist_ok=True)
-                artifact_handle = open(path, "w", encoding="utf-8", errors="replace")
+                artifact_handle = open(path, "w", encoding="utf-8", errors="replace")  # noqa: SIM115
             try:
                 while True:
                     if channel.recv_ready():
                         chunk = channel.recv(4096).decode(errors="replace")
                         if chunk:
-                            print(chunk, end="", flush=True)
+                            _safe_write(chunk)
                             if artifact_handle:
                                 artifact_handle.write(chunk)
                                 artifact_handle.flush()
@@ -954,11 +1080,15 @@ def run_post_reboot() -> None:
                                 artifact_handle.write("\n[stderr]\n")
                                 artifact_handle.flush()
                                 stderr_started = True
-                            print(chunk, end="", flush=True)
+                            _safe_write(chunk, is_err=True)
                             if artifact_handle:
                                 artifact_handle.write(chunk)
                                 artifact_handle.flush()
-                    if channel.exit_status_ready() and not channel.recv_ready() and not channel.recv_stderr_ready():
+                    if (
+                        channel.exit_status_ready()
+                        and not channel.recv_ready()
+                        and not channel.recv_stderr_ready()
+                    ):
                         break
                     time.sleep(0.2)
                 exit_status = channel.recv_exit_status()
@@ -974,6 +1104,7 @@ def run_post_reboot() -> None:
             sftp = None
             try:
                 sftp = ssh_client.open_sftp()
+
                 def _walk(rpath: str, lpath: Path) -> None:
                     try:
                         entries = sftp.listdir_attr(rpath)
@@ -986,10 +1117,9 @@ def run_post_reboot() -> None:
                         if stat.S_ISDIR(entry.st_mode):
                             _walk(rchild, lchild)
                         else:
-                            try:
+                            with suppress(Exception):
                                 sftp.get(rchild, str(lchild))
-                            except Exception:
-                                pass
+
                 _walk(remote_dir, local_dir)
             finally:
                 try:
@@ -1024,10 +1154,12 @@ def run_post_reboot() -> None:
         quoted = " ".join(f"'{c}'" for c in candidates)
         resolve_cmd = (
             f"for p in {quoted}; do "
-            f"if [ -f \"$p/development.docker.yml\" ]; then echo $p; break; fi; "
+            f'if [ -f "$p/development.docker.yml" ]; then echo $p; break; fi; '
             f"done"
         )
-        _, resolved_out, _ = run_ssh_cmd(resolve_cmd, "resolve repo path", artifact_name="resolve-repo-path.txt", allow_fail=True)
+        _, resolved_out, _ = run_ssh_cmd(
+            resolve_cmd, "resolve repo path", artifact_name="resolve-repo-path.txt", allow_fail=True
+        )
         resolved_path = (resolved_out or "").strip().splitlines()
         if resolved_path:
             repo_path = resolved_path[-1].strip() or repo_path
@@ -1044,7 +1176,9 @@ def run_post_reboot() -> None:
             if not git_remote:
                 git_remote = repo_url
             if not git_remote:
-                raise RuntimeError("Missing GIT_REMOTE/REPO_URL in local .env (required for --update-only repo sync)")
+                raise RuntimeError(
+                    "Missing GIT_REMOTE/REPO_URL in local .env (required for --update-only repo sync)"
+                )
 
             def sync_repo(remote_url: str) -> None:
                 pull_cmd = (
@@ -1063,8 +1197,8 @@ def run_post_reboot() -> None:
                     f"git fetch --all --prune || true; "
                     f"TARGET='{branch}'; "
                     f"if ! git show-ref --verify --quiet \"refs/remotes/origin/$TARGET\"; then TARGET='main'; fi; "
-                    f"git checkout -B \"$TARGET\" \"origin/$TARGET\" >/dev/null 2>&1 || true; "
-                    f"git reset --hard \"origin/$TARGET\" >/dev/null 2>&1 || true; "
+                    f'git checkout -B "$TARGET" "origin/$TARGET" >/dev/null 2>&1 || true; '
+                    f'git reset --hard "origin/$TARGET" >/dev/null 2>&1 || true; '
                     # Clean untracked files but keep ignored files (like .env). Extra exclusions are belt-and-suspenders.
                     f"git clean -fd -e .env -e '.env.*' || true"
                 )
@@ -1073,6 +1207,7 @@ def run_post_reboot() -> None:
                 err_out = stderr.read().decode()
                 if err_out:
                     print(err_out)
+
             sync_repo(git_remote)
 
             _, compose_check, _ = run_ssh_cmd(
@@ -1090,7 +1225,7 @@ def run_post_reboot() -> None:
         stage("upload .env")
         log(f"Uploading .env to {remote_env_path}")
         sftp = ssh_client.open_sftp()
-        sftp.put(env_path.replace('\\', '/'), remote_env_path)
+        sftp.put(env_path.replace("\\", "/"), remote_env_path)
         sftp.close()
 
         # Ensure destination folders exist for script updates.
@@ -1107,18 +1242,33 @@ def run_post_reboot() -> None:
         log("Uploading local script updates...")
         sftp = ssh_client.open_sftp()
         upload_pairs = [
-            (str(repo_root / "scripts" / "bash" / "sync-env.sh"), f"{repo_path}/scripts/bash/sync-env.sh"),
-            (str(repo_root / "scripts" / "bash" / "start.sh"), f"{repo_path}/scripts/bash/start.sh"),
+            (
+                str(repo_root / "scripts" / "bash" / "sync-env.sh"),
+                f"{repo_path}/scripts/bash/sync-env.sh",
+            ),
+            (
+                str(repo_root / "scripts" / "bash" / "start.sh"),
+                f"{repo_path}/scripts/bash/start.sh",
+            ),
             (str(repo_root / "scripts" / "bash" / "test.sh"), f"{repo_path}/scripts/bash/test.sh"),
             (str(repo_root / "traefik" / "entrypoint.sh"), f"{repo_path}/traefik/entrypoint.sh"),
-            (str(repo_root / "digital_ocean" / "scripts" / "bash" / "post_reboot_complete.sh"), f"{repo_path}/digital_ocean/scripts/bash/post_reboot_complete.sh"),
-            (str(repo_root / "digital_ocean" / "scripts" / "bash" / "test.sh"), f"{repo_path}/digital_ocean/scripts/bash/test.sh"),
-            (str(repo_root / "digital_ocean" / "scripts" / "bash" / "remote_verify_min.sh"), f"{repo_path}/digital_ocean/scripts/bash/remote_verify_min.sh"),
+            (
+                str(repo_root / "digital_ocean" / "scripts" / "bash" / "post_reboot_complete.sh"),
+                f"{repo_path}/digital_ocean/scripts/bash/post_reboot_complete.sh",
+            ),
+            (
+                str(repo_root / "digital_ocean" / "scripts" / "bash" / "test.sh"),
+                f"{repo_path}/digital_ocean/scripts/bash/test.sh",
+            ),
+            (
+                str(repo_root / "digital_ocean" / "scripts" / "bash" / "remote_verify_min.sh"),
+                f"{repo_path}/digital_ocean/scripts/bash/remote_verify_min.sh",
+            ),
         ]
         for src, dest in upload_pairs:
             if os.path.isfile(src):
                 log(f"Uploading {src} -> {dest}")
-                sftp.put(src.replace('\\', '/'), dest)
+                sftp.put(src.replace("\\", "/"), dest)
         sftp.close()
 
         run_ssh_cmd(
@@ -1133,18 +1283,26 @@ def run_post_reboot() -> None:
         stage("run post-reboot script")
         log(f"Running post-reboot script: {post_reboot_path}")
         try:
-            run_ssh_cmd(f"bash {post_reboot_path}", "post-reboot script", artifact_name="post-reboot.txt")
+            run_ssh_cmd(
+                f"bash {post_reboot_path}", "post-reboot script", artifact_name="post-reboot.txt"
+            )
         except Exception as e:
             err(f"Post-reboot exec encountered an error: {e}. Reconnecting and retrying once...")
             ssh_client.close()
             if not ssh_connect_with_retry():
                 raise RuntimeError("SSH reconnect failed after post-reboot error") from e
-            run_ssh_cmd(f"bash {post_reboot_path}", "post-reboot script (retry)", artifact_name="post-reboot.txt")
+            run_ssh_cmd(
+                f"bash {post_reboot_path}",
+                "post-reboot script (retry)",
+                artifact_name="post-reboot.txt",
+            )
 
         # Start services and follow logs briefly for live visibility
         # Always rebuild to ensure latest images when updating remotely
         disable_buildkit = _truthy_env(os.getenv("DO_DISABLE_BUILDKIT"), default=False)
-        buildkit_prefix = "DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 " if disable_buildkit else ""
+        buildkit_prefix = (
+            "DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 " if disable_buildkit else ""
+        )
         start_cmd = (
             f"cd {repo_path} && {buildkit_prefix}START_FOLLOW_LOGS=true START_BUILD_PROGRESS=plain "
             f"START_USE_DOCKER_COMPOSE_V2=true START_BUILD_TIMEOUT_SECONDS=900 "
@@ -1160,7 +1318,9 @@ def run_post_reboot() -> None:
             ssh_client.close()
             if not ssh_connect_with_retry():
                 raise RuntimeError("SSH reconnect failed after start error") from e
-            run_ssh_cmd_stream(start_cmd, "start services (retry)", artifact_name="start-services.txt")
+            run_ssh_cmd_stream(
+                start_cmd, "start services (retry)", artifact_name="start-services.txt"
+            )
 
         # Run full test suite after services start (update-only requested by user).
         # This is best-effort but will exit non-zero on failures.
@@ -1191,7 +1351,9 @@ def run_post_reboot() -> None:
             f"cd {repo_path} && RUN_CELERY_CHECK={'1' if RUN_ALL_TESTS else '0'} "
             f"bash digital_ocean/scripts/bash/remote_verify_min.sh"
         )
-        run_ssh_cmd(run_remote_verify, "remote verify artifacts", artifact_name="remote-verify-min.txt")
+        run_ssh_cmd(
+            run_remote_verify, "remote verify artifacts", artifact_name="remote-verify-min.txt"
+        )
         if artifact_dir_path:
             log("Downloading /root/logs into local artifacts...")
             download_remote_dir("/root/logs", artifact_dir_path / "logs")
@@ -1210,7 +1372,17 @@ def run_post_reboot() -> None:
                     continue
                 name = parts[0]
                 # STATUS column usually near the end; search for token containing health
-                status_field = next((p for p in parts if "healthy" in p.lower() or "unhealthy" in p.lower() or "exit" in p.lower() or "restarting" in p.lower()), None)
+                status_field = next(
+                    (
+                        p
+                        for p in parts
+                        if "healthy" in p.lower()
+                        or "unhealthy" in p.lower()
+                        or "exit" in p.lower()
+                        or "restarting" in p.lower()
+                    ),
+                    None,
+                )
                 if status_field:
                     summary[name] = status_field
             return summary
@@ -1267,7 +1439,9 @@ def run_post_reboot() -> None:
                     elif 500 <= code <= 599:
                         errors_5xx += 1
                     # Try to extract the path inside quotes
-                    pm = re.search(r"\"(?:GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+([^\s\"]+)\s+HTTP/", line)
+                    pm = re.search(
+                        r"\"(?:GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+([^\s\"]+)\s+HTTP/", line
+                    )
                     if pm:
                         p = pm.group(1)
                         if 400 <= code <= 499 or 500 <= code <= 599:
@@ -1304,7 +1478,9 @@ def run_post_reboot() -> None:
             print("\n[HTTP Errors]")
             for svc, data in svc_errors.items():
                 print(f"- {svc}: 4xx={data['4xx']}, 5xx={data['5xx']}")
-                hotpaths = sorted(((p, c) for p, c in data.get("paths", {}).items()), key=lambda x: -x[1])[:5]
+                hotpaths = sorted(
+                    ((p, c) for p, c in data.get("paths", {}).items()), key=lambda x: -x[1]
+                )[:5]
                 if hotpaths:
                     for p, c in hotpaths:
                         print(f"  \u2514 {p}: {c}")
@@ -1313,12 +1489,13 @@ def run_post_reboot() -> None:
         ssh_client.close()
         log("Post-deploy tasks completed.")
 
-        if RUN_ALL_TESTS:
+        if RUN_LOCAL_TESTS:
             _run_all_tests_suite()
-            log("All-tests suite completed.")
+            log("Local tests suite completed.")
     except Exception as e:
         err(f"Post-deploy workflow failed: {e}")
         raise
+
 
 # --- 1. Create Droplet ---
 
@@ -1350,7 +1527,9 @@ if UPDATE_ONLY:
         matches = [d for d in lst.get("droplets", []) if d.get("name") == DO_DROPLET_NAME]
         if not matches:
             if CREATE_IF_MISSING:
-                log(f"[UPDATE-ONLY] No existing droplet found named {DO_DROPLET_NAME}; falling back to create.")
+                log(
+                    f"[UPDATE-ONLY] No existing droplet found named {DO_DROPLET_NAME}; falling back to create."
+                )
                 fallback_to_create = True
             else:
                 raise RuntimeError(f"No existing droplet found named {DO_DROPLET_NAME}")
@@ -1362,6 +1541,7 @@ if UPDATE_ONLY:
             # If created_at is missing, fall back to highest id.
             def sort_key(d):
                 return (d.get("created_at") or "", int(d.get("id") or 0))
+
             matched = sorted(matches, key=sort_key)[-1]
 
             droplet_id = matched["id"]
@@ -1390,7 +1570,9 @@ if UPDATE_ONLY:
                 do_userdata["droplet_id"] = droplet_id
                 do_userdata["ip_address"] = ip_address
                 write_do_userdata(do_userdata)
-                log(f"Updated {do_userdata_json_path} with droplet_id {droplet_id} and ip_address {ip_address}")
+                log(
+                    f"Updated {do_userdata_json_path} with droplet_id {droplet_id} and ip_address {ip_address}"
+                )
             except Exception as e:
                 err(f"Failed to update {do_userdata_json_path}: {e}")
 
@@ -1401,7 +1583,9 @@ if UPDATE_ONLY:
             # Always ensure required DNS records exist/update to current droplet IP.
             # This is important in --update-only, where the droplet already exists but
             # DNS may be missing/stale (e.g., swagger subdomain).
-            ensure_dns_records_for_droplet(client=client, droplet_id=int(droplet_id), ipv4_address=str(ip_address))
+            ensure_dns_records_for_droplet(
+                client=client, droplet_id=int(droplet_id), ipv4_address=str(ip_address)
+            )
     except Exception as e:
         err(f"Failed to locate existing droplet: {e}")
         exit(1)
@@ -1449,7 +1633,9 @@ if not UPDATE_ONLY:
             do_userdata["droplet_id"] = droplet_id
             do_userdata["ip_address"] = ip_address
             write_do_userdata(do_userdata)
-            log(f"Updated {do_userdata_json_path} with droplet_id {droplet_id} and ip_address {ip_address}")
+            log(
+                f"Updated {do_userdata_json_path} with droplet_id {droplet_id} and ip_address {ip_address}"
+            )
         except Exception as e:
             err(f"Failed to update {do_userdata_json_path}: {e}")
 
@@ -1463,7 +1649,9 @@ if not UPDATE_ONLY:
     stage("ensure dns records")
     # Always ensure required DNS records exist/update to current droplet IP.
     try:
-        ensure_dns_records_for_droplet(client=client, droplet_id=int(droplet_id), ipv4_address=str(ip_address))
+        ensure_dns_records_for_droplet(
+            client=client, droplet_id=int(droplet_id), ipv4_address=str(ip_address)
+        )
     except Exception:
         recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path)
         exit(1)
@@ -1472,21 +1660,32 @@ if not UPDATE_ONLY:
     log(f"Using SSH user: {SSH_USER}")
     ssh_cmd = [
         "ssh",
-        "-o", "StrictHostKeyChecking=no",
-        "-i", ssh_key_path.replace('\\', '/'),
+        "-o",
+        "StrictHostKeyChecking=no",
+        "-i",
+        ssh_key_path.replace("\\", "/"),
         f"{SSH_USER}@{ip_address}",
-        "true"  # Just test connection
+        "true",  # Just test connection
     ]
 
     # Wait for SSH to become available (initial boot)
     if not UPDATE_ONLY:
-        log(f"Waiting {SSH_INITIAL_WAIT} seconds before first SSH availability check after droplet creation...")
+        log(
+            f"Waiting {SSH_INITIAL_WAIT} seconds before first SSH availability check after droplet creation..."
+        )
         time.sleep(SSH_INITIAL_WAIT)
     ssh_success = False
     for attempt in range(1, SSH_ATTEMPTS + 1):
         try:
             log(f"SSH availability check attempt {attempt}/{SSH_ATTEMPTS}...")
-            result = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=SSH_TIMEOUT, encoding="utf-8", errors="replace")
+            result = subprocess.run(
+                ssh_cmd,
+                capture_output=True,
+                text=True,
+                timeout=SSH_TIMEOUT,
+                encoding="utf-8",
+                errors="replace",
+            )
             if result.returncode == 0:
                 log("SSH is available. Proceeding to cloud-init log polling for reboot marker.")
                 ssh_success = True
@@ -1498,27 +1697,40 @@ if not UPDATE_ONLY:
             log(f"SSH check exception: {e}")
         time.sleep(SSH_INTERVAL)
     if not ssh_success:
-        log("SSH not available after initial attempts. Proceeding to cloud-init log polling for reboot marker anyway.")
+        log(
+            "SSH not available after initial attempts. Proceeding to cloud-init log polling for reboot marker anyway."
+        )
         SUMMARY.append("SSH not available after initial attempts.")
 
     # Poll cloud-init log for reboot marker BEFORE checking for SSH reboot
     ssh_log_cmd = [
         "ssh",
-        "-o", "StrictHostKeyChecking=no",
-        "-i", ssh_key_path.replace('\\', '/'),
+        "-o",
+        "StrictHostKeyChecking=no",
+        "-i",
+        ssh_key_path.replace("\\", "/"),
         f"{SSH_USER}@{ip_address}",
-        "cat /var/log/cloud-init-output.log"
+        "cat /var/log/cloud-init-output.log",
     ]
-    log(f"Polling /var/log/cloud-init-output.log until completion marker '{COMPLETION_MARKER}' is found...")
+    log(
+        f"Polling /var/log/cloud-init-output.log until completion marker '{COMPLETION_MARKER}' is found..."
+    )
     completion_found = False
     cloud_init_pattern = re.compile(r"^Cloud-init v\\. .+ finished at")
     # Updated pattern: match any line containing 'Cloud-init v.' and 'finished at' (version, timestamp, and details are variable)
     cloud_init_pattern = re.compile(r"Cloud-init v\\..*finished at")
     for poll in range(1, LOG_POLL_ATTEMPTS + 1):
         try:
-            result = subprocess.run(ssh_log_cmd, capture_output=True, text=True, timeout=LOG_POLL_TIMEOUT, encoding="utf-8", errors="replace")
+            result = subprocess.run(
+                ssh_log_cmd,
+                capture_output=True,
+                text=True,
+                timeout=LOG_POLL_TIMEOUT,
+                encoding="utf-8",
+                errors="replace",
+            )
             log(f"Log poll {poll}/{LOG_POLL_ATTEMPTS}")
-            log_output = result.stdout if result.stdout is not None else ''
+            log_output = result.stdout if result.stdout is not None else ""
             print("\n--- /var/log/cloud-init-output.log ---\n")
             print(log_output)
             if result.stderr:
@@ -1526,8 +1738,12 @@ if not UPDATE_ONLY:
             # Look for any line matching either marker
             for line in log_output.splitlines():
                 if COMPLETION_MARKER in line or cloud_init_pattern.search(line.strip()):
-                    log("Cloud-init or user-data completion marker found in log. Script finished successfully.")
-                    print(f"\n[INFO] Deployment script ran and completion marker was found.\n[DROPLET ID] {droplet_id}\n[IP ADDRESS] {ip_address}\nScript completed correctly.\n")
+                    log(
+                        "Cloud-init or user-data completion marker found in log. Script finished successfully."
+                    )
+                    print(
+                        f"\n[INFO] Deployment script ran and completion marker was found.\n[DROPLET ID] {droplet_id}\n[IP ADDRESS] {ip_address}\nScript completed correctly.\n"
+                    )
                     completion_found = True
                     SUMMARY.append(f"Completion marker found in log after {poll} polls.")
                     break
@@ -1542,8 +1758,15 @@ if not UPDATE_ONLY:
         if not completion_found:
             err("Did not find cloud-init completion marker in log after multiple attempts.")
             try:
-                result = subprocess.run(ssh_log_cmd, capture_output=True, text=True, timeout=LOG_POLL_TIMEOUT, encoding="utf-8", errors="replace")
-                log_output = result.stdout if result.stdout is not None else ''
+                result = subprocess.run(
+                    ssh_log_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=LOG_POLL_TIMEOUT,
+                    encoding="utf-8",
+                    errors="replace",
+                )
+                log_output = result.stdout if result.stdout is not None else ""
                 print("\n--- Last 50 lines of cloud-init log ---\n")
                 print("\n".join(log_output.splitlines()[-50:]))
             except Exception as e:
@@ -1562,5 +1785,3 @@ if not UPDATE_ONLY:
 
 run_post_reboot()
 exit(0)
-
-

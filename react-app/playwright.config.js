@@ -13,5 +13,5 @@ module.exports = {
     trace: 'retain-on-failure',
     video: 'retain-on-failure',
   },
-  reporter: [['list']]
+  reporter: [['list']],
 };

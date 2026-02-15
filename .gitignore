@@ -190,6 +190,7 @@ docker-compose.override.yml
 *.sql.gz
 *.dump
 *.backup
+*.nosql
 *.pgsql
 
 # ==========================================
@@ -404,3 +405,6 @@ lerna-debug.log*
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# WSL
+.wsl-venv

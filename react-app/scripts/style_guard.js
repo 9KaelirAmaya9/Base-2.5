@@ -34,7 +34,10 @@ function checkFile(file) {
     if (line.includes('!important')) {
       violations.push({ file, line: i + 1, reason: 'Avoid !important' });
     }
-    if (globalSelectorRegex.test(line) && path.resolve(file) !== path.resolve(ALLOWED_GLOBAL_FILE)) {
+    if (
+      globalSelectorRegex.test(line) &&
+      path.resolve(file) !== path.resolve(ALLOWED_GLOBAL_FILE)
+    ) {
       violations.push({ file, line: i + 1, reason: 'Global selector outside tokens.css' });
     }
   }
@@ -42,10 +45,7 @@ function checkFile(file) {
 }
 
 function main() {
-  const files = [
-    ...listCssFiles(STYLES_DIR),
-    ...listCssFiles(COMPONENTS_DIR),
-  ];
+  const files = [...listCssFiles(STYLES_DIR), ...listCssFiles(COMPONENTS_DIR)];
   let allViolations = [];
   for (const file of files) {
     allViolations = allViolations.concat(checkFile(file));

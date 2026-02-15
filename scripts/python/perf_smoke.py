@@ -17,7 +17,7 @@ def main() -> int:
     latencies: list[float] = []
     sess = requests.Session()
     # Verification flag applied per request for clarity
-    verify_flag = (not insecure)
+    verify_flag = not insecure
     # simple warmup to prime DNS/TLS
     with contextlib.suppress(requests.RequestException):
         sess.head(base, timeout=10, verify=verify_flag)
@@ -42,7 +42,7 @@ def main() -> int:
     # If insecure and HTTPS completely failed, try HTTP fallback for health
     if insecure and len(latencies) == 0 and base.startswith("https://"):
         try:
-            alt_base = "http://" + base[len("https://"):]
+            alt_base = "http://" + base[len("https://") :]
             alt_url = alt_base.rstrip("/") + "/api/health"
             for _ in range(min(samples, 5)):
                 start = time.perf_counter()
@@ -55,7 +55,12 @@ def main() -> int:
 
     latencies.sort()
     if len(latencies) < 2:
-        print("ERROR: insufficient successful samples for p95 (collected=", len(latencies), ")", file=sys.stderr)
+        print(
+            "ERROR: insufficient successful samples for p95 (collected=",
+            len(latencies),
+            ")",
+            file=sys.stderr,
+        )
         return 1
     # Use inclusive quantiles for better small-sample behavior
     p95 = statistics.quantiles(latencies, n=100, method="inclusive")[94]

@@ -1,4 +1,3 @@
-
 """
 Polish: Usage, error handling, and onboarding comments for metrics.py
 T085: Collect and visualize resource metrics over time (Digital Ocean only)
@@ -9,9 +8,11 @@ Stub: Integrate with Digital Ocean monitoring API and visualization tools in fut
 Error Handling: Prints error if metrics collection fails (stub).
 """
 
+
 def collect_metrics():
     # TODO: Query Digital Ocean monitoring API
     print("[DRY RUN] Would collect and visualize resource metrics.")
+
 
 if __name__ == "__main__":
     try:

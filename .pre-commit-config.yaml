@@ -7,6 +7,7 @@ repos:
       - id: trailing-whitespace
       - id: check-merge-conflict
       - id: detect-private-key
+        exclude: ^digital_ocean/DigitalOcean-public\.v2\.yaml$
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.6.9
     hooks:
@@ -19,6 +20,7 @@ repos:
       - id: prettier
         files: ^react-app/|
         args: ['--write']
+        exclude: ^(digital_ocean/do_app_api\.json|\.detect-secrets\.baseline|\.specify_prereq\.json)$
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
     hooks:

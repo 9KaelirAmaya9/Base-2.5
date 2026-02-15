@@ -10,6 +10,7 @@ UPDATE_ONLY=false
 FULL=false
 CREATE_IF_MISSING=false
 ALL_TESTS=false
+LOCAL_TESTS=false
 ENV_PATH=""
 LOGS_DIR=""
 TIMESTAMPED=false
@@ -22,7 +23,8 @@ Options:
   --dry-run           Print actions without making changes
   --update-only       Skip droplet creation; update existing droplet
   --create-if-missing Create droplet if update-only target is missing
-  --all-tests         Run full post-deploy verification suite
+  --all-tests         Enable extended remote verification (celery check)
+  --local-tests       Run local test suite after deploy
   --full              Force full deploy (default when neither flag is set)
   --env-path <path>   Path to .env (sets ENV_PATH for orchestrate_deploy.py)
   --logs-dir <path>   Artifact directory (sets DEPLOY_ARTIFACT_DIR)
@@ -51,6 +53,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --all-tests)
       ALL_TESTS=true
+      shift
+      ;;
+    --local-tests)
+      LOCAL_TESTS=true
       shift
       ;;
     --full)
@@ -89,6 +95,8 @@ fi
 if [[ -n "$ENV_PATH" ]]; then
   export ENV_PATH="$ENV_PATH"
 fi
+
+export DEPLOY_TEST_RUNNER="bash"
 
 if [[ -n "$LOGS_DIR" ]]; then
   if $TIMESTAMPED; then
@@ -138,6 +146,9 @@ fi
 if $ALL_TESTS; then
   args+=("--all-tests")
 fi
+if $LOCAL_TESTS; then
+  args+=("--local-tests")
+fi
 
 script_path="$REPO_ROOT/digital_ocean/scripts/python/orchestrate_deploy.py"
 
@@ -158,4 +169,80 @@ if [[ "$PYTHON" == *.exe ]] && command -v wslpath >/dev/null 2>&1; then
   export WSLENV
   script_path="$(wslpath -w "$script_path")"
 fi
-exec "$PYTHON" "$script_path" "${args[@]}"
+
+extract_ip_from_json() {
+  local json_path="$1"
+  if [[ -z "$json_path" || ! -f "$json_path" ]]; then
+    return 1
+  fi
+  "$PYTHON" - <<'PY' "$json_path" 2>/dev/null || true
+import json
+import sys
+
+path = sys.argv[1]
+try:
+  with open(path, encoding='utf-8') as fh:
+    data = json.load(fh) or {}
+except Exception:
+  data = {}
+
+ip = data.get('ip_address') or ''
+if isinstance(ip, str):
+  print(ip)
+PY
+}
+
+finalize_artifact_dir_name() {
+  if [[ -z "${DEPLOY_ARTIFACT_DIR:-}" ]]; then
+    return 0
+  fi
+
+  local current="$DEPLOY_ARTIFACT_DIR"
+  local leaf
+  leaf="$(basename "$current")"
+  if [[ "$leaf" != unknown-* ]]; then
+    return 0
+  fi
+
+  local stamp
+  stamp="${leaf#unknown-}"
+
+  local ip=""
+  ip="$(extract_ip_from_json "$current/DO_userdata.json" | head -n 1)"
+  if [[ -z "$ip" ]]; then
+    ip="$(extract_ip_from_json "$current/deploy-meta.json" | head -n 1)"
+  fi
+  if [[ -z "$ip" ]]; then
+    return 0
+  fi
+
+  local target
+  target="$(dirname "$current")/${ip}-${stamp}"
+  if [[ "$target" == "$current" || -e "$target" ]]; then
+    return 0
+  fi
+
+  if mv "$current" "$target" 2>/dev/null; then
+    export DEPLOY_ARTIFACT_DIR="$target"
+    return 0
+  fi
+
+  mkdir -p "$target" || return 0
+  if cp -a "$current"/. "$target"/ 2>/dev/null; then
+    printf 'Original artifact path: %s\n' "$current" > "$target/artifact-alias.txt" 2>/dev/null || true
+    export DEPLOY_ARTIFACT_DIR="$target"
+    rm -rf "$current" 2>/dev/null || true
+  fi
+
+  if [[ -f "$target/artifact-alias.txt" ]]; then
+    original_path=$(sed -n 's/^Original artifact path: //p' "$target/artifact-alias.txt" | head -n 1)
+    if [[ -n "$original_path" && -d "$original_path" ]]; then
+      rm -rf "$original_path" 2>/dev/null || true
+    fi
+  fi
+}
+
+"$PYTHON" "$script_path" "${args[@]}"
+status=$?
+finalize_artifact_dir_name
+exit $status

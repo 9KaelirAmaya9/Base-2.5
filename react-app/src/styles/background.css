@@ -17,16 +17,14 @@
   content: '';
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+  background: radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
     radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.15) 0%, transparent 50%),
     radial-gradient(circle at 50% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 50%);
   animation: gradientShift 20s ease infinite;
 }
 
 .dark .gradient-background::before {
-  background:
-    radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.3) 0%, transparent 50%),
+  background: radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.3) 0%, transparent 50%),
     radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.2) 0%, transparent 50%),
     radial-gradient(circle at 50% 20%, rgba(59, 130, 246, 0.25) 0%, transparent 60%);
 }

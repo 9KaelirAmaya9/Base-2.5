@@ -26,51 +26,64 @@ settings: Any
 
 try:
     from api.settings import settings as _settings
+
     settings = _settings
 except Exception as e:
     # Loud startups: in non-development, fail fast and log clearly.
-    env_val = (os.getenv("ENV", "development") or "").strip().lower()
+    env_val = (os.getenv('ENV', 'development') or '').strip().lower()
     with suppress(Exception):
-        configure_logging(service="api")
-    _boot_logger = logging.getLogger("api.boot")
-    _boot_logger.error("settings_import_failed", extra={"env": env_val, "error": str(e)})
-    if env_val in {"staging", "production"}:
+        configure_logging(service='api')
+    _boot_logger = logging.getLogger('api.boot')
+    _boot_logger.error('settings_import_failed', extra={'env': env_val, 'error': str(e)})
+    if env_val in {'staging', 'production'}:
         raise
+
     # Development fallback only
     class _Fallback:
-        ENV = os.getenv("ENV", "development")
-        API_DOCS_ENABLED = (os.getenv("API_DOCS_ENABLED", "") or "").strip().lower() in {"1", "true", "yes", "on"} or (ENV.strip().lower() != "production")
-        API_DOCS_URL = os.getenv("API_DOCS_URL", "/docs") or "/docs"
-        API_REDOC_URL = os.getenv("API_REDOC_URL", "/redoc") or "/redoc"
-        API_OPENAPI_URL = os.getenv("API_OPENAPI_URL", "/openapi.json") or "/openapi.json"
-        FRONTEND_URL = os.getenv("FRONTEND_URL", "") or ""
-        E2E_TEST_MODE = (os.getenv("E2E_TEST_MODE", "") or "").strip().lower() in {"1", "true", "yes", "on"}
+        ENV = os.getenv('ENV', 'development')
+        API_DOCS_ENABLED = (os.getenv('API_DOCS_ENABLED', '') or '').strip().lower() in {
+            '1',
+            'true',
+            'yes',
+            'on',
+        } or (ENV.strip().lower() != 'production')
+        API_DOCS_URL = os.getenv('API_DOCS_URL', '/docs') or '/docs'
+        API_REDOC_URL = os.getenv('API_REDOC_URL', '/redoc') or '/redoc'
+        API_OPENAPI_URL = os.getenv('API_OPENAPI_URL', '/openapi.json') or '/openapi.json'
+        FRONTEND_URL = os.getenv('FRONTEND_URL', '') or ''
+        E2E_TEST_MODE = (os.getenv('E2E_TEST_MODE', '') or '').strip().lower() in {
+            '1',
+            'true',
+            'yes',
+            'on',
+        }
 
     settings = _Fallback()
 
-_docs_enabled = bool(getattr(settings, "API_DOCS_ENABLED", True))
-_docs_url = str(getattr(settings, "API_DOCS_URL", "/docs"))
-_redoc_url = str(getattr(settings, "API_REDOC_URL", "/redoc"))
-_openapi_url = str(getattr(settings, "API_OPENAPI_URL", "/openapi.json"))
+_docs_enabled = bool(getattr(settings, 'API_DOCS_ENABLED', True))
+_docs_url = str(getattr(settings, 'API_DOCS_URL', '/docs'))
+_redoc_url = str(getattr(settings, 'API_REDOC_URL', '/redoc'))
+_openapi_url = str(getattr(settings, 'API_OPENAPI_URL', '/openapi.json'))
 
-_E2E_TEST_MODE = bool(getattr(settings, "E2E_TEST_MODE", False))
+_E2E_TEST_MODE = bool(getattr(settings, 'E2E_TEST_MODE', False))
 
-configure_logging(service="api")
-logger = logging.getLogger("api.http")
+configure_logging(service='api')
+logger = logging.getLogger('api.http')
 
 app = FastAPI(
-    title=(os.getenv("API_TITLE") or "API"),
+    title=(os.getenv('API_TITLE') or 'API'),
     docs_url=(_docs_url if _docs_enabled else None),
     redoc_url=(_redoc_url if _docs_enabled else None),
     openapi_url=(_openapi_url if _docs_enabled else None),
 )
 
 
-@app.get("/api/openapi.json", include_in_schema=False)
+@app.get('/api/openapi.json', include_in_schema=False)
 async def openapi_alias():
     # Keep /api/openapi.json stable for contract/runtime checks even if
     # docs/openapi are served at /openapi.json (e.g., swagger subdomain).
     return JSONResponse(app.openapi())
+
 
 # Observability: optional OpenTelemetry
 try:
@@ -82,25 +95,25 @@ except Exception:
 
 # CORS (strict allowlist; required for browser credentialed requests)
 try:
-    raw = os.getenv("CORS_ALLOW_ORIGINS", "").strip()
-    origins = [o.strip() for o in raw.split(",") if o.strip()] if raw else []
+    raw = os.getenv('CORS_ALLOW_ORIGINS', '').strip()
+    origins = [o.strip() for o in raw.split(',') if o.strip()] if raw else []
 
     if not origins:
         # Dev-friendly defaults.
         origins = [
-            "http://localhost",
-            "http://localhost:3000",
-            "http://127.0.0.1",
-            "http://127.0.0.1:3000",
+            'http://localhost',
+            'http://localhost:3000',
+            'http://127.0.0.1',
+            'http://127.0.0.1:3000',
         ]
         try:
-            if getattr(settings, "FRONTEND_URL", ""):
-                origins.append(str(getattr(settings, "FRONTEND_URL", "")).rstrip("/"))
+            if getattr(settings, 'FRONTEND_URL', ''):
+                origins.append(str(getattr(settings, 'FRONTEND_URL', '')).rstrip('/'))
         except Exception:
             pass
 
     allow_credentials = True
-    if "*" in origins:
+    if '*' in origins:
         # Disallow wildcard origins with credentials.
         allow_credentials = False
 
@@ -108,8 +121,8 @@ try:
         CORSMiddleware,
         allow_origins=origins,
         allow_credentials=allow_credentials,
-        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "X-CSRF-Token", "X-Requested-With"],
+        allow_methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allow_headers=['Authorization', 'Content-Type', 'X-CSRF-Token', 'X-Requested-With'],
     )
 except Exception:
     pass
@@ -120,7 +133,7 @@ except Exception:
 try:
     from api.middleware.request_id import request_id_middleware
 
-    @app.middleware("http")
+    @app.middleware('http')
     async def _add_request_id(request: Request, call_next):
         return await request_id_middleware(request, call_next)
 except Exception:
@@ -130,60 +143,63 @@ except Exception:
 try:
     from api.middleware.tenant import tenant_context_middleware
 
-    @app.middleware("http")
+    @app.middleware('http')
     async def _add_tenant_context(request: Request, call_next):
         return await tenant_context_middleware(request, call_next)
 except Exception:
     pass
 
 
-@app.middleware("http")
+@app.middleware('http')
 async def _access_log(request: Request, call_next):
     start = time.perf_counter()
     try:
         response = await call_next(request)
     except Exception:
         latency_ms = int((time.perf_counter() - start) * 1000)
-        req_id = getattr(request.state, "request_id", "")
+        req_id = getattr(request.state, 'request_id', '')
         try:
             if metrics is not None:
                 metrics.observe(status=500, latency_ms=latency_ms)
         except Exception:
             pass
         logger.exception(
-            "request_failed",
+            'request_failed',
             extra={
-                "request_id": req_id,
-                "method": request.method,
-                "path": request.url.path,
-                "status": 500,
-                "latency_ms": latency_ms,
-                "client_ip": (request.client.host if request.client else "unknown"),
-                "user_agent": request.headers.get("user-agent", ""),
+                'request_id': req_id,
+                'method': request.method,
+                'path': request.url.path,
+                'status': 500,
+                'latency_ms': latency_ms,
+                'client_ip': (request.client.host if request.client else 'unknown'),
+                'user_agent': request.headers.get('user-agent', ''),
             },
         )
         raise
 
     latency_ms = int((time.perf_counter() - start) * 1000)
-    req_id = getattr(request.state, "request_id", "")
+    req_id = getattr(request.state, 'request_id', '')
     try:
         if metrics is not None:
-            metrics.observe(status=int(getattr(response, "status_code", 0) or 0), latency_ms=latency_ms)
+            metrics.observe(
+                status=int(getattr(response, 'status_code', 0) or 0), latency_ms=latency_ms
+            )
     except Exception:
         pass
     logger.info(
-        "request",
+        'request',
         extra={
-            "request_id": req_id,
-            "method": request.method,
-            "path": request.url.path,
-            "status": int(getattr(response, "status_code", 0) or 0),
-            "latency_ms": latency_ms,
-            "client_ip": (request.client.host if request.client else "unknown"),
-            "user_agent": request.headers.get("user-agent", ""),
+            'request_id': req_id,
+            'method': request.method,
+            'path': request.url.path,
+            'status': int(getattr(response, 'status_code', 0) or 0),
+            'latency_ms': latency_ms,
+            'client_ip': (request.client.host if request.client else 'unknown'),
+            'user_agent': request.headers.get('user-agent', ''),
         },
     )
     return response
+
 
 # Error handlers: ensure consistent {detail}
 try:
@@ -198,28 +214,28 @@ try:
     from fastapi.openapi.utils import get_openapi
 
     def custom_openapi():
-        session_cookie_name = str(getattr(settings, "SESSION_COOKIE_NAME", "") or "") or "session"
+        session_cookie_name = str(getattr(settings, 'SESSION_COOKIE_NAME', '') or '') or 'session'
         openapi_schema = get_openapi(
             title=app.title,
-            version="0.1.0",
-            description="External API contract surface",
+            version='0.1.0',
+            description='External API contract surface',
             routes=app.routes,
         )
-        comps = openapi_schema.setdefault("components", {})
-        sec = comps.setdefault("securitySchemes", {})
+        comps = openapi_schema.setdefault('components', {})
+        sec = comps.setdefault('securitySchemes', {})
         # Session cookie scheme required by contract
-        sec["SessionCookie"] = {
-            "type": "apiKey",
-            "in": "cookie",
-            "name": session_cookie_name,
-            "description": "HttpOnly cookie carrying the primary session credential.",
+        sec['SessionCookie'] = {
+            'type': 'apiKey',
+            'in': 'cookie',
+            'name': session_cookie_name,
+            'description': 'HttpOnly cookie carrying the primary session credential.',
         }
         # CSRF token header scheme required by contract
-        sec["CsrfToken"] = {
-            "type": "apiKey",
-            "in": "header",
-            "name": "X-CSRF-Token",
-            "description": "CSRF token header required for state-changing requests.",
+        sec['CsrfToken'] = {
+            'type': 'apiKey',
+            'in': 'header',
+            'name': 'X-CSRF-Token',
+            'description': 'CSRF token header required for state-changing requests.',
         }
         app.openapi_schema = openapi_schema
         return app.openapi_schema
@@ -242,70 +258,74 @@ try:
     from api.routes.tenant import router as tenant_router
     from api.routes.privacy import router as privacy_router
 
-    app.include_router(auth_router, prefix="/api")
-    app.include_router(metrics_router, prefix="/api")
-    app.include_router(oauth_router, prefix="/api")
-    app.include_router(users_router, prefix="/api")
-    app.include_router(tenant_router, prefix="/api")
-    app.include_router(privacy_router, prefix="/api")
+    app.include_router(auth_router, prefix='/api')
+    app.include_router(metrics_router, prefix='/api')
+    app.include_router(oauth_router, prefix='/api')
+    app.include_router(users_router, prefix='/api')
+    app.include_router(tenant_router, prefix='/api')
+    app.include_router(privacy_router, prefix='/api')
 
     # E2E-only helpers (must be explicitly enabled; never in production).
-    if _E2E_TEST_MODE and str(getattr(settings, "ENV", "development")).strip().lower() != "production":
+    if (
+        _E2E_TEST_MODE
+        and str(getattr(settings, 'ENV', 'development')).strip().lower() != 'production'
+    ):
         try:
             from api.routes.test_support import router as test_support_router
 
-            app.include_router(test_support_router, prefix="/api")
+            app.include_router(test_support_router, prefix='/api')
         except Exception:
             pass
 except Exception:
     # Keep app bootable even if routes fail to import.
     pass
 
-@app.get("/api/health")
+
+@app.get('/api/health')
 async def health():
-    return {"ok": True, "service": "api", "db_ok": db_ping()}
+    return {'ok': True, 'service': 'api', 'db_ok': db_ping()}
 
 
-@app.get("/api/flags")
+@app.get('/api/flags')
 async def flags():
     try:
         from api.flags import get_flags
 
-        return {"flags": get_flags()}
+        return {'flags': get_flags()}
     except Exception:
-        return {"flags": {}}
+        return {'flags': {}}
 
 
 # --- Catalog (proxy to Django internal) ---
-@app.get("/api/items")
+@app.get('/api/items')
 async def list_items():
-    raise HTTPException(status_code=501, detail="/api/items is not implemented yet")
+    raise HTTPException(status_code=501, detail='/api/items is not implemented yet')
 
 
-@app.get("/api/items/{item_id}")
+@app.get('/api/items/{item_id}')
 async def get_item(item_id: int):
-    raise HTTPException(status_code=501, detail="/api/items/{item_id} is not implemented yet")
+    raise HTTPException(status_code=501, detail='/api/items/{item_id} is not implemented yet')
 
 
 DEFAULT_CREATE_ITEM_BODY = Body(...)
 
 
-@app.post("/api/items")
+@app.post('/api/items')
 async def create_item(payload: dict = DEFAULT_CREATE_ITEM_BODY):
-    raise HTTPException(status_code=501, detail="/api/items POST is not implemented yet")
+    raise HTTPException(status_code=501, detail='/api/items POST is not implemented yet')
 
 
 # --- Celery helper endpoints (optional) ---
 async def _enqueue_celery_ping(request: Request):
     try:
-        rid = getattr(request.state, "request_id", None) or request.headers.get("x-request-id")
+        rid = getattr(request.state, 'request_id', None) or request.headers.get('x-request-id')
         res = tasks.ping.delay(request_id=(str(rid) if rid else None))
-        return {"task_id": res.id}
+        return {'task_id': res.id}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"enqueue_failed: {e}") from e
+        raise HTTPException(status_code=500, detail=f'enqueue_failed: {e}') from e
 
 
-@app.post("/api/celery/ping")
+@app.post('/api/celery/ping')
 async def celery_ping_root(request: Request):
     return await _enqueue_celery_ping(request)
 
@@ -314,16 +334,16 @@ async def _read_celery_result(task_id: str):
     try:
         ar = AsyncResult(task_id, app=tasks.app)
         return {
-            "task_id": task_id,
-            "ready": ar.ready(),
-            "successful": ar.successful() if ar.ready() else False,
-            "state": ar.state,
-            "result": (ar.result if ar.ready() else None),
+            'task_id': task_id,
+            'ready': ar.ready(),
+            'successful': ar.successful() if ar.ready() else False,
+            'state': ar.state,
+            'result': (ar.result if ar.ready() else None),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"result_failed: {e}") from e
+        raise HTTPException(status_code=500, detail=f'result_failed: {e}') from e
 
 
-@app.get("/api/celery/result/{task_id}")
+@app.get('/api/celery/result/{task_id}')
 async def celery_result_root(task_id: str):
     return await _read_celery_result(task_id)

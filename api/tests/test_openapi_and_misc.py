@@ -11,62 +11,62 @@ def _client() -> TestClient:
 def test_openapi_includes_security_schemes():
     # Ensure our custom OpenAPI generator adds required security schemes
     schema = app.openapi()
-    comps = schema.get("components", {})
-    sec = comps.get("securitySchemes", {})
-    assert "SessionCookie" in sec
-    assert "CsrfToken" in sec
-    assert sec["SessionCookie"].get("in") == "cookie"
-    assert sec["CsrfToken"].get("in") == "header"
+    comps = schema.get('components', {})
+    sec = comps.get('securitySchemes', {})
+    assert 'SessionCookie' in sec
+    assert 'CsrfToken' in sec
+    assert sec['SessionCookie'].get('in') == 'cookie'
+    assert sec['CsrfToken'].get('in') == 'header'
 
 
 def test_flags_endpoint_returns_dict():
     c = _client()
-    r = c.get("/api/flags")
+    r = c.get('/api/flags')
     assert r.status_code == 200
     j = r.json()
     assert isinstance(j, dict)
-    assert "flags" in j
+    assert 'flags' in j
 
 
 def test_metrics_endpoint_exposes_prometheus_text():
     c = _client()
-    r = c.get("/api/metrics")
+    r = c.get('/api/metrics')
     assert r.status_code == 200
     # Play nice with content-type variations from FastAPI/Starlette
-    ct = r.headers.get("content-type", "")
-    assert ct.startswith("text/plain")
+    ct = r.headers.get('content-type', '')
+    assert ct.startswith('text/plain')
     body = r.text
-    assert "# TYPE api_requests_total counter" in body
-    assert "api_uptime_seconds" in body
+    assert '# TYPE api_requests_total counter' in body
+    assert 'api_uptime_seconds' in body
 
 
 def test_privacy_endpoints_require_tenant_header_and_succeed():
     c = _client()
     # Missing header should fail
-    r_missing = c.post("/api/privacy/export")
+    r_missing = c.post('/api/privacy/export')
     assert r_missing.status_code == 400
-    assert r_missing.json().get("detail") == "tenant_required"
+    assert r_missing.json().get('detail') == 'tenant_required'
 
     # With header, operations should be accepted
-    hdr = {"X-Tenant-Id": "t-123"}
-    r_export = c.post("/api/privacy/export", headers=hdr)
+    hdr = {'X-Tenant-Id': 't-123'}
+    r_export = c.post('/api/privacy/export', headers=hdr)
     assert r_export.status_code == 200
     j_export = r_export.json()
-    assert j_export.get("accepted") is True
-    assert j_export.get("operation") == "export"
-    assert j_export.get("tenant_id") == "t-123"
+    assert j_export.get('accepted') is True
+    assert j_export.get('operation') == 'export'
+    assert j_export.get('tenant_id') == 't-123'
 
-    r_delete = c.post("/api/privacy/delete", headers=hdr)
+    r_delete = c.post('/api/privacy/delete', headers=hdr)
     assert r_delete.status_code == 200
     j_delete = r_delete.json()
-    assert j_delete.get("accepted") is True
-    assert j_delete.get("operation") == "delete"
-    assert j_delete.get("tenant_id") == "t-123"
+    assert j_delete.get('accepted') is True
+    assert j_delete.get('operation') == 'delete'
+    assert j_delete.get('tenant_id') == 't-123'
 
 
 def test_api_openapi_alias_exists_and_is_json():
     c = _client()
-    r = c.get("/api/openapi.json")
+    r = c.get('/api/openapi.json')
     assert r.status_code == 200
     assert isinstance(r.json(), dict)
-    assert "openapi" in r.json() or "paths" in r.json()
+    assert 'openapi' in r.json() or 'paths' in r.json()

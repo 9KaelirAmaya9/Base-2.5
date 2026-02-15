@@ -2,6 +2,7 @@
 pytest for info/query script (digital_ocean/scripts/python/info.py)
 Validates listing of namespaces, domains, and resource metadata.
 """
+
 import os
 from unittest import mock
 
@@ -15,28 +16,35 @@ def test_info_lists(monkeypatch):
     class MockClient:
         def __init__(self, token=None):
             pass
+
         class projects:
             @staticmethod
             def list():
                 return {"projects": [{"name": "proj1"}, {"name": "proj2"}]}
+
         class domains:
             @staticmethod
             def list():
                 return {"domains": [{"name": "domain1.com"}, {"name": "domain2.com"}]}
+
         class droplets:
             @staticmethod
             def list():
                 return {"droplets": [{"name": "droplet1"}]}
+
         class apps:
             @staticmethod
             def list():
                 return {"apps": [{"spec": {"name": "app1"}}]}
+
         class volumes:
             @staticmethod
             def list():
                 return {"volumes": [{"name": "vol1"}]}
+
     monkeypatch.setattr("digital_ocean.scripts.python.info.Client", MockClient)
     import digital_ocean.scripts.python.info as info
+
     client = info.get_client()
     assert info.list_namespaces(client) == ["proj1", "proj2"]
     assert info.list_domains(client) == ["domain1.com", "domain2.com"]
@@ -45,10 +53,12 @@ def test_info_lists(monkeypatch):
     assert resources["apps"] == ["app1"]
     assert resources["volumes"] == ["vol1"]
 
+
 # Error handling test
 @mock.patch.dict(os.environ, {})
 def test_info_missing_env():
     import importlib
+
     info = importlib.import_module("digital_ocean.scripts.python.info")
     with pytest.raises(SystemExit):
         info.validate_env()

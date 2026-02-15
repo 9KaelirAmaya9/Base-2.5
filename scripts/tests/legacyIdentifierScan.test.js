@@ -15,7 +15,11 @@ test('scanLegacyIdentifiers finds matches and ignores excluded paths', () => {
   fs.writeFileSync(path.join(root, 'docs', 'readme.md'), 'Hello legacytoken world\n', 'utf8');
 
   fs.mkdirSync(path.join(root, 'node_modules'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'node_modules', 'ignored.txt'), 'legacytoken should be ignored\n', 'utf8');
+  fs.writeFileSync(
+    path.join(root, 'node_modules', 'ignored.txt'),
+    'legacytoken should be ignored\n',
+    'utf8'
+  );
 
   const res = scanLegacyIdentifiers({ rootDir: root, tokens: ['legacytoken'] });
 

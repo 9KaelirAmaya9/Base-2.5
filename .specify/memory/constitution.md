@@ -1,17 +1,17 @@
 # Project Constitution
 
-This document defines the **governing principles and development guidelines** for this project.  
+This document defines the **governing principles and development guidelines** for this project.
 All contributions (human or AI) MUST comply.
 
 ---
 
 ## 0) How we build here (Spec-Driven Development)
 
-1. **Constitution → Spec → Plan → Tasks → Code**  
-   - *Constitution*: immutable principles (this file).  
-   - *Spec*: user-facing outcomes, scenarios, acceptance, constraints (no implementation detail).  
-   - *Plan*: technical approach, architecture, tradeoffs, interfaces.  
-   - *Tasks*: small, verifiable steps mapping to tests and deliverables.  
+1. **Constitution → Spec → Plan → Tasks → Code**
+   - *Constitution*: immutable principles (this file).
+   - *Spec*: user-facing outcomes, scenarios, acceptance, constraints (no implementation detail).
+   - *Plan*: technical approach, architecture, tradeoffs, interfaces.
+   - *Tasks*: small, verifiable steps mapping to tests and deliverables.
 2. **Separation of concerns across docs is mandatory**: keep the spec high-level and user-oriented; keep implementation details in the plan; keep step-by-step execution in tasks.
 
 ---
@@ -19,8 +19,8 @@ All contributions (human or AI) MUST comply.
 ## 1) Non‑negotiable engineering standards
 
 ### I. Test-First Development (TDD by default)
-- All changes MUST be developed with tests written first (or alongside, when refactoring).  
-- Nothing merges without passing tests and an explicit review of coverage impact.  
+- All changes MUST be developed with tests written first (or alongside, when refactoring).
+- Nothing merges without passing tests and an explicit review of coverage impact.
 
 ### II. Environment Parity (Dev mimics Production)
 - Development MUST run the same topology as production: same services, networking, and trust boundaries.
@@ -62,8 +62,8 @@ All contributions (human or AI) MUST comply.
 - FastAPI is the external/internal API surface for the project.
 - FastAPI schemas MUST **faithfully mirror** Django model semantics (fields, validation, constraints, relationships) and expose them via a stable, versioned API contract.
 - Any change to a Django model that impacts the API MUST:
-  1) update the API schema/contract  
-  2) include backward-compat strategy (versioning or migration)  
+  1) update the API schema/contract
+  2) include backward-compat strategy (versioning or migration)
   3) update tests and documentation
 
 ### III. Feature build order (Django -> FastAPI -> React)
@@ -120,13 +120,13 @@ All contributions (human or AI) MUST comply.
 
 - This constitution supersedes all other practices.
 - Amendments require:
-  1) rationale  
-  2) scope/impact  
-  3) migration plan (if behavior changes)  
+  1) rationale
+  2) scope/impact
+  3) migration plan (if behavior changes)
   4) version bump + date
 
 ---
 
-**Version**: 2.1.1  
-**Ratified**: 2025-12-24  
+**Version**: 2.1.1
+**Ratified**: 2025-12-24
 **Last Amended**: 2026-02-09

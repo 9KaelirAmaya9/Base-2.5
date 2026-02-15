@@ -19,7 +19,11 @@ describe('GlassButton variants', () => {
   });
 
   test('renders ghost variant and disabled state', () => {
-    render(<GlassButton variant="ghost" disabled>Ghost</GlassButton>);
+    render(
+      <GlassButton variant="ghost" disabled>
+        Ghost
+      </GlassButton>
+    );
     const btn = screen.getByRole('button', { name: 'Ghost' });
     expect(btn.className).toContain('bg-transparent');
     expect(btn).toBeDisabled();

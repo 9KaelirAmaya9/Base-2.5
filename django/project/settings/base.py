@@ -3,9 +3,7 @@ import os
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "change_me")
 DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
 ALLOWED_HOSTS = [
-    h.strip()
-    for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
-    if h.strip()
+    h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()
 ]
 if os.environ.get("DJANGO_ALLOW_ALL_HOSTS", "false").lower() == "true":
     ALLOWED_HOSTS = ["*"]
@@ -116,9 +114,7 @@ STATIC_ROOT = os.path.join("/app", "static")
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", os.environ.get("EMAIL_USER", ""))
-EMAIL_HOST_PASSWORD = os.environ.get(
-    "EMAIL_HOST_PASSWORD", os.environ.get("EMAIL_PASSWORD", "")
-)
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", os.environ.get("EMAIL_PASSWORD", ""))
 
 _email_use_tls = os.environ.get("EMAIL_USE_TLS", "true").lower()
 EMAIL_USE_TLS = _email_use_tls in ("1", "true", "yes", "on")

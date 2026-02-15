@@ -13,6 +13,7 @@ from common.models import (
 
 AuthUser = get_user_model()
 
+
 class UserProfile(UUIDMixin, TimestampedModel):
     user = models.OneToOneField(AuthUser, on_delete=models.CASCADE, related_name="profile")
     display_name = models.CharField(max_length=150, blank=True, default="")
@@ -98,7 +99,7 @@ class ApiToken(UUIDMixin, TimestampedModel):
     class Meta:
         verbose_name = _("API Token")
         verbose_name_plural = _("API Tokens")
-        indexes = [models.Index(fields=["user", "is_active"]) ]
+        indexes = [models.Index(fields=["user", "is_active"])]
 
 
 class OAuthAccount(UUIDMixin, TimestampedModel):

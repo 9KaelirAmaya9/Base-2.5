@@ -8,6 +8,7 @@ PYTHON="${PYTHON:-python}"
 DRY_RUN=false
 CREATE_IF_MISSING=false
 ALL_TESTS=false
+LOCAL_TESTS=false
 ENV_PATH=""
 LOGS_DIR=""
 TIMESTAMPED=false
@@ -19,7 +20,8 @@ Usage: ./digital_ocean/scripts/bash/test.sh [options]
 Options:
   --dry-run           Print actions without making changes
   --create-if-missing Create droplet if update-only target is missing
-  --all-tests         Run full post-deploy verification suite
+  --all-tests         Enable extended remote verification (celery check)
+  --local-tests       Run local test suite after deploy
   --env-path <path>   Path to .env (sets ENV_PATH for orchestrate_deploy.py)
   --logs-dir <path>   Artifact directory (sets DEPLOY_ARTIFACT_DIR)
   --timestamped       Append timestamp to logs dir
@@ -43,6 +45,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --all-tests)
       ALL_TESTS=true
+      shift
+      ;;
+    --local-tests)
+      LOCAL_TESTS=true
       shift
       ;;
     --env-path)
@@ -73,6 +79,8 @@ if [[ -n "$ENV_PATH" ]]; then
   export ENV_PATH="$ENV_PATH"
 fi
 
+export DEPLOY_TEST_RUNNER="bash"
+
 if [[ -n "$LOGS_DIR" ]]; then
   if $TIMESTAMPED; then
     stamp=$(date -u +%Y%m%d_%H%M%S)
@@ -96,6 +104,9 @@ if $CREATE_IF_MISSING; then
 fi
 if $ALL_TESTS; then
   args+=("--all-tests")
+fi
+if $LOCAL_TESTS; then
+  args+=("--local-tests")
 fi
 
 script_path="$REPO_ROOT/digital_ocean/scripts/python/orchestrate_deploy.py"

@@ -4,10 +4,24 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
-const { fileExists, readText, parseEnv, applyToTemplate, backupFile, expandEnvContent, findUnresolvedPlaceholders } = require('./lib/envFile');
+const {
+  fileExists,
+  readText,
+  parseEnv,
+  applyToTemplate,
+  backupFile,
+  expandEnvContent,
+  findUnresolvedPlaceholders,
+} = require('./lib/envFile');
 const { detectPublicIpv4 } = require('./lib/ipDetect');
 const { redactEnvMap } = require('./lib/redact');
-const { validateEnv, requiredCategories, normalizeEnv, normalizeDeployMode, CATEGORY } = require('./envRules');
+const {
+  validateEnv,
+  requiredCategories,
+  normalizeEnv,
+  normalizeDeployMode,
+  CATEGORY,
+} = require('./envRules');
 const { isPlaceholder } = require('./lib/placeholders');
 function printHelp() {
   console.log('Usage: npm run setup:complete -- [--dry-run] [--no-print]');
@@ -103,11 +117,17 @@ async function ensureAllowlists({ envMap, ipDetector, plannedChanges }) {
       const res = await ipDetector();
       ip = res && res.ip ? String(res.ip).trim() : '';
     } catch (e) {
-      plannedChanges.push({ key: tpKey, action: `ip-detect-failed:${e && e.message ? e.message : String(e)}` });
+      plannedChanges.push({
+        key: tpKey,
+        action: `ip-detect-failed:${e && e.message ? e.message : String(e)}`,
+      });
       return;
     }
     if (!ip) {
-      plannedChanges.push({ key: tpKey, action: 'ip-detect-failed:empty-result' });
+      plannedChanges.push({
+        key: tpKey,
+        action: 'ip-detect-failed:empty-result',
+      });
       return;
     }
     envMap[tpKey] = ip;
@@ -126,8 +146,14 @@ async function ensureBasicAuth({ envMap, hashPassword, randomBytes, plannedChang
   const pwKey = 'TRAEFIK_ACTUAL_PW';
   const flowerPwKey = 'FLOWER_ACTUAL_PW';
 
-  const applyUserName = String(envMap.APPLY_USER_NAME_DEFAULTS ?? '').trim().toLowerCase() === 'true';
-  const applyUserPassword = String(envMap.APPLY_USER_PASSWORD_DEFAULTS ?? '').trim().toLowerCase() === 'true';
+  const applyUserName =
+    String(envMap.APPLY_USER_NAME_DEFAULTS ?? '')
+      .trim()
+      .toLowerCase() === 'true';
+  const applyUserPassword =
+    String(envMap.APPLY_USER_PASSWORD_DEFAULTS ?? '')
+      .trim()
+      .toLowerCase() === 'true';
 
   const userName = String(envMap.USER_MAIN_NAME ?? '').trim();
   const userPassword = String(envMap.USER_MAIN_PASSWORD ?? '').trim();
@@ -184,18 +210,28 @@ async function ensureBasicAuth({ envMap, hashPassword, randomBytes, plannedChang
 
     if (isPlaceholder(envMap[flowerPwKey], flowerPwKey)) {
       envMap[flowerPwKey] = flowerPassword;
-      plannedChanges.push({ key: flowerPwKey, action: 'store-generated-password' });
+      plannedChanges.push({
+        key: flowerPwKey,
+        action: 'store-generated-password',
+      });
     }
   }
 }
 
 function applySafeDevDefaults({ envMap, plannedChanges }) {
   const env = normalizeEnv(envMap.ENV);
-  const optedIn = String(envMap.APPLY_DEV_DEFAULTS ?? '').trim().toLowerCase() === 'true';
+  const optedIn =
+    String(envMap.APPLY_DEV_DEFAULTS ?? '')
+      .trim()
+      .toLowerCase() === 'true';
   if (env !== 'development' || !optedIn) return;
 
   // Keep this list intentionally small and explicitly safe.
-  if (String(envMap.DJANGO_DEBUG ?? '').trim().toLowerCase() !== 'true') {
+  if (
+    String(envMap.DJANGO_DEBUG ?? '')
+      .trim()
+      .toLowerCase() !== 'true'
+  ) {
     envMap.DJANGO_DEBUG = 'true';
     plannedChanges.push({ key: 'DJANGO_DEBUG', action: 'apply-dev-default' });
   }
@@ -268,26 +304,43 @@ async function runCompleteSetup(options = {}) {
   const validation = validateEnv(envMap);
   const report = formatValidationReport(validation);
 
-  const required = requiredCategories({ env: envMap.ENV, deployMode: envMap.DEPLOY_MODE });
-  let requiredIssues = Object.entries(report).filter(([category, items]) => required.has(category) && items.length > 0);
+  const required = requiredCategories({
+    env: envMap.ENV,
+    deployMode: envMap.DEPLOY_MODE,
+  });
+  let requiredIssues = Object.entries(report).filter(
+    ([category, items]) => required.has(category) && items.length > 0
+  );
 
   const gitKeys = ['GIT_REPO', 'GIT_REPO_BRANCH'];
   const gitMissing = [];
   for (const key of gitKeys) {
     const value = envMap[key];
     if (!value || String(value).trim() === '' || isPlaceholder(value, key)) {
-      gitMissing.push({ key, message: `${key} is required before setup:complete`, required: true });
+      gitMissing.push({
+        key,
+        message: `${key} is required before setup:complete`,
+        required: true,
+      });
     }
   }
 
   const deployMode = normalizeDeployMode(envMap.DEPLOY_MODE);
-  const doKeys = ['DIGITAL_OCEAN_API_TOKEN', 'DIGITAL_OCEAN_SSH_KEY_ID', 'DIGITAL_OCEAN_API_SSH_KEYS'];
+  const doKeys = [
+    'DIGITAL_OCEAN_API_TOKEN',
+    'DIGITAL_OCEAN_SSH_KEY_ID',
+    'DIGITAL_OCEAN_API_SSH_KEYS',
+  ];
   const doMissing = [];
   if (deployMode === 'digitalocean') {
     for (const key of doKeys) {
       const value = envMap[key];
       if (!value || String(value).trim() === '' || isPlaceholder(value, key)) {
-        doMissing.push({ key, message: `${key} is required for DigitalOcean deploys`, required: true });
+        doMissing.push({
+          key,
+          message: `${key} is required for DigitalOcean deploys`,
+          required: true,
+        });
       }
     }
   }
@@ -343,7 +396,11 @@ async function runCompleteSetup(options = {}) {
     for (const item of unresolved) {
       stdout(`- ${item.key}: ${item.placeholders.join(', ')}`);
     }
-    return { changed: false, plannedChanges, validation: { report, exitCode: 2 } };
+    return {
+      changed: false,
+      plannedChanges,
+      validation: { report, exitCode: 2 },
+    };
   }
 
   const envFinalFile = envFinalPath(rootDir);

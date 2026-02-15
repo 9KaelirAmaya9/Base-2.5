@@ -17,9 +17,25 @@ type Story = StoryObj<typeof GlassInput>;
 
 function InputStory(args: Partial<React.ComponentProps<typeof GlassInput>>) {
   const [v, setV] = useState('');
-  return <GlassInput id="email" label={args.label ?? 'Email'} placeholder={args.placeholder} error={args.error} value={v} onChange={(e) => setV(e.target.value)} />;
+  return (
+    <GlassInput
+      id="email"
+      label={args.label ?? 'Email'}
+      placeholder={args.placeholder}
+      error={args.error}
+      value={v}
+      onChange={(e) => setV(e.target.value)}
+    />
+  );
 }
 
-export const Basic: Story = { args: { label: 'Email' }, render: (args) => <InputStory {...args} /> };
+export const Basic: Story = {
+  args: { label: 'Email' },
+  render: (args) => <InputStory {...args} />,
+};
 
-export const ErrorState: Story = { render: () => <GlassInput id="email" label="Email" value="" onChange={() => {}} error="Required" /> };
+export const ErrorState: Story = {
+  render: () => (
+    <GlassInput id="email" label="Email" value="" onChange={() => {}} error="Required" />
+  ),
+};

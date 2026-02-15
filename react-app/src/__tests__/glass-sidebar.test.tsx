@@ -19,7 +19,7 @@ describe('GlassSidebar', () => {
 
   test('mobile drawer: close handlers are safe when onClose is missing', async () => {
     const originalMatchMedia = window.matchMedia;
-    window.matchMedia = ((query) =>
+    window.matchMedia = (query) =>
       ({
         matches: query.includes('max-width') ? true : false,
         media: query,
@@ -29,7 +29,7 @@ describe('GlassSidebar', () => {
         addEventListener: () => {},
         removeEventListener: () => {},
         dispatchEvent: () => false,
-      }) as unknown as MediaQueryList);
+      }) as unknown as MediaQueryList;
 
     const user = userEvent.setup();
     render(<GlassSidebar isOpen />);
@@ -43,7 +43,7 @@ describe('GlassSidebar', () => {
 
   test('desktop mode: matchMedia present but non-mobile does not render drawer overlay', () => {
     const originalMatchMedia = window.matchMedia;
-    window.matchMedia = ((query) =>
+    window.matchMedia = (query) =>
       ({
         matches: false,
         media: query,
@@ -53,7 +53,7 @@ describe('GlassSidebar', () => {
         addEventListener: () => {},
         removeEventListener: () => {},
         dispatchEvent: () => false,
-      }) as unknown as MediaQueryList);
+      }) as unknown as MediaQueryList;
 
     render(<GlassSidebar isOpen />);
     expect(screen.queryByTestId('drawer-overlay')).not.toBeInTheDocument();
@@ -64,7 +64,7 @@ describe('GlassSidebar', () => {
 
   test('mobile drawer: when closed, nothing is rendered and effect bails early', () => {
     const originalMatchMedia = window.matchMedia;
-    window.matchMedia = ((query) =>
+    window.matchMedia = (query) =>
       ({
         matches: query.includes('max-width') ? true : false,
         media: query,
@@ -74,7 +74,7 @@ describe('GlassSidebar', () => {
         addEventListener: () => {},
         removeEventListener: () => {},
         dispatchEvent: () => false,
-      }) as unknown as MediaQueryList);
+      }) as unknown as MediaQueryList;
 
     render(<GlassSidebar isOpen={false} />);
     expect(screen.queryByTestId('drawer-overlay')).not.toBeInTheDocument();
@@ -89,7 +89,7 @@ describe('GlassSidebar', () => {
       'activeElement'
     );
 
-    window.matchMedia = ((query) =>
+    window.matchMedia = (query) =>
       ({
         matches: query.includes('max-width') ? true : false,
         media: query,
@@ -99,7 +99,7 @@ describe('GlassSidebar', () => {
         addEventListener: () => {},
         removeEventListener: () => {},
         dispatchEvent: () => false,
-      }) as unknown as MediaQueryList);
+      }) as unknown as MediaQueryList;
 
     // Force restoreFocusRef.current to point at a truthy object with no usable focus() method.
     // We deliberately avoid @testing-library/user-event in this test to prevent it relying on activeElement.
@@ -138,7 +138,7 @@ describe('GlassSidebar', () => {
       'activeElement'
     );
 
-    window.matchMedia = ((query) =>
+    window.matchMedia = (query) =>
       ({
         matches: query.includes('max-width') ? true : false,
         media: query,
@@ -148,7 +148,7 @@ describe('GlassSidebar', () => {
         addEventListener: () => {},
         removeEventListener: () => {},
         dispatchEvent: () => false,
-      }) as unknown as MediaQueryList);
+      }) as unknown as MediaQueryList;
 
     Object.defineProperty(Document.prototype, 'activeElement', {
       configurable: true,
@@ -170,7 +170,7 @@ describe('GlassSidebar', () => {
 
   test('mobile drawer: Escape closes via onClose', () => {
     const originalMatchMedia = window.matchMedia;
-    window.matchMedia = ((query) =>
+    window.matchMedia = (query) =>
       ({
         matches: query.includes('max-width') ? true : false,
         media: query,
@@ -180,7 +180,7 @@ describe('GlassSidebar', () => {
         addEventListener: () => {},
         removeEventListener: () => {},
         dispatchEvent: () => false,
-      }) as unknown as MediaQueryList);
+      }) as unknown as MediaQueryList;
 
     const onClose = jest.fn();
     const prevOverflow = document.body.style.overflow;

@@ -1,15 +1,16 @@
 #!/usr/bin/env node
-"use strict";
+'use strict';
 
-const fs = require("fs");
-const path = require("path");
+const fs = require('fs');
+const path = require('path');
 
 const args = process.argv.slice(2);
-const specIndex = args.indexOf("--spec");
-const verifyFiles = args.includes("--verify-files");
-const specPath = specIndex >= 0 && args[specIndex + 1]
-  ? args[specIndex + 1]
-  : "specs/004-scripting-update/spec.md";
+const specIndex = args.indexOf('--spec');
+const verifyFiles = args.includes('--verify-files');
+const specPath =
+  specIndex >= 0 && args[specIndex + 1]
+    ? args[specIndex + 1]
+    : 'specs/004-scripting-update/spec.md';
 
 function fail(message) {
   console.error(`ERROR: ${message}`);
@@ -17,19 +18,19 @@ function fail(message) {
 }
 
 function parseTable(lines) {
-  const headerIndex = lines.findIndex((line) => line.startsWith("| Command name |"));
+  const headerIndex = lines.findIndex((line) => line.startsWith('| Command name |'));
   if (headerIndex === -1) {
-    fail("Command matrix header not found.");
+    fail('Command matrix header not found.');
   }
 
   const rows = [];
   for (let i = headerIndex + 2; i < lines.length; i += 1) {
     const line = lines[i];
-    if (!line.startsWith("|")) {
+    if (!line.startsWith('|')) {
       break;
     }
     const columns = line
-      .split("|")
+      .split('|')
       .slice(1, -1)
       .map((col) => col.trim());
 
@@ -44,7 +45,7 @@ function parseTable(lines) {
       shared: columns[3],
       flags: columns[4],
       exits: columns[5],
-      notes: columns[6]
+      notes: columns[6],
     });
   }
 
@@ -52,7 +53,7 @@ function parseTable(lines) {
 }
 
 function hasPlaceholder(value) {
-  return /populate during audit/i.test(value || "");
+  return /populate during audit/i.test(value || '');
 }
 
 const absoluteSpecPath = path.resolve(process.cwd(), specPath);
@@ -60,18 +61,18 @@ if (!fs.existsSync(absoluteSpecPath)) {
   fail(`Spec file not found: ${absoluteSpecPath}`);
 }
 
-const content = fs.readFileSync(absoluteSpecPath, "utf8");
+const content = fs.readFileSync(absoluteSpecPath, 'utf8');
 const lines = content.split(/\r?\n/);
 const rows = parseTable(lines);
 
 if (rows.length === 0) {
-  fail("No command matrix rows found.");
+  fail('No command matrix rows found.');
 }
 
 const errors = [];
 for (const row of rows) {
   if (!row.command) {
-    errors.push("Missing command name in matrix row.");
+    errors.push('Missing command name in matrix row.');
     continue;
   }
   if (!row.bash || hasPlaceholder(row.bash)) {
@@ -82,8 +83,8 @@ for (const row of rows) {
   }
 
   if (verifyFiles) {
-    const bashPath = row.bash && row.bash !== "N" ? row.bash : "";
-    const psPath = row.powershell && row.powershell !== "N" ? row.powershell : "";
+    const bashPath = row.bash && row.bash !== 'N' ? row.bash : '';
+    const psPath = row.powershell && row.powershell !== 'N' ? row.powershell : '';
     if (bashPath) {
       const fullBashPath = path.resolve(process.cwd(), bashPath);
       if (!fs.existsSync(fullBashPath)) {
@@ -104,4 +105,4 @@ if (errors.length > 0) {
   process.exit(1);
 }
 
-console.log("Command matrix validation passed.");
+console.log('Command matrix validation passed.');

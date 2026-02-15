@@ -9,6 +9,7 @@ This feature reuses and extends existing Django models. Django remains the canon
 **Canonical store**: Django auth user model (`django.contrib.auth.get_user_model()`).
 
 **Key fields (typical Django fields)**:
+
 - `id` (integer primary key)
 - `username` (string; may be optional depending on configuration)
 - `email` (string)
@@ -17,10 +18,12 @@ This feature reuses and extends existing Django models. Django remains the canon
 - `date_joined`, `last_login`
 
 **Validation rules**:
+
 - Password is stored using a slow hash.
 - Authentication errors MUST not reveal whether the account exists.
 
 **State transitions**:
+
 - `is_active`: `true -> false` (account disabled)
 
 ---
@@ -30,6 +33,7 @@ This feature reuses and extends existing Django models. Django remains the canon
 **Canonical model**: `django/users/models.py::UserProfile`
 
 **Fields**:
+
 - `uuid` (UUID)
 - `created`, `updated`
 - `user` (1:1 to User)
@@ -38,6 +42,7 @@ This feature reuses and extends existing Django models. Django remains the canon
 - `bio` (text, optional)
 
 **Validation rules**:
+
 - Only “allowed profile fields” are user-editable.
 
 ---
@@ -47,6 +52,7 @@ This feature reuses and extends existing Django models. Django remains the canon
 **Canonical model**: `django/users/models.py::EmailAddress`
 
 **Fields**:
+
 - `email` (from `common.models.Email` mixin)
 - `created`, `updated`
 - `user` (N:1 to User)
@@ -56,10 +62,12 @@ This feature reuses and extends existing Django models. Django remains the canon
 - `verified_at` (datetime)
 
 **Validation rules**:
+
 - A user SHOULD have at most one `is_primary=true` email.
 - `verification_token` MUST be treated as a secret (not logged).
 
 **State transitions**:
+
 - `is_verified`: `false -> true`
 
 ---
@@ -69,6 +77,7 @@ This feature reuses and extends existing Django models. Django remains the canon
 **Canonical model**: `django/users/models.py::OAuthAccount`
 
 **Fields**:
+
 - `uuid`, `created`, `updated`
 - `user` (N:1 to User)
 - `provider` (string, e.g. `google`)
@@ -77,9 +86,11 @@ This feature reuses and extends existing Django models. Django remains the canon
 - `expires_at` (datetime)
 
 **Constraints**:
+
 - Unique constraint: `(provider, provider_user_id)`.
 
 **State transitions**:
+
 - Link: create OAuthAccount
 - Unlink: delete/disable OAuthAccount (policy decision; must be audited)
 
@@ -90,6 +101,7 @@ This feature reuses and extends existing Django models. Django remains the canon
 **Canonical model**: `django/users/models.py::AuditEvent`
 
 **Fields**:
+
 - `created`, `updated`
 - `actor_user` (nullable N:1 to User)
 - `action` (string)
@@ -99,9 +111,11 @@ This feature reuses and extends existing Django models. Django remains the canon
 - `metadata` (JSON)
 
 **Validation rules**:
+
 - MUST avoid logging secrets in `metadata`.
 
 **Typical actions**:
+
 - `auth.signup`
 - `auth.login.success`
 - `auth.login.failure`
@@ -116,9 +130,11 @@ This feature reuses and extends existing Django models. Django remains the canon
 **Canonical approach**: cookie-based auth with server-side or signed-token-backed session semantics.
 
 **Implementation mapping**:
+
 - If using Django sessions: `django_session` table becomes canonical for session storage.
 - If using signed session cookies: session state is contained in the HttpOnly cookie, with CSRF token state stored separately.
 
 **Validation rules**:
+
 - Cookies MUST be `HttpOnly` (credential cookie), `Secure` in staging/prod-like, and `SameSite` appropriately set.
 - State-changing requests MUST require CSRF protections.

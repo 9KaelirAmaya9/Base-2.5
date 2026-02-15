@@ -16,13 +16,7 @@ test('parseEnv parses simple KEY=value pairs', () => {
 });
 
 test('applyToTemplate preserves comments/order and appends missing keys', () => {
-  const template = [
-    '# Header comment',
-    'A=old',
-    '',
-    '# Section',
-    'B=keep',
-  ].join('\n');
+  const template = ['# Header comment', 'A=old', '', '# Section', 'B=keep'].join('\n');
 
   const out = applyToTemplate(template, { A: 'new', Z: 'zzz' });
 

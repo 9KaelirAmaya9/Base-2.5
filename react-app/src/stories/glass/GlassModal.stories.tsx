@@ -16,11 +16,15 @@ function ModalStory() {
   const [open, setOpen] = useState(false);
   return (
     <div>
-      <GlassButton variant="primary" onClick={() => setOpen(true)}>Open</GlassButton>
+      <GlassButton variant="primary" onClick={() => setOpen(true)}>
+        Open
+      </GlassButton>
       <GlassModal open={open} onClose={() => setOpen(false)}>
         <h3>Modal Title</h3>
         <p>Content</p>
-        <GlassButton variant="secondary" onClick={() => setOpen(false)}>Close</GlassButton>
+        <GlassButton variant="secondary" onClick={() => setOpen(false)}>
+          Close
+        </GlassButton>
       </GlassModal>
     </div>
   );

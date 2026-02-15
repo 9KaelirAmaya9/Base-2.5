@@ -26,7 +26,10 @@ function parseArgs(args) {
     } else if (arg === '--roots') {
       const next = args[i + 1];
       if (next) {
-        out.roots = next.split(',').map((value) => value.trim()).filter(Boolean);
+        out.roots = next
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean);
         i += 1;
       }
     } else if (arg === '--allowlist') {
@@ -38,7 +41,10 @@ function parseArgs(args) {
     } else if (arg === '--allowlist-contexts') {
       const next = args[i + 1];
       if (next) {
-        out.allowlistContexts = next.split(',').map((value) => value.trim()).filter(Boolean);
+        out.allowlistContexts = next
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean);
         i += 1;
       }
     }
@@ -89,15 +95,7 @@ function isAllowlisted(line, filePath, allowlistPatterns, allowlistContexts) {
 }
 
 function shouldSkipDir(name) {
-  return [
-    '.git',
-    'node_modules',
-    '.venv',
-    'venv',
-    'dist',
-    'build',
-    'coverage',
-  ].includes(name);
+  return ['.git', 'node_modules', '.venv', 'venv', 'dist', 'build', 'coverage'].includes(name);
 }
 
 function walk(dirPath, files, includeFixtures, fixtureRoot) {
@@ -229,7 +227,9 @@ for (const root of roots) {
 const violations = collectViolations(files, allowlistPatterns, allowlistContexts, repoRoot);
 if (violations.length > 0) {
   for (const violation of violations) {
-    console.log(`${violation.filePath}:${violation.lineNumber} | ${violation.type} | ${violation.line}`);
+    console.log(
+      `${violation.filePath}:${violation.lineNumber} | ${violation.type} | ${violation.line}`
+    );
   }
   process.exit(1);
 }

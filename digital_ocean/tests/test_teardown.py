@@ -31,6 +31,7 @@ def test_teardown_env_missing(monkeypatch):
         teardown.main()
     assert e.value.code == 1
 
+
 def test_teardown_droplet_not_found(monkeypatch):
     monkeypatch.setenv("DO_API_TOKEN", "dummy")
     monkeypatch.setenv("DO_APP_NAME", "app")
@@ -40,10 +41,11 @@ def test_teardown_droplet_not_found(monkeypatch):
         mock_client = MockClient.return_value
         mock_client.droplets.list.return_value = {"droplets": []}
         test_args = ["teardown.py"]
-        with mock.patch.object(sys, 'argv', test_args):
+        with mock.patch.object(sys, "argv", test_args):
             with pytest.raises(SystemExit) as e:
                 teardown.main()
             assert e.value.code == 2
+
 
 def test_teardown_dry_run(monkeypatch, capsys):
     monkeypatch.setenv("DO_API_TOKEN", "dummy")
@@ -54,12 +56,13 @@ def test_teardown_dry_run(monkeypatch, capsys):
         mock_client = MockClient.return_value
         mock_client.droplets.list.return_value = {"droplets": [{"id": 12345, "name": "app"}]}
         test_args = ["teardown.py", "--dry-run"]
-        with mock.patch.object(sys, 'argv', test_args):
+        with mock.patch.object(sys, "argv", test_args):
             with pytest.raises(SystemExit) as e:
                 teardown.main()
             assert e.value.code == 0
             out = capsys.readouterr().out
             assert "[DRY RUN]" in out
+
 
 def test_teardown_delete(monkeypatch, capsys):
     monkeypatch.setenv("DO_API_TOKEN", "dummy")
@@ -70,11 +73,12 @@ def test_teardown_delete(monkeypatch, capsys):
         mock_client = MockClient.return_value
         mock_client.droplets.list.return_value = {"droplets": [{"id": 12345, "name": "app"}]}
         test_args = ["teardown.py"]
-        with mock.patch.object(sys, 'argv', test_args):
+        with mock.patch.object(sys, "argv", test_args):
             teardown.main()
             out = capsys.readouterr().out
             assert "deleted" in out
             assert mock_client.droplets.delete.called
+
 
 def test_teardown_api_error(monkeypatch):
     monkeypatch.setenv("DO_API_TOKEN", "dummy")
@@ -84,7 +88,7 @@ def test_teardown_api_error(monkeypatch):
     with mock.patch("digital_ocean.scripts.python.teardown.Client") as MockClient:
         MockClient.return_value.droplets.list.side_effect = Exception("API fail")
         test_args = ["teardown.py"]
-        with mock.patch.object(sys, 'argv', test_args):
+        with mock.patch.object(sys, "argv", test_args):
             with pytest.raises(SystemExit) as e:
                 teardown.main()
             assert e.value.code == 3

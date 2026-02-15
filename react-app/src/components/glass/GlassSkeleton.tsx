@@ -12,7 +12,9 @@ export const GlassSkeleton: React.FC<Props> = ({ width, height, rounded, classNa
   return (
     <div
       data-testid="glass-skeleton"
-      className={['glass-skeleton', rounded ? 'glass-skeleton-rounded' : '', className].filter(Boolean).join(' ')}
+      className={['glass-skeleton', rounded ? 'glass-skeleton-rounded' : '', className]
+        .filter(Boolean)
+        .join(' ')}
       style={style}
       aria-hidden="true"
     />

@@ -9,7 +9,12 @@ export type ImageWithFallbackProps = {
 
 // Vector-first image component. Falls back to provided onErrorSrc if load fails.
 // Note: Prefer SVG/WebP assets per policy.
-const ImageWithFallback: React.FC<ImageWithFallbackProps> = ({ src, alt, className, onErrorSrc }) => {
+const ImageWithFallback: React.FC<ImageWithFallbackProps> = ({
+  src,
+  alt,
+  className,
+  onErrorSrc,
+}) => {
   const [currentSrc, setCurrentSrc] = React.useState(src);
   const handleError = () => {
     if (onErrorSrc && onErrorSrc !== currentSrc) {

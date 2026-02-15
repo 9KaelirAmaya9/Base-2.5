@@ -15,21 +15,21 @@ def get_flags() -> dict[str, bool]:
 
     flags: dict[str, bool] = {}
 
-    raw_list = os.getenv("FEATURE_FLAGS", "")
+    raw_list = os.getenv('FEATURE_FLAGS', '')
     if raw_list:
-        for part in raw_list.split(","):
-            name = (part or "").strip().lower()
+        for part in raw_list.split(','):
+            name = (part or '').strip().lower()
             if not name:
                 continue
             flags[name] = True
 
     for k, v in os.environ.items():
-        if not k.startswith("FLAG_"):
+        if not k.startswith('FLAG_'):
             continue
-        name = k[len("FLAG_") :].strip().lower()
+        name = k[len('FLAG_') :].strip().lower()
         if not name:
             continue
-        enabled = str(v or "").strip().lower() in {"1", "true", "yes", "on"}
+        enabled = str(v or '').strip().lower() in {'1', 'true', 'yes', 'on'}
         flags[name] = enabled
 
     return flags

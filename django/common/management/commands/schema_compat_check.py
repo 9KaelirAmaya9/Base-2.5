@@ -34,9 +34,7 @@ class Command(BaseCommand):
         try:
             conn.ensure_connection()
         except Exception as e:
-            raise CommandError(
-                f"db_connection_failed: {e.__class__.__name__}: {e}"
-            ) from e
+            raise CommandError(f"db_connection_failed: {e.__class__.__name__}: {e}") from e
 
     def _get_unapplied(self, conn) -> list[str]:
         try:
@@ -44,17 +42,13 @@ class Command(BaseCommand):
             plan = executor.migration_plan(executor.loader.graph.leaf_nodes())
             return [f"{m.app_label}.{m.name}" for (m, _backwards) in plan]
         except Exception as e:
-            raise CommandError(
-                f"migration_executor_failed: {e.__class__.__name__}: {e}"
-            ) from e
+            raise CommandError(f"migration_executor_failed: {e.__class__.__name__}: {e}") from e
 
     def _get_existing_tables(self, conn) -> set[str]:
         try:
             return set(conn.introspection.table_names())
         except Exception as e:
-            raise CommandError(
-                f"introspection_failed: {e.__class__.__name__}: {e}"
-            ) from e
+            raise CommandError(f"introspection_failed: {e.__class__.__name__}: {e}") from e
 
     def _missing_columns_for_model(self, conn, model) -> list[str]:
         table = model._meta.db_table

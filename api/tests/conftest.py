@@ -5,7 +5,7 @@ import sys
 
 
 # Ensure repository root is on sys.path for imports in tests
-_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
@@ -29,7 +29,7 @@ def pytest_sessionstart(session):
 
     if not exists:
         raise RuntimeError(
-            "Database is reachable but API tables are missing. "
-            "Schema ownership is Django; run `python manage.py migrate` "
-            "(using project.settings.production against Postgres) before running API integration tests."
+            'Database is reachable but API tables are missing. '
+            'Schema ownership is Django; run `python manage.py migrate` '
+            '(using project.settings.production against Postgres) before running API integration tests.'
         )

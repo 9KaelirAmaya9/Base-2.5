@@ -77,7 +77,9 @@ def delete_key(client, key_id=None, fingerprint=None, dry_run=False):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Manage DigitalOcean SSH keys using DO_API_TOKEN from .env")
+    parser = argparse.ArgumentParser(
+        description="Manage DigitalOcean SSH keys using DO_API_TOKEN from .env"
+    )
     parser.add_argument("--list", action="store_true", help="List SSH keys")
     parser.add_argument("--find", action="store_true", help="Find SSH keys by name")
     parser.add_argument("--add", action="store_true", help="Add an SSH key")
@@ -149,7 +151,9 @@ def main(argv=None):
             if confirm != "yes":
                 print("Aborted.")
                 return 0
-        resp = delete_key(client, key_id=args.id, fingerprint=args.fingerprint, dry_run=args.dry_run)
+        resp = delete_key(
+            client, key_id=args.id, fingerprint=args.fingerprint, dry_run=args.dry_run
+        )
         if args.json:
             print(json.dumps(resp, indent=2))
         else:

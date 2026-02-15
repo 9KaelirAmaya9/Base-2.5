@@ -5,7 +5,8 @@ export const ThemeToggle: React.FC = () => {
   const initialTheme = useMemo(() => {
     const cookieTheme = getThemeCookie();
     if (cookieTheme) return cookieTheme;
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const prefersDark =
+      window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     return prefersDark ? 'dark' : 'light';
   }, []);
 
@@ -19,7 +20,11 @@ export const ThemeToggle: React.FC = () => {
   }, [theme]);
 
   return (
-    <button aria-label="Toggle theme" className="glass glass-interactive glass-pill" onClick={toggle}>
+    <button
+      aria-label="Toggle theme"
+      className="glass glass-interactive glass-pill"
+      onClick={toggle}
+    >
       {theme === 'dark' ? '🌙' : '☀️'}
     </button>
   );

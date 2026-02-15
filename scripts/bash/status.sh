@@ -70,19 +70,19 @@ echo ""
 if docker-compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -q | grep -q .; then
     echo "ðŸ³ Container Status:"
     docker-compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps
-    
+
     echo ""
     echo "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
     echo "ðŸ¥ Health Check Status:"
     echo ""
-    
+
     # Check health of each service
     for service in traefik react-app api django postgres nginx nginx-static pgadmin redis celery-worker celery-beat flower; do
         container_name="${COMPOSE_PROJECT_NAME}_${service}"
         if docker ps --filter "name=${container_name}" --format "{{.Names}}" | grep -q "${container_name}"; then
             health=$(docker inspect --format='{{.State.Health.Status}}' "${container_name}" 2>/dev/null || echo "no healthcheck")
             status=$(docker inspect --format='{{.State.Status}}' "${container_name}")
-            
+
             if [ "$health" = "healthy" ]; then
                 echo "  âœ… ${service}: ${status} (healthy)"
             elif [ "$health" = "unhealthy" ]; then
@@ -100,13 +100,13 @@ if docker-compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -q | grep -q .; t
             echo "  âš« ${service}: not running"
         fi
     done
-    
+
     echo ""
     echo "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
     echo "ðŸ“Š Resource Usage:"
     echo ""
     docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}" $(docker-compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -q)
-    
+
     echo ""
     echo "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
     echo "ðŸŒ Service URLs (via Traefik):"
@@ -122,4 +122,3 @@ else
     echo ""
     echo "ðŸ’¡ Start services: ./scripts/bash/start.sh"
 fi
-

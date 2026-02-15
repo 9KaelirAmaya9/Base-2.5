@@ -239,16 +239,16 @@ All pages use inline styles that can be easily customized in their respective fi
 
 ### Common Issues
 
-**Issue:** OAuth errors  
+**Issue:** OAuth errors
 **Solution:** See [OAUTH_SETUP.md](./OAUTH_SETUP.md) troubleshooting section
 
-**Issue:** Environment variables not loading  
+**Issue:** Environment variables not loading
 **Solution:** Restart dev server after changing `.env`
 
-**Issue:** Dependencies not found  
+**Issue:** Dependencies not found
 **Solution:** Run `npm install`
 
-**Issue:** Port already in use  
+**Issue:** Port already in use
 **Solution:** Kill process on port 3000 or use different port
 
 ---

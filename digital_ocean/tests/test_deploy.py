@@ -1,4 +1,3 @@
-
 import sys
 from unittest import mock
 
@@ -16,18 +15,20 @@ def test_deploy_env_missing(monkeypatch):
         deploy.main()
     assert e.value.code == 1
 
+
 def test_deploy_dry_run(monkeypatch, capsys):
     monkeypatch.setenv("DO_API_TOKEN", "dummy")
     monkeypatch.setenv("DO_API_REGION", "nyc3")
     monkeypatch.setenv("DO_API_IMAGE", "docker-20-04")
     monkeypatch.setenv("DO_APP_NAME", "app")
     test_args = ["deploy.py", "--dry-run"]
-    with mock.patch.object(sys, 'argv', test_args):
+    with mock.patch.object(sys, "argv", test_args):
         with pytest.raises(SystemExit) as e:
             deploy.main()
         assert e.value.code == 0
         out = capsys.readouterr().out
         assert "[DRY RUN]" in out
+
 
 def test_deploy_api_error(monkeypatch):
     monkeypatch.setenv("DO_API_TOKEN", "dummy")
@@ -38,10 +39,11 @@ def test_deploy_api_error(monkeypatch):
     with mock.patch("digital_ocean.scripts.python.deploy.Client") as MockClient:
         MockClient.return_value.droplets.create.side_effect = Exception("API fail")
         test_args = ["deploy.py"]
-        with mock.patch.object(sys, 'argv', test_args):
+        with mock.patch.object(sys, "argv", test_args):
             with pytest.raises(SystemExit) as e:
                 deploy.main()
             assert e.value.code == 2
+
 
 def test_deploy_rollback(monkeypatch, capsys):
     monkeypatch.setenv("DO_API_TOKEN", "dummy")
@@ -54,9 +56,12 @@ def test_deploy_rollback(monkeypatch, capsys):
         # Simulate droplet creation returns a droplet with id
         mock_client.droplets.create.return_value = {"droplet": {"id": 12345}}
         # Patch post_creation_hook to raise exception
-        with mock.patch("digital_ocean.scripts.python.deploy.post_creation_hook", side_effect=Exception("Simulated failure after droplet creation")):
+        with mock.patch(
+            "digital_ocean.scripts.python.deploy.post_creation_hook",
+            side_effect=Exception("Simulated failure after droplet creation"),
+        ):
             test_args = ["deploy.py"]
-            with mock.patch.object(sys, 'argv', test_args):
+            with mock.patch.object(sys, "argv", test_args):
                 with pytest.raises(SystemExit):
                     deploy.main()
                 # Should attempt rollback (delete)

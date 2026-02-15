@@ -7,7 +7,7 @@ import AppShell from '../components/glass/AppShell';
 
 describe('GlassSidebar drawer behavior', () => {
   test('side menu is hidden by default, opens on toggle, closes on overlay click and ESC, and restores focus', async () => {
-    window.matchMedia = ((query) =>
+    window.matchMedia = (query) =>
       ({
         matches: query.includes('max-width') ? true : false,
         media: query,
@@ -17,7 +17,7 @@ describe('GlassSidebar drawer behavior', () => {
         addEventListener: () => {},
         removeEventListener: () => {},
         dispatchEvent: () => false,
-      }) as unknown as MediaQueryList);
+      }) as unknown as MediaQueryList;
 
     const user = userEvent.setup();
 

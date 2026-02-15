@@ -7,6 +7,7 @@ Requirements: pydo, python-dotenv
 Usage:
     python digital_ocean/scripts/python/orchestrate_teardown.py [--clean-dns]
 """
+
 import os
 import re
 import sys
@@ -33,20 +34,26 @@ def _expand_env_templates(value: str, env: dict | None = None) -> str:
         current = next_value
     return current
 
+
 DO_API_TOKEN = os.getenv("DO_API_TOKEN")
 PROJECT_NAME = os.getenv("PROJECT_NAME", "app")
 _EXPANSION_ENV = {**os.environ, "PROJECT_NAME": PROJECT_NAME}
 DO_DOMAIN = _expand_env_templates(os.getenv("DO_DOMAIN"), _EXPANSION_ENV)
-DO_DROPLET_NAME = _expand_env_templates(os.getenv("DO_DROPLET_NAME", "${PROJECT_NAME}-droplet"), _EXPANSION_ENV)
+DO_DROPLET_NAME = _expand_env_templates(
+    os.getenv("DO_DROPLET_NAME", "${PROJECT_NAME}-droplet"), _EXPANSION_ENV
+)
 CLEAN_DNS = "--clean-dns" in sys.argv
 
 client = Client(token=DO_API_TOKEN)
 
+
 def log(msg: str):
     print(f"\033[1;32m[INFO]\033[0m {msg}")
 
+
 def err(msg: str):
     print(f"\033[1;31m[ERROR]\033[0m {msg}", flush=True)
+
 
 # Find droplet by name
 try:

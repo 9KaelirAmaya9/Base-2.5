@@ -1,7 +1,7 @@
 # Manual Test Results — 003-env-setup-deploy-ux
 
-Date: 2026-02-05  
-OS: Windows (PowerShell)  
+Date: 2026-02-05
+OS: Windows (PowerShell)
 Repo: root workspace
 
 ## Notes / Scope

@@ -4,6 +4,7 @@ Destroy a DigitalOcean droplet by ID.
 Usage: python destroy_droplet.py <droplet_id>
 Requires: pydo
 """
+
 import os
 import sys
 
@@ -15,6 +16,7 @@ load_dotenv()
 
 def log(msg):
     print(f"\033[1;31m[DO DESTROY]\033[0m {msg}")
+
 
 def main():
     dry_run = False
@@ -32,6 +34,7 @@ def main():
     payload = {"droplet_id": droplet_id}
     if dry_run:
         import json
+
         log("[DRY RUN] Would send this payload to DigitalOcean API:")
         print(json.dumps(payload, indent=2))
         # Simulate expected response
@@ -49,8 +52,10 @@ def main():
         log(f"Failed to destroy droplet: {e}")
         # Try to log any response if available
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

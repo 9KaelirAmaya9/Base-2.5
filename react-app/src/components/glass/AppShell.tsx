@@ -9,7 +9,12 @@ type Props = {
   variant?: 'public' | 'app';
 };
 
-export const AppShell: React.FC<Props> = ({ children, headerTitle, sidebarItems, variant = 'app' }) => {
+export const AppShell: React.FC<Props> = ({
+  children,
+  headerTitle,
+  sidebarItems,
+  variant = 'app',
+}) => {
   const uid = useId();
   const sidebarId = useMemo(() => `app-shell-sidebar-${uid}`, [uid]);
   const isPublic = variant === 'public';
@@ -21,7 +26,9 @@ export const AppShell: React.FC<Props> = ({ children, headerTitle, sidebarItems,
 
       <div
         className="app-shell relative z-10"
-        style={{ minHeight: 'calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom))' }}
+        style={{
+          minHeight: 'calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
+        }}
       >
         <GlassHeader
           title={headerTitle}
@@ -58,7 +65,9 @@ export const AppShell: React.FC<Props> = ({ children, headerTitle, sidebarItems,
           </main>
         </div>
 
-        {isPublic ? null : <footer className="app-shell-footer glass" style={{ height: 'var(--footer-h)' }} />}
+        {isPublic ? null : (
+          <footer className="app-shell-footer glass" style={{ height: 'var(--footer-h)' }} />
+        )}
       </div>
     </div>
   );

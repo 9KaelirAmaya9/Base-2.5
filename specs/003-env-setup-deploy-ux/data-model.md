@@ -1,6 +1,6 @@
 # Phase 1 Data Model — End-to-End Environment Setup + Deploy UX
 
-**Branch**: 003-env-setup-deploy-ux  
+**Branch**: 003-env-setup-deploy-ux
 **Date**: 2026-02-05
 
 This feature does not introduce database schema changes. Its “data model” is primarily file-based configuration plus derived identifiers.

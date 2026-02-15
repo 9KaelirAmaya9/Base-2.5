@@ -58,7 +58,7 @@ info:
     existence.|
 
     |PUT|To update the information about a resource in your account, the PUT
-    method is available. Like the DELETE Method, the PUT method is idempotent. 
+    method is available. Like the DELETE Method, the PUT method is idempotent.
     It sets the state of the target using the provided values, regardless of
     their current values. Requests using the PUT method do not need to check the
     current attributes of the object.|
@@ -406,22 +406,22 @@ info:
 
     If the `ratelimit-remaining` reaches zero, subsequent requests will receive
 
-    a 429 error code until the request reset has been reached. 
+    a 429 error code until the request reset has been reached.
 
 
     `ratelimit-remaining` reaching zero can also indicate that the "burst limit"
-    of 250 
+    of 250
 
     requests per minute limit was met, even if the 5,000 requests per hour limit
-    was not. 
+    was not.
 
     In this case, the 429 error response will include a `retry-after` header to
-    indicate how 
+    indicate how
 
     long to wait (in seconds) until the request may be retried.
 
 
-    You can see the format of the response in the examples. 
+    You can see the format of the response in the examples.
 
 
     **Note:** The following endpoints have special rate limit requirements that
@@ -433,11 +433,11 @@ info:
     keys can be made per 60 seconds.
 
     *   Only 5 requests to any and all `v2/cdn/endpoints` can be made per 10
-    seconds. This includes `v2/cdn/endpoints`, 
+    seconds. This includes `v2/cdn/endpoints`,
         `v2/cdn/endpoints/$ENDPOINT_ID`, and `v2/cdn/endpoints/$ENDPOINT_ID/cache`.
     *   Only 50 strings within the `files` json struct in the
     `v2/cdn/endpoints/$ENDPOINT_ID/cache`
-    [payload](https://docs.digitalocean.com/reference/api/api-reference/#operation/cdn_purge_cache) 
+    [payload](https://docs.digitalocean.com/reference/api/api-reference/#operation/cdn_purge_cache)
         can be requested every 20 seconds.
 
     ### Sample Rate Limit Headers
@@ -483,7 +483,7 @@ info:
     `curl` command. This will allow us to demonstrate the various endpoints in a
 
     simple, textual format.
-      
+
       These examples assume that you are using a Linux or macOS command line. To run
     these commands on a Windows machine, you can either use cmd.exe, PowerShell,
     or WSL:
@@ -508,7 +508,7 @@ info:
     on a Windows machine.
 
     Install WSL with our [community
-    tutorial](https://www.digitalocean.com/community/tutorials/how-to-install-the-windows-subsystem-for-linux-2-on-microsoft-windows-10), 
+    tutorial](https://www.digitalocean.com/community/tutorials/how-to-install-the-windows-subsystem-for-linux-2-on-microsoft-windows-10),
 
     then follow this API documentation normally.
 
@@ -920,16 +920,16 @@ tags:
   - name: Container Registries
     description: >-
       DigitalOcean now supports up to nine additional registries (for a total
-      maximum of 10) per team 
+      maximum of 10) per team
 
       if your container registry uses the Professional subscription plan. The
-      storage is shared among 
+      storage is shared among
 
       the registries. This set of new APIs is backward compatible with
-      `/v2/registry`. However, if you 
+      `/v2/registry`. However, if you
 
       create more than one registry under a Professional plan, some of the
-      `/v2/registry` APIs would not work. 
+      `/v2/registry` APIs would not work.
 
       Hence, it is recommended to use `/v2/registries` for multiple registries.
       Currently, these APIs are in Public Preview.
@@ -1006,17 +1006,17 @@ tags:
 
 
       Name  |
-      Description                                                                                                                                       
+      Description
       |
 
       ------|----------------------------------------------------------------------------------------------------------------------------------------------------|
 
       A     | This record type is used to map an IPv4 address to a
-      hostname.                                                                                    
+      hostname.
       |
 
       AAAA  | This record type is used to map an IPv6 address to a
-      hostname.                                                                                    
+      hostname.
       |
 
       CAA   | As specified in RFC-6844, this record type can be used to restrict
@@ -1028,11 +1028,11 @@ tags:
       record).                                            |
 
       MX    | This record type is used to define the mail exchanges used for the
-      domain.                                                                        
+      domain.
       |
 
       NS    | This record type defines the name servers that are used for this
-      zone.                                                                            
+      zone.
       |
 
       TXT   | This record type is used to associate a string of text with a
@@ -1310,7 +1310,7 @@ tags:
   - name: NFS
     description: >-
       NFS lets you create fully managed, POSIX-compliant network file storage
-      that delivers secure, 
+      that delivers secure,
 
       high-performance shared storage right inside your VPC. This enables
       seamless data sharing across Droplets in a VPC.
@@ -1519,7 +1519,7 @@ tags:
       Bring your own IP (BYOIP) lets you provision your own IPv4 network
       prefixes
 
-      to your account, then assign those IPs to your DigitalOcean resources. 
+      to your account, then assign those IPs to your DigitalOcean resources.
 
       BYOIP supports the following features:
 
@@ -1880,7 +1880,7 @@ paths:
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
               -d '{"name":"My SSH Public Key","public_key":"ssh-rsa AEXAMPLEaC1yc2EAAAADAQABAAAAQQDDHr/jh2Jy4yALcK4JyWbVkPRaWmhck3IgCoeOO3z1e2dBowLh64QAM+Qb72pxekALga2oi4GvT+TlWNhzPH4V example"}' \
-              "https://api.digitalocean.com/v2/account/keys" 
+              "https://api.digitalocean.com/v2/account/keys"
         - lang: Go
           source: |-
             import (
@@ -1963,7 +1963,7 @@ paths:
             curl -X GET \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
-              "https://api.digitalocean.com/v2/account/keys/512190" 
+              "https://api.digitalocean.com/v2/account/keys/512190"
         - lang: Go
           source: |-
             import (
@@ -1987,7 +1987,7 @@ paths:
             token = ENV['DIGITALOCEAN_TOKEN']
             client = DropletKit::Client.new(access_token: token)
 
-            client.ssh_keys.find(id: 512190) 
+            client.ssh_keys.find(id: 512190)
         - lang: Python
           source: |-
             import os
@@ -2119,7 +2119,7 @@ paths:
             curl -X DELETE \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
-              "https://api.digitalocean.com/v2/account/keys/512190" 
+              "https://api.digitalocean.com/v2/account/keys/512190"
         - lang: Go
           source: |-
             import (
@@ -2318,7 +2318,7 @@ paths:
             curl \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
-              "https://api.digitalocean.com/v2/add-ons/apps" 
+              "https://api.digitalocean.com/v2/add-ons/apps"
       security:
         - bearer_auth: []
   /v2/add-ons/apps/{app_slug}/metadata:
@@ -2361,7 +2361,7 @@ paths:
             curl \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
-              "https://api.digitalocean.com/v2/add-ons/apps/example-app/metadata" 
+              "https://api.digitalocean.com/v2/add-ons/apps/example-app/metadata"
       security:
         - bearer_auth: []
   /v2/add-ons/saas:
@@ -2390,7 +2390,7 @@ paths:
             curl \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
-              "https://api.digitalocean.com/v2/add-ons/saas" 
+              "https://api.digitalocean.com/v2/add-ons/saas"
       security:
         - bearer_auth:
             - addon:read
@@ -2481,7 +2481,7 @@ paths:
             curl \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
-              "https://api.digitalocean.com/v2/add-ons/saas/123e4567-e89b-12d3-a456-4266141" 
+              "https://api.digitalocean.com/v2/add-ons/saas/123e4567-e89b-12d3-a456-4266141"
       security:
         - bearer_auth:
             - addon:read
@@ -2491,7 +2491,7 @@ paths:
       description: >
         To delete an add-on resource, send a DELETE request to
         `/v2/add-ons/saas/{resource_uuid}` with the UUID of the resource to
-        delete. 
+        delete.
 
         You cannot retrieve the resource after it has been deleted. The response
         indicates a request was sent to the 3rd party add-on provider to delete
@@ -4841,7 +4841,7 @@ paths:
 
             -d '{"ttl": 1800}' \
 
-            "https://api.digitalocean.com/v2/cdn/endpoints/19f06b6a-3ace-4315-b086-499a0e521b76" 
+            "https://api.digitalocean.com/v2/cdn/endpoints/19f06b6a-3ace-4315-b086-499a0e521b76"
         - lang: Go
           source: |-
             import (
@@ -4976,16 +4976,16 @@ paths:
         recursively
 
         purge all files under a directory. When only a wildcard is provided, all
-        cached 
+        cached
 
         files will be purged. There is a rate limit of 50 files per 20 seconds
-        that can 
+        that can
 
         be purged. CDN endpoints have a rate limit of 5 requests per 10
-        seconds. 
+        seconds.
 
         Purging files using a wildcard path counts as a single request against
-        the API's 
+        the API's
 
         rate limit. Two identical purge requests cannot be sent at the same
         time.
@@ -6124,7 +6124,7 @@ paths:
 
             -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
 
-            "https://api.digitalocean.com/v2/databases/9cc10173-e9ea-4176-9dbc-a4cee4c4ff30" 
+            "https://api.digitalocean.com/v2/databases/9cc10173-e9ea-4176-9dbc-a4cee4c4ff30"
         - lang: Go
           source: |-
             import (
@@ -6340,7 +6340,7 @@ paths:
       summary: Retrieve the Status of an Online Migration
       description: >-
         To retrieve the status of the most recent online migration, send a GET
-        request to `/v2/databases/$DATABASE_ID/online-migration`. 
+        request to `/v2/databases/$DATABASE_ID/online-migration`.
       tags:
         - Databases
       parameters:
@@ -6396,12 +6396,12 @@ paths:
         If the existing database is continuously being written to,  the
         migration process will continue for up to two weeks unless it is
         manually stopped. Online migration is only available for
-        [MySQL](https://docs.digitalocean.com/products/databases/mysql/how-to/migrate/#:~:text=To%20migrate%20a%20MySQL%20database,then%20select%20Set%20Up%20Migration), 
-        [PostgreSQL](https://docs.digitalocean.com/products/databases/postgresql/how-to/migrate/), 
+        [MySQL](https://docs.digitalocean.com/products/databases/mysql/how-to/migrate/#:~:text=To%20migrate%20a%20MySQL%20database,then%20select%20Set%20Up%20Migration),
+        [PostgreSQL](https://docs.digitalocean.com/products/databases/postgresql/how-to/migrate/),
         [Caching](https://docs.digitalocean.com/products/databases/redis/how-to/migrate/),
         and
         [Valkey](https://docs.digitalocean.com/products/databases/valkey/how-to/migrate/)
-        clusters. 
+        clusters.
       tags:
         - Databases
       parameters:
@@ -6693,7 +6693,7 @@ paths:
             -d '{"size":"db-s-4vcpu-8gb", "num_nodes":3,
             "storage_size_mib":163840}' \
 
-            "https://api.digitalocean.com/v2/databases/9cc10173-e9ea-4176-9dbc-a4cee4c4ff30/resize" 
+            "https://api.digitalocean.com/v2/databases/9cc10173-e9ea-4176-9dbc-a4cee4c4ff30/resize"
         - lang: Go
           source: |-
             import (
@@ -7747,14 +7747,14 @@ paths:
                       example: true
                       description: >
                         (To be deprecated: use settings.mongo_user_settings.role
-                        instead for access controls to MongoDB databases). 
+                        instead for access controls to MongoDB databases).
 
                         For MongoDB clusters, set to `true` to create a
                         read-only user.
 
                         This option is not currently supported for other
                         database engines.
-                                   
+
             examples:
               Add New User:
                 value:
@@ -8579,7 +8579,7 @@ paths:
 
             -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" /
 
-            "https://api.digitalocean.com/v2/databases/9cc10173-e9ea-4176-9dbc-a4cee4c4ff30/pools" 
+            "https://api.digitalocean.com/v2/databases/9cc10173-e9ea-4176-9dbc-a4cee4c4ff30/pools"
         - lang: Go
           source: |-
             import (
@@ -8680,7 +8680,7 @@ paths:
             -d '{"name": "backend-pool","mode": "transaction","size": 10,"db":
             "defaultdb","user": "doadmin"}' \
 
-            "https://api.digitalocean.com/v2/databases/9cc10173-e9ea-4176-9dbc-a4cee4c4ff30/pools" 
+            "https://api.digitalocean.com/v2/databases/9cc10173-e9ea-4176-9dbc-a4cee4c4ff30/pools"
         - lang: Go
           source: |-
             import (
@@ -8720,7 +8720,7 @@ paths:
               "size": 10,
               "db": "defaultdb",
               "user": "doadmin"
-            }    
+            }
 
 
             add_conn_pool_resp =
@@ -8766,7 +8766,7 @@ paths:
 
             -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" /
 
-            "https://api.digitalocean.com/v2/databases/9cc10173-e9ea-4176-9dbc-a4cee4c4ff30/pools/backend-pool" 
+            "https://api.digitalocean.com/v2/databases/9cc10173-e9ea-4176-9dbc-a4cee4c4ff30/pools/backend-pool"
         - lang: Go
           source: |-
             import (
@@ -8794,7 +8794,7 @@ paths:
 
             get_resp =
             client.databases.get_connection_pool(database_cluster_uuid="a7aba8a",
-            pool_name="backend-pool") 
+            pool_name="backend-pool")
       security:
         - bearer_auth:
             - database:read
@@ -8845,7 +8845,7 @@ paths:
             -d '{"mode": "transaction", "size": 15, "db": "defaultdb", "user":
             "doadmin"}' \
 
-            "https://api.digitalocean.com/v2/databases/9cc10173-e9ea-4176-9dbc-a4cee4c4ff30/pools/backend-pool" 
+            "https://api.digitalocean.com/v2/databases/9cc10173-e9ea-4176-9dbc-a4cee4c4ff30/pools/backend-pool"
         - lang: Go
           source: |-
             import (
@@ -9635,7 +9635,7 @@ paths:
 
                 client := godo.NewFromToken(token)
                 ctx := context.TODO()
-              
+
                 topicName := "events"
 
                 user, _, err := client.Databases.GetTopic(ctx, "9cc10173-e9ea-4176-9dbc-a4cee4c4ff30", topicName)
@@ -11769,7 +11769,7 @@ paths:
                 client := godo.NewFromToken(token)
                 ctx := context.TODO()
 
-                client.Droplets.DeleteByTag(ctx, "awesome") 
+                client.Droplets.DeleteByTag(ctx, "awesome")
             }
         - lang: Ruby
           source: |-
@@ -13110,7 +13110,7 @@ paths:
                     PerPage: 200,
                 }
 
-                kernels, _, err := client.Droplets.Kernels(ctx, 3164494, opt) 
+                kernels, _, err := client.Droplets.Kernels(ctx, 3164494, opt)
             }
         - lang: Ruby
           source: |-
@@ -13719,7 +13719,7 @@ paths:
         `/v2/droplets/autoscale/$AUTOSCALE_POOL_ID`. The request must contain a
         full representation
 
-        of the autoscale pool including existing attributes. 
+        of the autoscale pool including existing attributes.
       tags:
         - Droplet Autoscale Pools
       parameters:
@@ -13789,7 +13789,7 @@ paths:
         `/v2/droplets/autoscale/$AUTOSCALE_POOL_ID` endpoint.
 
 
-        A successful response will include a 202 response code and no content. 
+        A successful response will include a 202 response code and no content.
       tags:
         - Droplet Autoscale Pools
       parameters:
@@ -13910,7 +13910,7 @@ paths:
         The response body will be a JSON object with a key of `history`. This
         will be
 
-        set to an array containing objects each representing a history event. 
+        set to an array containing objects each representing a history event.
       tags:
         - Droplet Autoscale Pools
       parameters:
@@ -14674,7 +14674,7 @@ paths:
                 client := godo.NewFromToken(token)
                 ctx := context.TODO()
 
-                _, err := client.Firewalls.AddDroplets(ctx, 'bb4b2611-3d72-467b-8602-280330ecd65c', 49696269) 
+                _, err := client.Firewalls.AddDroplets(ctx, 'bb4b2611-3d72-467b-8602-280330ecd65c', 49696269)
             }
         - lang: Ruby
           source: >-
@@ -14901,7 +14901,7 @@ paths:
                 client := godo.NewFromToken(token)
                 ctx := context.TODO()
 
-                _, err := client.Firewalls.AddTags(ctx, 'bb4b2611-3d72-467b-8602-280330ecd65c', 'frontend') 
+                _, err := client.Firewalls.AddTags(ctx, 'bb4b2611-3d72-467b-8602-280330ecd65c', 'frontend')
             }
         - lang: Ruby
           source: >-
@@ -15111,7 +15111,7 @@ paths:
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
               -d '{"inbound_rules":[{"protocol":"tcp","ports":"3306","sources":{"droplet_ids":[49696269]}}],"outbound_rules":[{"protocol":"tcp","ports":"3306","destinations":{"droplet_ids":[49696269]}}]}' \
-              "https://api.digitalocean.com/v2/firewalls/bb4b2611-3d72-467b-8602-280330ecd65c/rules" 
+              "https://api.digitalocean.com/v2/firewalls/bb4b2611-3d72-467b-8602-280330ecd65c/rules"
         - lang: Go
           source: >-
             import (
@@ -15433,7 +15433,7 @@ paths:
             curl -X GET \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
-              "https://api.digitalocean.com/v2/floating_ips?page=1&per_page=20" 
+              "https://api.digitalocean.com/v2/floating_ips?page=1&per_page=20"
         - lang: Go
           source: |-
             import (
@@ -15506,7 +15506,7 @@ paths:
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
               -d '{"droplet_id": 123456}' \
-              "https://api.digitalocean.com/v2/floating_ips" 
+              "https://api.digitalocean.com/v2/floating_ips"
         - lang: Go
           source: |-
             import (
@@ -15534,7 +15534,7 @@ paths:
             client = DropletKit::Client.new(access_token: token)
 
             floating_ip = DropletKit::FloatingIp.new(droplet_id: 123456)
-            client.floating_ips.create(floating_ip) 
+            client.floating_ips.create(floating_ip)
       security:
         - bearer_auth:
             - reserved_ip:create
@@ -15568,7 +15568,7 @@ paths:
             curl -X GET \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
-              "https://api.digitalocean.com/v2/floating_ips/45.55.96.47" 
+              "https://api.digitalocean.com/v2/floating_ips/45.55.96.47"
         - lang: Go
           source: |-
             import (
@@ -15657,7 +15657,7 @@ paths:
             token = ENV['DIGITALOCEAN_TOKEN']
             client = DropletKit::Client.new(access_token: token)
 
-            client.floating_ips.delete(ip: '45.55.96.47') 
+            client.floating_ips.delete(ip: '45.55.96.47')
       security:
         - bearer_auth:
             - reserved_ip:delete
@@ -15813,7 +15813,7 @@ paths:
                 action, _, err := client.FloatingIPActions.Assign(ctx, "45.55.96.47", 8219222)
 
               // Unassign a Floating IP
-              // action, _, err := client.FloatingIPActions.Unassign(ctx, "45.55.96.47")  
+              // action, _, err := client.FloatingIPActions.Unassign(ctx, "45.55.96.47")
             }
         - lang: Ruby
           source: >-
@@ -16471,7 +16471,7 @@ paths:
                     PerPage: 200,
                 }
 
-                images, _, err := client.Images.ListApplication(ctx, opt) 
+                images, _, err := client.Images.ListApplication(ctx, opt)
             }
         - lang: Ruby
           source: |-
@@ -16644,7 +16644,7 @@ paths:
                 image, _, err := client.Images.GetByID(ctx, 7555620)
 
                 // Get existing image by slug
-                // image, _, err := client.Images.GetBySlug(ctx, "ubuntu-16-04-x64") 
+                // image, _, err := client.Images.GetBySlug(ctx, "ubuntu-16-04-x64")
             }
         - lang: Ruby
           source: |-
@@ -16866,7 +16866,7 @@ paths:
                 client := godo.NewFromToken(token)
                 ctx := context.TODO()
 
-                
+
             }
         - lang: Python
           source: |-
@@ -20741,7 +20741,7 @@ paths:
         - lang: cURL
           source: >-
             curl -X POST
-            \                                                                                                                              
+            \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
               "https://api.digitalocean.com/v2/monitoring/alerts" \
@@ -23062,7 +23062,7 @@ paths:
       summary: Create Sink
       description: >
         To create a new sink, send a POST request to `/v2/monitoring/sinks`.
-        Forwards logs from the 
+        Forwards logs from the
 
         resources identified in `resources` to the specified pre-existing
         destination.
@@ -23367,9 +23367,9 @@ paths:
       operationId: nfs_create_action
       summary: Initiate an NFS action
       description: >
-        To execute an action (such as resize) on a specified NFS share, 
+        To execute an action (such as resize) on a specified NFS share,
 
-        send a POST request to `/v2/nfs/{nfs_id}/actions`. In the JSON body 
+        send a POST request to `/v2/nfs/{nfs_id}/actions`. In the JSON body
 
         to the request, set the `type` attribute to on of the supported action
         types:
@@ -23606,7 +23606,7 @@ paths:
                   ctx := context.TODO()
 
                   ListOptions := &godo.ListOptions{ Page: 1, PerPage: 20, WithProjects: true}
-                  
+
                   response, _, err := client.PartnerAttachment.List(ctx, ListOptions)
             }
         - lang: Python
@@ -23680,13 +23680,13 @@ paths:
 
                 client := godo.NewFromToken(token)
                 ctx := context.TODO()
-                createReq := &godo.PartnerAttachmentCreateRequest{ 
-                    Name:"c5pAqd-ped-007", 
-                    ConnectionBandwidthInMbps:1000, 
-                    Region:"NYC", 
-                    NaaSProvider:"MEGAPORT", 
-                    VPCIDs:[]string{"bafc1c1d-bac1-2412-7f5e-fezc832z213z"}, 
-                    BGP: godo.BGP{ 
+                createReq := &godo.PartnerAttachmentCreateRequest{
+                    Name:"c5pAqd-ped-007",
+                    ConnectionBandwidthInMbps:1000,
+                    Region:"NYC",
+                    NaaSProvider:"MEGAPORT",
+                    VPCIDs:[]string{"bafc1c1d-bac1-2412-7f5e-fezc832z213z"},
+                    BGP: godo.BGP{
                         LocalRouterIP:"169.254.11.1/29",
                         PeerRouterIP:"169.254.11.2/29",
                         PeerASN:133938,
@@ -23703,9 +23703,9 @@ paths:
 
             client = Client(token=os.getenv("$DIGITALOCEAN_TOKEN"))
 
-            req = { 
+            req = {
               "connection_bandwidth_in_mbps": 1000,
-              "naas_provider": "MEGAPORT",  
+              "naas_provider": "MEGAPORT",
               "name": "c5pAqd-ped-007",
               "region": "NYC",
               "vpc_ids": [
@@ -24069,7 +24069,7 @@ paths:
             import (
                 "context"
                 "os"
-                
+
                 "github.com/digitalocean/godo"
             )
 
@@ -24130,7 +24130,7 @@ paths:
             import (
                 "context"
                 "os"
-                
+
                 "github.com/digitalocean/godo"
             )
 
@@ -24887,7 +24887,7 @@ paths:
             token = ENV['DIGITALOCEAN_TOKEN']
             client = DropletKit::Client.new(access_token: token)
 
-            client.projects.delete(id: '4e1bfbc3-dc3e-41f2-a18f-1b4d7ba71679') 
+            client.projects.delete(id: '4e1bfbc3-dc3e-41f2-a18f-1b4d7ba71679')
         - lang: Python
           source: |-
             import os
@@ -26122,7 +26122,7 @@ paths:
 
         `registry.digitalocean.com/example/my/repo`, the path would be
 
-        `/v2/registry/example/repositories/my%2Frepo/tags`. 
+        `/v2/registry/example/repositories/my%2Frepo/tags`.
 
 
         It is similar to GET
@@ -26395,7 +26395,7 @@ paths:
         be 204 and contain no body. If the name is already in use, the response
         will
 
-        be a 409 Conflict. 
+        be a 409 Conflict.
 
 
         It is similar to `/v2/registry/validate-name` and exists for backward
@@ -27279,7 +27279,7 @@ paths:
 
             req = {
                   "type": "unreferenced blobs only"
-                  
+
             }
 
 
@@ -27568,7 +27568,7 @@ paths:
             curl -X GET \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
-              "https://api.digitalocean.com/v2/reserved_ips?page=1&per_page=20" 
+              "https://api.digitalocean.com/v2/reserved_ips?page=1&per_page=20"
         - lang: Go
           source: |-
             import (
@@ -27649,7 +27649,7 @@ paths:
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
               -d '{"droplet_id": 123456}' \
-              "https://api.digitalocean.com/v2/reserved_ips" 
+              "https://api.digitalocean.com/v2/reserved_ips"
         - lang: Go
           source: |-
             import (
@@ -27680,7 +27680,7 @@ paths:
             client = DropletKit::Client.new(access_token: token)
 
             reserved_ip = DropletKit::ReservedIp.new(droplet_id: 123456)
-            client.reserved_ips.create(reserved_ip) 
+            client.reserved_ips.create(reserved_ip)
         - lang: Python
           source: |-
             import os
@@ -27726,7 +27726,7 @@ paths:
             curl -X GET \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
-              "https://api.digitalocean.com/v2/reserved_ips/45.55.96.47" 
+              "https://api.digitalocean.com/v2/reserved_ips/45.55.96.47"
         - lang: Go
           source: |-
             import (
@@ -27823,7 +27823,7 @@ paths:
             token = ENV['DIGITALOCEAN_TOKEN']
             client = DropletKit::Client.new(access_token: token)
 
-            client.reserved_ips.delete(ip: '45.55.96.47') 
+            client.reserved_ips.delete(ip: '45.55.96.47')
         - lang: Python
           source: |-
             import os
@@ -27995,7 +27995,7 @@ paths:
                 action, _, err := client.ReservedIPActions.Assign(ctx, "45.55.96.47", 8219222)
 
               // Unassign a Reserved IP
-              action, _, err := client.ReservedIPActions.Unassign(ctx, "45.55.96.47")  
+              action, _, err := client.ReservedIPActions.Unassign(ctx, "45.55.96.47")
             }
         - lang: Ruby
           source: >-
@@ -28131,7 +28131,7 @@ paths:
             curl -X GET \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
-              "https://api.digitalocean.com/v2/reserved_ipv6?page=1&per_page=20" 
+              "https://api.digitalocean.com/v2/reserved_ipv6?page=1&per_page=20"
         - lang: Go
           source: |-
             import (
@@ -28200,7 +28200,7 @@ paths:
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
               -d '{"region_slug": "nyc3"}' \
-              "https://api.digitalocean.com/v2/reserved_ipv6" 
+              "https://api.digitalocean.com/v2/reserved_ipv6"
         - lang: Go
           source: |-
             import (
@@ -28267,7 +28267,7 @@ paths:
             curl -X GET \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
-              "https://api.digitalocean.com/v2/reserved_ipv6/2409:40d0:f7:1017:74b4:3a96:105e:4c6e" 
+              "https://api.digitalocean.com/v2/reserved_ipv6/2409:40d0:f7:1017:74b4:3a96:105e:4c6e"
         - lang: Go
           source: |-
             import (
@@ -28461,7 +28461,7 @@ paths:
                 action, _, err := client.ReservedIPV6Actions.Assign(ctx, "2409:40d0:f7:1017:74b4:3a96:105e:4c6e", 8219222)
 
               // Unassign a Reserved IPv6
-               action, _, err := client.ReservedIPV6Actions.Unassign(ctx, "2409:40d0:f7:1017:74b4:3a96:105e:4c6e")  
+               action, _, err := client.ReservedIPV6Actions.Unassign(ctx, "2409:40d0:f7:1017:74b4:3a96:105e:4c6e")
             }
         - lang: Python
           source: >-
@@ -28639,7 +28639,7 @@ paths:
       summary: Get a BYOIP Prefix
       description: >
         To get a BYOIP prefix, send a GET request to
-        `/v2/byoip_prefixes/$byoip_prefix_uuid`. 
+        `/v2/byoip_prefixes/$byoip_prefix_uuid`.
 
 
         A successful response will return the details of the specified BYOIP
@@ -28840,7 +28840,7 @@ paths:
                 client := godo.NewFromToken(token)
                 ctx := context.TODO()
                 byoipPrefixUUID := "f47ac10b-58cc-4372-a567-0e02b2c3d479"
-                
+
                 advertise := true
                 updateRequest := &godo.BYOIPPrefixUpdateReq{
                     Advertise: &advertise,
@@ -28982,7 +28982,7 @@ paths:
             curl -X GET \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
-              "https://api.digitalocean.com/v2/sizes" 
+              "https://api.digitalocean.com/v2/sizes"
         - lang: Go
           source: |-
             import (
@@ -29920,7 +29920,7 @@ paths:
 
 
         In order to tag a resource, you must have both `tag:create` and
-        `<resource type>:update` scopes. For example, 
+        `<resource type>:update` scopes. For example,
 
         to tag a Droplet, you must have `tag:create` and `droplet:update`.
       tags:
@@ -30040,7 +30040,7 @@ paths:
 
 
         In order to untag a resource, you must have both `tag:delete` and
-        `<resource type>:update` scopes. For example, 
+        `<resource type>:update` scopes. For example,
 
         to untag a Droplet, you must have `tag:delete` and `droplet:update`.
       tags:
@@ -30407,7 +30407,7 @@ paths:
             curl -X DELETE \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
-              "https://api.digitalocean.com/v2/volumes?name=example&region=nyc1" 
+              "https://api.digitalocean.com/v2/volumes?name=example&region=nyc1"
         - lang: Python
           source: |-
             import os
@@ -32017,10 +32017,10 @@ paths:
       summary: Update a VPC Peering
       description: >
         To update the name of a VPC peering in a particular VPC, send a PATCH
-        request 
+        request
 
         to `/v2/vpcs/$VPC_ID/peerings/$VPC_PEERING_ID` with the new `name` in
-        the 
+        the
 
         request body.
       tags:
@@ -32102,13 +32102,13 @@ paths:
       operationId: vpcPeerings_create
       summary: Create a New VPC Peering
       description: >
-        To create a new VPC Peering, send a POST request to `/v2/vpc_peerings` 
+        To create a new VPC Peering, send a POST request to `/v2/vpc_peerings`
 
         specifying a name and a list of two VPC IDs to peer. The response code,
-        202 
+        202
 
         Accepted, does not indicate the success or failure of the operation,
-        just 
+        just
 
         that the request has been accepted for processing.
       tags:
@@ -32404,7 +32404,7 @@ paths:
         `/v2/vpc_nat_gateways/$VPC_NAT_GATEWAY_ID`. The request must contain a
         full representation
 
-        of the VPC NAT Gateway including existing attributes. 
+        of the VPC NAT Gateway including existing attributes.
       tags:
         - VPC NAT Gateways
       parameters:
@@ -32461,7 +32461,7 @@ paths:
         `/v2/vpc_nat_gateways/$VPC_NAT_GATEWAY_ID` endpoint.
 
 
-        A successful response will include a 202 response code and no content. 
+        A successful response will include a 202 response code and no content.
       tags:
         - VPC NAT Gateways
       parameters:
@@ -33608,7 +33608,7 @@ paths:
                 "faas_namespace": "fn-2014dc98-faa1-45f4-ba1f-59910cb3d399",
                 "faas_name": "default/get-zipcode"
               }'
-             
+
   /v2/gen-ai/agents/{agent_uuid}/functions/{function_uuid}:
     put:
       description: >-
@@ -33858,7 +33858,6 @@ paths:
                 "agent_uuid": "9a6e3975-b0c6-11ef-bf8f-4e013e2ddde4"
               }'
 
-             
     delete:
       description: >-
         To detach a knowledge base from an agent, send a DELETE request to
@@ -33985,7 +33984,7 @@ paths:
                 "route_name": "route-token-stat",
                 "if_case": "for any token related statistics, use this route"
               }'
-             
+
     put:
       description: >-
         To update an agent route for an agent, send a PUT request to
@@ -34164,7 +34163,7 @@ paths:
               -H "Content-Type: application/json"  \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
               "https://api.digitalocean.com/v2/gen-ai/agents/c441bf77-81d6-11ef-bf8f-4e013e2ddde4"
-             
+
     put:
       description: >-
         To update an agent, send a PUT request to `/v2/gen-ai/agents/{uuid}`.
@@ -35735,7 +35734,6 @@ paths:
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
               "https://api.digitalocean.com/v2/gen-ai/indexing_jobs/9758a232-b351-11ef-bf8f-4e013e2ddde4"
 
-             
   /v2/gen-ai/indexing_jobs/{indexing_job_uuid}/details_signed_url:
     get:
       description: >-
@@ -35841,7 +35839,7 @@ paths:
               -H "Content-Type: application/json"  \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
               "https://api.digitalocean.com/v2/gen-ai/indexing_jobs/9758a232-b351-11ef-bf8f-4e013e2ddde4"
-             
+
   /v2/gen-ai/indexing_jobs/{uuid}/cancel:
     put:
       description: >-
@@ -36327,7 +36325,7 @@ paths:
 
             --header 'Authorization: Bearer $DIGITALOCEAN_TOKEN' \
 
-            --header 'Content-Type: application/json' 
+            --header 'Content-Type: application/json'
   /v2/gen-ai/knowledge_bases/{uuid}:
     get:
       description: >-
@@ -36379,7 +36377,7 @@ paths:
               -H "Content-Type: application/json"  \
               -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" \
               "https://api.digitalocean.com/v2/gen-ai/knowledge_bases/9758a232-b351-11ef-bf8f-4e013e2ddde4"
-             
+
     put:
       description: >-
         To update a knowledge base, send a PUT request to
@@ -37446,7 +37444,7 @@ paths:
 
             --header 'Authorization: Bearer $DIGITALOCEAN_TOKEN' \
 
-            --header 'Content-Type: application/json' 
+            --header 'Content-Type: application/json'
   /v2/gen-ai/scheduled-indexing/{uuid}:
     delete:
       description: >-
@@ -39272,8 +39270,8 @@ components:
         information about how requests expire.
     content-disposition:
       description: >-
-        Indicates if the content is expected to be displayed *inline* in the 
-        browser, that is, as a Web page or as part of a Web page, or as an 
+        Indicates if the content is expected to be displayed *inline* in the
+        browser, that is, as a Web page or as part of a Web page, or as an
         *attachment*, that is downloaded and saved locally.
       schema:
         type: string
@@ -39313,8 +39311,8 @@ components:
           example: The resource you were accessing could not be found.
         request_id:
           description: >-
-            Optionally, some endpoints may include a request ID that should be 
-            provided when reporting bugs or opening support tickets to help 
+            Optionally, some endpoints may include a request ID that should be
+            provided when reporting bugs or opening support tickets to help
             identify the issue.
           type: string
           example: 4d9d8375-3c56-4925-a3e7-eb137fed17e9
@@ -39440,14 +39438,14 @@ components:
     ssh_key_id:
       type: integer
       description: >-
-        A unique identification number for this key. Can be used to embed a 
+        A unique identification number for this key. Can be used to embed a
         specific SSH key into a Droplet.
       readOnly: true
       example: 512189
     ssh_key_fingerprint:
       type: string
       description: >-
-        A unique identifier that differentiates this key from other keys using 
+        A unique identifier that differentiates this key from other keys using
         a format that SSH recognizes. The fingerprint is created when the key is
         added to your account.
       readOnly: true
@@ -41595,10 +41593,10 @@ components:
             static content and caching within your app. This setting is also
             recommended for apps that require real-time data or serve dynamic
             content, such as those using Server-Sent Events (SSE) over GET, or
-            hosting an MCP (Model Context Protocol) Server that utilizes SSE.  
+            hosting an MCP (Model Context Protocol) Server that utilizes SSE.
 
             **Note:** This feature is not available for static site
-            components.  
+            components.
 
             For more information, see [Disable CDN
             Cache](https://docs.digitalocean.com/products/app-platform/how-to/cache-content/#disable-cdn-cache).
@@ -42583,7 +42581,7 @@ components:
               - `app_pinned` - indicates that there is already a rollback in progress and the app is pinned.
               - `database_config_conflict` - indicates that the deployment's database config is different than the current config.
               - `region_conflict` - indicates that the deployment's region differs from the current app region.
-              
+
             Warning conditions:
               - `static_site_requires_rebuild` - indicates that the deployment contains at least one static site that will require a rebuild.
               - `image_source_missing_digest` - indicates that the deployment contains at least one component with an image source that is missing a digest.
@@ -43086,7 +43084,7 @@ components:
         account_balance:
           type: string
           description: >-
-            Current balance of the customer's most recent billing activity. 
+            Current balance of the customer's most recent billing activity.
             Does not reflect `month_to_date_usage`.
           example: '12.23'
         month_to_date_usage:
@@ -43114,13 +43112,13 @@ components:
         invoice_id:
           type: string
           description: >-
-            ID of the invoice associated with the billing history entry, if 
+            ID of the invoice associated with the billing history entry, if
             applicable.
           example: '123'
         invoice_uuid:
           type: string
           description: >-
-            UUID of the invoice associated with the billing history entry, if 
+            UUID of the invoice associated with the billing history entry, if
             applicable.
           example: example-uuid
         date:
@@ -44451,7 +44449,7 @@ components:
           description: >-
             Comma-separated list of days of the week when full backups should be
             created. Valid values: mon, tue, wed, thu, fri, sat, sun. Default is
-            null. Example : "mon,fri,sun". 
+            null. Example : "mon,fri,sun".
           type: string
           example: mon,thu
     mysql_advanced_config:
@@ -44776,7 +44774,7 @@ components:
         server_idle_timeout:
           description: >-
             Drops server connections if they have been idle more than this many
-            seconds.  If 0, timeout is disabled. 
+            seconds.  If 0, timeout is disabled.
           type: integer
           minimum: 0
           maximum: 86400
@@ -47442,11 +47440,11 @@ components:
             {
               "type": "record",
               "name": "Customer",
-              "fields": [  
+              "fields": [
                 {"name": "id", "type": "int"},
                 {"name": "name", "type": "string"}
               ]
-            } 
+            }
     database_kafka_schema_create:
       type: object
       properties:
@@ -47504,11 +47502,11 @@ components:
             {
               "type": "record",
               "name": "Customer",
-              "fields": [  
+              "fields": [
                 {"name": "id", "type": "int"},
                 {"name": "name", "type": "string"}
               ]
-            } 
+            }
     databases_basic_auth_credentials:
       type: object
       properties:
@@ -47866,7 +47864,7 @@ components:
     region_slug:
       type: string
       description: >-
-        The slug identifier for the region where the resource will initially be 
+        The slug identifier for the region where the resource will initially be
         available.
       enum:
         - ams1
@@ -48307,9 +48305,9 @@ components:
           type: object
           description: >-
             The details of the network that are configured for the Droplet
-            instance.  This is an object that contains keys for IPv4 and IPv6. 
+            instance.  This is an object that contains keys for IPv4 and IPv6.
             The value of each of these is an array that contains objects
-            describing an individual IP resource allocated to the Droplet. 
+            describing an individual IP resource allocated to the Droplet.
             These will define attributes like the IP address, netmask, and
             gateway of the specific network depending on the type of network it
             is.
@@ -49725,7 +49723,7 @@ components:
           example: d1zcd455h01mqjfs4s2eaewyejehi5f2uj4etqq3h7cera8iwkub6xg5of1wdde2
           description: >-
             A random alpha numeric string. This key is used in conjunction with
-            the namespace's UUID to authenticate 
+            the namespace's UUID to authenticate
 
             a user to use the namespace via `doctl`, DigitalOcean's official
             CLI.
@@ -53882,7 +53880,7 @@ components:
       properties:
         resources:
           description: >
-            An array of objects containing resource_id and resource_type 
+            An array of objects containing resource_id and resource_type
 
             attributes.
 
@@ -59680,7 +59678,7 @@ components:
             format: binary
     invoice_summary:
       description: >-
-        To retrieve a summary for an invoice, send a GET request to 
+        To retrieve a summary for an invoice, send a GET request to
         `/v2/customers/my/invoices/$INVOICE_UUID/summary`.
       headers:
         ratelimit-limit:
@@ -62995,7 +62993,7 @@ components:
         An array of JSON objects with a key called `namespaces`.  Each object
         represents a namespace and contains
 
-        the properties associated with it. 
+        the properties associated with it.
       headers:
         ratelimit-limit:
           $ref: '#/components/headers/ratelimit-limit'
@@ -63106,7 +63104,7 @@ components:
         An array of JSON objects with a key called `namespaces`.  Each object
         represents a namespace and contains
 
-        the properties associated with it. 
+        the properties associated with it.
       headers:
         ratelimit-limit:
           $ref: '#/components/headers/ratelimit-limit'
@@ -63246,7 +63244,7 @@ components:
     new_custom_image:
       description: >-
         The response will be a JSON object with a key set to `image`.  The value
-        of this will be an image object containing a subset of the standard 
+        of this will be an image object containing a subset of the standard
         image attributes as listed below, including the image's `id` and
         `status`.  After initial creation, the `status` will be `NEW`. Using the
         image's id, you  may query the image's status by sending a `GET` request
@@ -64451,8 +64449,8 @@ components:
     nfs_list:
       description: >-
         The response will be a JSON object with a key called `shares`.  The
-        value will be an array of objects, each containing the standard 
-        attributes associated with  an NFS share. 
+        value will be an array of objects, each containing the standard
+        attributes associated with  an NFS share.
       headers:
         ratelimit-limit:
           $ref: '#/components/headers/ratelimit-limit'
@@ -64539,8 +64537,8 @@ components:
     nfs_snapshot_list:
       description: >-
         The response will be a JSON object with a key called `snapshots`.  The
-        value will be an array of objects, each containing the standard 
-        attributes associated with an NFS snapshot. 
+        value will be an array of objects, each containing the standard
+        attributes associated with an NFS snapshot.
       headers:
         ratelimit-limit:
           $ref: '#/components/headers/ratelimit-limit'
@@ -64667,7 +64665,7 @@ components:
     single_partner_attachment_deleting:
       description: >-
         The response will be a JSON object with details about the partner
-        attachment 
+        attachment
 
         and `"state": "DELETING"` to indicate that the partner attachment is
         being deleted.
@@ -64705,7 +64703,7 @@ components:
     single_partner_attachment_bgp_auth_key:
       description: >-
         The response will be a JSON object with a `bgp_auth_key` object
-        containing a 
+        containing a
 
         `value` field with the BGP auth key value
       headers:
@@ -64731,7 +64729,7 @@ components:
     all_partner_attachment_remote_routes:
       description: >-
         The response will be a JSON object with a `remote_routes` array
-        containing 
+        containing
 
         information on all the remote routes associated with the partner
         attachment
@@ -64764,7 +64762,7 @@ components:
     single_partner_attachment_service_key:
       description: >-
         The response will be a JSON object with a `service_key` object
-        containing 
+        containing
 
         the service key value and creation information
       headers:
@@ -65441,9 +65439,9 @@ components:
             id: precondition_failed
             message: >-
               This API is not supported if you have created multiple registries.
-              Please use 
+              Please use
 
-              ‘/v2/registries/{registry_name}’ instead. Refer to 
+              ‘/v2/registries/{registry_name}’ instead. Refer to
 
               https://docs.digitalocean.com/reference/api/digitalocean/#tag/Container-Registry
               for more info.
@@ -66481,7 +66479,7 @@ components:
                     characters\"
     tags_existing:
       description: >
-        The response will be a JSON object with a key called `tag`. 
+        The response will be a JSON object with a key called `tag`.
 
         The value of this will be a tag object containing the standard tag
         attributes.
@@ -66891,7 +66889,7 @@ components:
                 total: 4
     vpc_peerings:
       description: >-
-        The response will be a JSON object with a key called `peerings`. This 
+        The response will be a JSON object with a key called `peerings`. This
         will be set to an array of objects, each of which will contain the
         standard  attributes associated with a VPC peering.
       headers:
@@ -67306,7 +67304,7 @@ components:
       parameters:
         ssh_key_identifier: $response.body#/ssh_key/id
       description: >-
-        The `id` value returned in the response can be used as the 
+        The `id` value returned in the response can be used as the
         `ssh_key_identifier` parameter in `DELETE
         /v2/account/keys/{ssh_key_identifier}`.
     sshKeys_delete_by_fingerprint:
@@ -67314,7 +67312,7 @@ components:
       parameters:
         ssh_key_identifier: $response.body#/ssh_key/fingerprint
       description: >-
-        The `fingerprint` value returned in the response can be used as the 
+        The `fingerprint` value returned in the response can be used as the
         `ssh_key_identifier` parameter in `DELETE
         /v2/account/keys/{ssh_key_identifier}`.
   examples:
@@ -70306,13 +70304,13 @@ components:
           total: 2
     images_distribution:
       description: >
-        **Important:**  
+        **Important:**
 
         The `type` query parameter is not directly related to the `type`
         attribute.
 
         The main thing to remember here is that DigitalOcean-produced
-        distribution images will have `snapshot` as the type attribute. 
+        distribution images will have `snapshot` as the type attribute.
       value:
         images:
           - id: 63663980
@@ -70359,7 +70357,7 @@ components:
           total: 1
     images_application:
       description: >
-        **Important:**  
+        **Important:**
 
         The `type` query parameter is not directly related to the `type`
         attribute.

@@ -78,12 +78,12 @@ fi
 check_health() {
     local service=$1
     local container_name="${COMPOSE_PROJECT_NAME}_${service}"
-    
+
     if docker ps --filter "name=${container_name}" --format "{{.Names}}" | grep -q "${container_name}"; then
         health=$(docker inspect --format='{{.State.Health.Status}}' "${container_name}" 2>/dev/null || echo "no healthcheck")
         status=$(docker inspect --format='{{.State.Status}}' "${container_name}")
         uptime=$(docker inspect --format='{{.State.StartedAt}}' "${container_name}")
-        
+
         if [ "$health" = "healthy" ]; then
             echo "  âœ… ${service}"
             echo "     Status: ${status}"
@@ -134,7 +134,7 @@ STOPPED=0
 for service in react-app nginx postgres pgadmin traefik; do
     check_health "$service"
     result=$?
-    
+
     if [ $result -eq 0 ]; then
         ((HEALTHY++))
     elif [ $result -eq 1 ]; then
@@ -142,7 +142,7 @@ for service in react-app nginx postgres pgadmin traefik; do
     elif [ $result -eq 2 ]; then
         ((STARTING++))
     fi
-    
+
     echo ""
 done
 
@@ -167,4 +167,3 @@ else
     echo "âœ… All services are healthy!"
     exit 0
 fi
-

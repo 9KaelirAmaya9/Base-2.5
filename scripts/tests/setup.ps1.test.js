@@ -34,7 +34,17 @@ test('setup.ps1 generates TP_ secrets for placeholders', () => {
   const setupPs1 = path.join(repoRoot, 'scripts', 'powershell', 'setup.ps1');
   const result = spawnSync(
     'powershell',
-    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', setupPs1, '-SkipSetupJs', '-DoSyncDryRun', '-EnvPath', envPath],
+    [
+      '-NoProfile',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-File',
+      setupPs1,
+      '-SkipSetupJs',
+      '-DoSyncDryRun',
+      '-EnvPath',
+      envPath,
+    ],
     { cwd: repoRoot, encoding: 'utf8' }
   );
 

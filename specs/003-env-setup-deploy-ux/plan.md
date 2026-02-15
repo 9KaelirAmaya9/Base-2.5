@@ -29,7 +29,7 @@ Phase 0/1 outputs for this plan:
 Language: JavaScript (Node.js tooling) + shell scripts (Bash/PowerShell)
 Language/Version: JavaScript (Node.js >= 24.13.1), Bash, PowerShell 5.1+, Python (existing services/tools)
 
-**Language**: JavaScript (Node.js tooling)  
+**Language**: JavaScript (Node.js tooling)
 **Language/Version**:
 
 - Node.js >= 24.13.1 (root `package.json` engines)

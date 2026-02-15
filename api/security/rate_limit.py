@@ -4,19 +4,19 @@ from contextlib import suppress
 from typing import Tuple
 from api.redis_client import get_client, key
 
-WINDOW_MS = int(os.environ.get("RATE_LIMIT_WINDOW_MS", "900000"))  # 15 minutes default
-MAX_REQUESTS = int(os.environ.get("RATE_LIMIT_MAX_REQUESTS", "100"))
+WINDOW_MS = int(os.environ.get('RATE_LIMIT_WINDOW_MS', '900000'))  # 15 minutes default
+MAX_REQUESTS = int(os.environ.get('RATE_LIMIT_MAX_REQUESTS', '100'))
 
 # Scope-specific defaults (can be overridden by env).
 # NOTE: Keep these conservative; they apply to the public auth surface.
 SCOPE_LIMITS: dict[str, tuple[int, int]] = {
     # Fixed-window: 5 requests per minute per IP.
-    "auth_login": (60_000, 5),
-    "auth_register": (60_000, 5),
-    "auth_oauth_google": (60_000, 5),
+    'auth_login': (60_000, 5),
+    'auth_register': (60_000, 5),
+    'auth_oauth_google': (60_000, 5),
     # Forgot-password is intentionally a bit higher.
-    "forgot_password": (900_000, 10),
-    "forgot_password_email": (900_000, 5),
+    'forgot_password': (900_000, 10),
+    'forgot_password_email': (900_000, 5),
 }
 
 
@@ -40,15 +40,15 @@ def _limit_for_scope(scope: str) -> tuple[int, int]:
     2) in-code defaults (SCOPE_LIMITS)
     3) global defaults (WINDOW_MS / MAX_REQUESTS)
     """
-    normalized = (scope or "").strip()
-    env_prefix = f"RATE_LIMIT_{normalized.upper()}"
+    normalized = (scope or '').strip()
+    env_prefix = f'RATE_LIMIT_{normalized.upper()}'
 
     window_ms, max_requests = SCOPE_LIMITS.get(normalized, (WINDOW_MS, MAX_REQUESTS))
 
     with suppress(Exception):
-        window_ms = int(os.environ.get(f"{env_prefix}_WINDOW_MS", str(window_ms)))
+        window_ms = int(os.environ.get(f'{env_prefix}_WINDOW_MS', str(window_ms)))
     with suppress(Exception):
-        max_requests = int(os.environ.get(f"{env_prefix}_MAX_REQUESTS", str(max_requests)))
+        max_requests = int(os.environ.get(f'{env_prefix}_MAX_REQUESTS', str(max_requests)))
 
     return window_ms, max_requests
 
@@ -84,7 +84,7 @@ def incr_and_check_identifier_detailed(identifier: str, scope: str) -> tuple[int
     ts = now_ms()
     window_ms, max_requests = _limit_for_scope(scope)
     start = bucket_start_for_window(ts, window_ms)
-    k = key("rl", scope, identifier, str(start))
+    k = key('rl', scope, identifier, str(start))
     pipe = c.pipeline()
     pipe.incr(k, 1)
     # Set expiry to window length in seconds if key is new

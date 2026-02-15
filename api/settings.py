@@ -6,33 +6,38 @@ from pydantic_settings import BaseSettings
 
 
 def _sanitize_project_slug(raw: str) -> str:
-    value = (raw or "").strip().lower()
-    value = re.sub(r"[^a-z0-9_-]+", "-", value)
-    value = value.strip("-_")
+    value = (raw or '').strip().lower()
+    value = re.sub(r'[^a-z0-9_-]+', '-', value)
+    value = value.strip('-_')
     return value
 
 
 def _default_project_slug() -> str:
-    return _sanitize_project_slug(os.getenv("PROJECT_NAME") or os.getenv("COMPOSE_PROJECT_NAME") or "") or "app"
+    return (
+        _sanitize_project_slug(os.getenv('PROJECT_NAME') or os.getenv('COMPOSE_PROJECT_NAME') or '')
+        or 'app'
+    )
 
 
 class Settings(BaseSettings):
-    ENV: str = Field(default="development")
+    ENV: str = Field(default='development')
 
     # Docs/OpenAPI exposure
-    API_DOCS_ENABLED: bool = Field(default=True, description="Enable docs outside production unless explicitly disabled")
-    API_DOCS_URL: str = Field(default="/docs")
-    API_REDOC_URL: str = Field(default="/redoc")
-    API_OPENAPI_URL: str = Field(default="/openapi.json")
+    API_DOCS_ENABLED: bool = Field(
+        default=True, description='Enable docs outside production unless explicitly disabled'
+    )
+    API_DOCS_URL: str = Field(default='/docs')
+    API_REDOC_URL: str = Field(default='/redoc')
+    API_OPENAPI_URL: str = Field(default='/openapi.json')
 
-    SESSION_COOKIE_NAME: str = Field(default="")
-    CSRF_COOKIE_NAME: str = Field(default="")
-    COOKIE_SAMESITE: str = Field(default="Lax")
+    SESSION_COOKIE_NAME: str = Field(default='')
+    CSRF_COOKIE_NAME: str = Field(default='')
+    COOKIE_SAMESITE: str = Field(default='Lax')
     COOKIE_SECURE: bool = Field(default=True)
 
-    DJANGO_INTERNAL_BASE_URL: str = Field(default="http://django:8000")
+    DJANGO_INTERNAL_BASE_URL: str = Field(default='http://django:8000')
 
-    RATE_LIMIT_REDIS_PREFIX: str = Field(default="rate_limit")
+    RATE_LIMIT_REDIS_PREFIX: str = Field(default='rate_limit')
 
     GOOGLE_OAUTH_CLIENT_ID: Optional[str] = None
     GOOGLE_OAUTH_CLIENT_SECRET: Optional[str] = None
@@ -41,13 +46,13 @@ class Settings(BaseSettings):
 
     AUTH_REFRESH_COOKIE: bool = Field(default=True)
 
-    JWT_SECRET: str = Field(default="")
-    TOKEN_PEPPER: str = Field(default="")
-    JWT_ISSUER: str = Field(default="")
-    JWT_AUDIENCE: str = Field(default="")
-    JWT_EXPIRE_MINUTES: int = Field(default=15, alias="JWT_EXPIRE")
+    JWT_SECRET: str = Field(default='')
+    TOKEN_PEPPER: str = Field(default='')
+    JWT_ISSUER: str = Field(default='')
+    JWT_AUDIENCE: str = Field(default='')
+    JWT_EXPIRE_MINUTES: int = Field(default=15, alias='JWT_EXPIRE')
     REFRESH_TOKEN_TTL_DAYS: int = Field(default=30)
-    FRONTEND_URL: str = Field(default="")
+    FRONTEND_URL: str = Field(default='')
 
     # DB settings (FastAPI side)
     DB_CONNECT_TIMEOUT_SEC: int = Field(default=3)
@@ -62,63 +67,65 @@ class Settings(BaseSettings):
         project = _default_project_slug()
 
         # Derived defaults (avoid hardcoded project identifiers).
-        if not (self.SESSION_COOKIE_NAME or "").strip():
-            object.__setattr__(self, "SESSION_COOKIE_NAME", f"{project}_session")
-        if not (self.CSRF_COOKIE_NAME or "").strip():
-            object.__setattr__(self, "CSRF_COOKIE_NAME", f"{project}_csrf")
-        if not (self.JWT_ISSUER or "").strip():
-            object.__setattr__(self, "JWT_ISSUER", project)
-        if not (self.JWT_AUDIENCE or "").strip():
-            object.__setattr__(self, "JWT_AUDIENCE", project)
+        if not (self.SESSION_COOKIE_NAME or '').strip():
+            object.__setattr__(self, 'SESSION_COOKIE_NAME', f'{project}_session')
+        if not (self.CSRF_COOKIE_NAME or '').strip():
+            object.__setattr__(self, 'CSRF_COOKIE_NAME', f'{project}_csrf')
+        if not (self.JWT_ISSUER or '').strip():
+            object.__setattr__(self, 'JWT_ISSUER', project)
+        if not (self.JWT_AUDIENCE or '').strip():
+            object.__setattr__(self, 'JWT_AUDIENCE', project)
 
         # Normalize pool bounds
         if self.DB_POOL_MIN < 0:
-            object.__setattr__(self, "DB_POOL_MIN", 0)
+            object.__setattr__(self, 'DB_POOL_MIN', 0)
         if self.DB_POOL_MAX < 1:
-            object.__setattr__(self, "DB_POOL_MAX", 1)
+            object.__setattr__(self, 'DB_POOL_MAX', 1)
         if self.DB_POOL_MAX < self.DB_POOL_MIN:
-            object.__setattr__(self, "DB_POOL_MAX", self.DB_POOL_MIN)
+            object.__setattr__(self, 'DB_POOL_MAX', self.DB_POOL_MIN)
 
         # Default docs policy: disabled in production unless explicitly enabled
-        if (self.ENV or "").strip().lower() == "production" and self.API_DOCS_ENABLED:
+        if (self.ENV or '').strip().lower() == 'production' and self.API_DOCS_ENABLED:
             # Keep explicit enable if set; otherwise disable
             # No change needed when explicitly enabled via env
             pass
 
         # Fail-fast in non-local environments.
-        env = (self.ENV or "").strip().lower()
-        if env in {"staging", "production"}:
+        env = (self.ENV or '').strip().lower()
+        if env in {'staging', 'production'}:
             missing = []
-            if not (self.JWT_SECRET or "").strip():
-                missing.append("JWT_SECRET")
-            if not (self.TOKEN_PEPPER or "").strip():
-                missing.append("TOKEN_PEPPER")
-            if not (self.FRONTEND_URL or "").strip():
-                missing.append("FRONTEND_URL")
-            if not (self.OAUTH_STATE_SECRET or "").strip():
-                missing.append("OAUTH_STATE_SECRET")
+            if not (self.JWT_SECRET or '').strip():
+                missing.append('JWT_SECRET')
+            if not (self.TOKEN_PEPPER or '').strip():
+                missing.append('TOKEN_PEPPER')
+            if not (self.FRONTEND_URL or '').strip():
+                missing.append('FRONTEND_URL')
+            if not (self.OAUTH_STATE_SECRET or '').strip():
+                missing.append('OAUTH_STATE_SECRET')
             if missing:
-                raise RuntimeError("Missing required env var(s): " + ", ".join(missing))
+                raise RuntimeError('Missing required env var(s): ' + ', '.join(missing))
 
-            if env == "production":
+            if env == 'production':
                 oauth_missing = []
-                if not (self.GOOGLE_OAUTH_CLIENT_ID or "").strip():
-                    oauth_missing.append("GOOGLE_OAUTH_CLIENT_ID")
-                if not (self.GOOGLE_OAUTH_CLIENT_SECRET or "").strip():
-                    oauth_missing.append("GOOGLE_OAUTH_CLIENT_SECRET")
-                if not (self.GOOGLE_OAUTH_REDIRECT_URI or "").strip():
-                    oauth_missing.append("GOOGLE_OAUTH_REDIRECT_URI")
+                if not (self.GOOGLE_OAUTH_CLIENT_ID or '').strip():
+                    oauth_missing.append('GOOGLE_OAUTH_CLIENT_ID')
+                if not (self.GOOGLE_OAUTH_CLIENT_SECRET or '').strip():
+                    oauth_missing.append('GOOGLE_OAUTH_CLIENT_SECRET')
+                if not (self.GOOGLE_OAUTH_REDIRECT_URI or '').strip():
+                    oauth_missing.append('GOOGLE_OAUTH_REDIRECT_URI')
                 if oauth_missing:
-                    raise RuntimeError("Missing required OAuth env var(s): " + ", ".join(oauth_missing))
+                    raise RuntimeError(
+                        'Missing required OAuth env var(s): ' + ', '.join(oauth_missing)
+                    )
 
-            samesite = (self.COOKIE_SAMESITE or "").strip()
-            if samesite not in {"Lax", "Strict", "None"}:
-                raise RuntimeError(f"Invalid COOKIE_SAMESITE: {samesite}")
+            samesite = (self.COOKIE_SAMESITE or '').strip()
+            if samesite not in {'Lax', 'Strict', 'None'}:
+                raise RuntimeError(f'Invalid COOKIE_SAMESITE: {samesite}')
 
             if self.JWT_EXPIRE_MINUTES < 1:
-                raise RuntimeError("JWT_EXPIRE must be a positive integer (minutes)")
+                raise RuntimeError('JWT_EXPIRE must be a positive integer (minutes)')
             if self.REFRESH_TOKEN_TTL_DAYS < 1:
-                raise RuntimeError("REFRESH_TOKEN_TTL_DAYS must be a positive integer")
+                raise RuntimeError('REFRESH_TOKEN_TTL_DAYS must be a positive integer')
 
 
 settings = Settings()

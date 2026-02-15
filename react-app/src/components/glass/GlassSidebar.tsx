@@ -210,8 +210,10 @@ export const GlassSidebar: React.FC<Props> = ({
                 top: 0,
                 height: '100vh',
                 width: 'calc(min(80vw, 20vw))',
-                borderLeft: edgePosition === 'right' ? '1px solid rgba(255, 255, 255, 0.2)' : 'none',
-                borderRight: edgePosition === 'left' ? '1px solid rgba(255, 255, 255, 0.2)' : 'none',
+                borderLeft:
+                  edgePosition === 'right' ? '1px solid rgba(255, 255, 255, 0.2)' : 'none',
+                borderRight:
+                  edgePosition === 'left' ? '1px solid rgba(255, 255, 255, 0.2)' : 'none',
               }}
             >
               <div className="flex flex-col h-full" style={{ padding: 'calc(2rem) calc(1rem)' }}>
@@ -234,8 +236,24 @@ export const GlassSidebar: React.FC<Props> = ({
                     >
                       {edgePosition === 'left' ? (
                         <>
-                          <rect x="2" y="2" width="7" height="16" rx="2" fill="currentColor" opacity="0.3" />
-                          <rect x="11" y="2" width="7" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" />
+                          <rect
+                            x="2"
+                            y="2"
+                            width="7"
+                            height="16"
+                            rx="2"
+                            fill="currentColor"
+                            opacity="0.3"
+                          />
+                          <rect
+                            x="11"
+                            y="2"
+                            width="7"
+                            height="16"
+                            rx="2"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                          />
                           <path
                             d="M14 10L16 10M16 10L15 9M16 10L15 11"
                             stroke="currentColor"
@@ -246,8 +264,24 @@ export const GlassSidebar: React.FC<Props> = ({
                         </>
                       ) : (
                         <>
-                          <rect x="11" y="2" width="7" height="16" rx="2" fill="currentColor" opacity="0.3" />
-                          <rect x="2" y="2" width="7" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" />
+                          <rect
+                            x="11"
+                            y="2"
+                            width="7"
+                            height="16"
+                            rx="2"
+                            fill="currentColor"
+                            opacity="0.3"
+                          />
+                          <rect
+                            x="2"
+                            y="2"
+                            width="7"
+                            height="16"
+                            rx="2"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                          />
                           <path
                             d="M6 10L4 10M4 10L5 9M4 10L5 11"
                             stroke="currentColor"

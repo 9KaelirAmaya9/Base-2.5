@@ -1,4 +1,3 @@
-
 """digital_ocean/scripts/python/deploy.py
 
 Minimal DigitalOcean droplet deployment script.
@@ -80,7 +79,9 @@ def main():
 
     droplet_id = None
     try:
-        logger.info(f"Creating droplet: name={DO_APP_NAME} region={DO_API_REGION} image={DO_API_IMAGE} size={DO_DROPLET_SIZE}")
+        logger.info(
+            f"Creating droplet: name={DO_APP_NAME} region={DO_API_REGION} image={DO_API_IMAGE} size={DO_DROPLET_SIZE}"
+        )
         resp = client.droplets.create(droplet_spec)
         droplet_id = ((resp or {}).get("droplet") or {}).get("id")
         logger.info(f"Droplet create requested. Droplet ID: {droplet_id}")
@@ -90,7 +91,9 @@ def main():
         # If we already created a droplet and a post-creation step failed, attempt rollback.
         if droplet_id:
             try:
-                logger.warning(f"Post-creation failed; attempting rollback delete of droplet {droplet_id}: {e}")
+                logger.warning(
+                    f"Post-creation failed; attempting rollback delete of droplet {droplet_id}: {e}"
+                )
                 client.droplets.delete(droplet_id)
             except Exception as rollback_err:
                 logger.error(f"Rollback failed for droplet {droplet_id}: {rollback_err}")
@@ -101,11 +104,13 @@ def main():
         print(f"[ERROR] Droplet deployment failed: {e}", file=sys.stderr)
         sys.exit(2)
 
+
 def post_creation_hook():
     """
     Placeholder for post-creation logic. Can be patched in tests to simulate errors after droplet creation.
     """
     pass
+
 
 if __name__ == "__main__":
     main()

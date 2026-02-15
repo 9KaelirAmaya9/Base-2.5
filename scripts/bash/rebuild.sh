@@ -96,4 +96,3 @@ echo ""
 echo "âœ… Build completed successfully!"
 echo ""
 echo "ðŸ’¡ Start services: ./scripts/bash/start.sh"
-

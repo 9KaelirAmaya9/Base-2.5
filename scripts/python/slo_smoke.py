@@ -5,7 +5,9 @@ import time
 import requests
 
 
-def sample_endpoints(base: str, endpoints: list[str], samples: int, timeout: int = 10) -> tuple[int, int, dict[str, int]]:
+def sample_endpoints(
+    base: str, endpoints: list[str], samples: int, timeout: int = 10
+) -> tuple[int, int, dict[str, int]]:
     total = 0
     errors = 0
     status_counts: dict[str, int] = {}
@@ -37,7 +39,9 @@ def main() -> int:
 
     total, errors, status_counts = sample_endpoints(base, endpoints, samples)
     error_rate = errors / max(total, 1)
-    print(f"samples={samples} endpoints={endpoints} total_requests={total} errors={errors} error_rate={error_rate:.4f}")
+    print(
+        f"samples={samples} endpoints={endpoints} total_requests={total} errors={errors} error_rate={error_rate:.4f}"
+    )
     print(f"status_counts={status_counts}")
     if error_rate > max_error_rate:
         print("FAIL: error rate exceeds SLO threshold", file=sys.stderr)

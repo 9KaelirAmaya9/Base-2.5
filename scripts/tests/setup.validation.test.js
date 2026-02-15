@@ -31,7 +31,13 @@ test('setup overwrites .env only after confirmation and creates timestamped back
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'setup-validation-'));
   fs.writeFileSync(
     path.join(root, '.env.example'),
-    ['PROJECT_NAME=change-me', 'ENV=development', 'WEBSITE_DOMAIN=your_website_domain_here.com', 'DEPLOY_MODE=local', 'APPLY_DEV_DEFAULTS=false'].join('\n'),
+    [
+      'PROJECT_NAME=change-me',
+      'ENV=development',
+      'WEBSITE_DOMAIN=your_website_domain_here.com',
+      'DEPLOY_MODE=local',
+      'APPLY_DEV_DEFAULTS=false',
+    ].join('\n'),
     'utf8'
   );
   fs.writeFileSync(path.join(root, '.env'), 'PROJECT_NAME=old\n', 'utf8');

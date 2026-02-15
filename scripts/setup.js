@@ -49,7 +49,14 @@ function printChecklist({ envMap, stdout = console.log }) {
   stdout('');
   stdout('Next steps checklist (required categories):');
 
-  const order = [CATEGORY.Core, CATEGORY.Secrets, CATEGORY.Admin, CATEGORY.Access, CATEGORY.TLS, CATEGORY.SMTP];
+  const order = [
+    CATEGORY.Core,
+    CATEGORY.Secrets,
+    CATEGORY.Admin,
+    CATEGORY.Access,
+    CATEGORY.TLS,
+    CATEGORY.SMTP,
+  ];
   for (const category of order) {
     if (!required.has(category)) continue;
     const issues = byCategory.get(category) ?? [];
@@ -76,9 +83,7 @@ async function runSetup(options = {}) {
         // Lazy-load so unit tests can run without installed deps.
         const inquirer = require('inquirer');
         const resolved =
-          inquirer.prompt ||
-          (inquirer.default && inquirer.default.prompt) ||
-          inquirer.default;
+          inquirer.prompt || (inquirer.default && inquirer.default.prompt) || inquirer.default;
         if (typeof resolved !== 'function') {
           throw new Error('inquirer prompt export not found');
         }
@@ -297,8 +302,14 @@ async function runSetup(options = {}) {
     'TP_TRAEFIK_PASSWORD',
   ];
 
-  const passwordDefaultsEnabled = String(applyPasswordDefaults || '').trim().toLowerCase() === 'true';
-  const nameDefaultsEnabled = String(applyUserDefaults || '').trim().toLowerCase() === 'true';
+  const passwordDefaultsEnabled =
+    String(applyPasswordDefaults || '')
+      .trim()
+      .toLowerCase() === 'true';
+  const nameDefaultsEnabled =
+    String(applyUserDefaults || '')
+      .trim()
+      .toLowerCase() === 'true';
   const passwordDefaultsKeys = new Set([
     'TP_SEED_ADMIN_PASSWORD',
     'TP_SEED_DEMO_PASSWORD',
@@ -329,7 +340,11 @@ async function runSetup(options = {}) {
   }
 
   const existingTraefikUser = existingEnv.TP_TRAEFIK_USERNAME;
-  if (isPlaceholder(existingTraefikUser, 'TP_TRAEFIK_USERNAME') && nameDefaultsEnabled && nameValue) {
+  if (
+    isPlaceholder(existingTraefikUser, 'TP_TRAEFIK_USERNAME') &&
+    nameDefaultsEnabled &&
+    nameValue
+  ) {
     updates.TP_TRAEFIK_USERNAME = nameValue;
   }
 

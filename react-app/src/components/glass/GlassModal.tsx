@@ -41,7 +41,12 @@ export const GlassModal: React.FC<Props> = ({ open, onClose, className, children
   if (!open) return null;
 
   return (
-    <div className="glass-modal-overlay" data-testid="modal-overlay" role="presentation" onClick={onClose}>
+    <div
+      className="glass-modal-overlay"
+      data-testid="modal-overlay"
+      role="presentation"
+      onClick={onClose}
+    >
       <div
         className={['glass', 'glass-modal', className].filter(Boolean).join(' ')}
         role="dialog"
@@ -64,7 +69,12 @@ export const GlassModal: React.FC<Props> = ({ open, onClose, className, children
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
-            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <path
+              d="M6 6l12 12M18 6L6 18"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
           </svg>
         </button>
         {children}

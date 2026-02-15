@@ -1,6 +1,6 @@
 # Phase 0 Research — End-to-End Environment Setup + Deploy UX
 
-**Branch**: 003-env-setup-deploy-ux  
+**Branch**: 003-env-setup-deploy-ux
 **Date**: 2026-02-05
 
 ## Unknowns & Decisions

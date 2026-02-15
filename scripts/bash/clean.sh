@@ -119,13 +119,13 @@ fi
 if [ "$CLEAN_IMAGES" = true ]; then
     echo ""
     echo "ðŸ—‘ï¸  Removing images..."
-    
+
     # Get images that match the current compose project name
     IMAGES=$(docker images --filter=reference="${COMPOSE_PROJECT_NAME}*" -q)
     if [ -z "$IMAGES" ]; then
         IMAGES=$(docker images --filter=reference="*${COMPOSE_PROJECT_NAME}*" -q)
     fi
-    
+
     if [ -z "$IMAGES" ]; then
         echo "â„¹ï¸  No matching images found"
     else
@@ -148,4 +148,3 @@ echo "ðŸ§¹ Cleanup completed!"
 echo ""
 echo "ðŸ’¡ To also clean Docker system resources:"
 echo "   docker system prune -a"
-

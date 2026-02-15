@@ -1,8 +1,8 @@
 # Feature Specification: React Glass UI System + App Shell
 
-**Feature Branch**: `[002-react-design]`  
-**Created**: 2026-01-04  
-**Status**: Draft  
+**Feature Branch**: `[002-react-design]`
+**Created**: 2026-01-04
+**Status**: Draft
 **Input**: User description: "React glassmorphism design system and App Shell: cohesive glass UI components, calc-based layout, accessibility, and Storybook coverage."
 
 ## Clarifications

@@ -14,6 +14,7 @@ param(
   [switch]$Preflight,
   [switch]$RunTests,
   [switch]$AllTests,
+  [switch]$LocalTests,
   [switch]$TestsJson,
   [switch]$RunRateLimitTest,
   [switch]$RunCeleryCheck,
@@ -45,8 +46,9 @@ if ($Help) {
   Write-Host '  -SshUser <user>  SSH user (default: SSH_USER env or root)'
   Write-Host '  -DropletIp <ip>  Override droplet IP detection'
   Write-Host '  -Preflight       Run local validation before deploy'
-  Write-Host '  -RunTests        Run post-deploy tests'
-  Write-Host '  -AllTests        Run full post-deploy + local tests'
+  Write-Host '  -RunTests        Run remote verification tests on the droplet'
+  Write-Host '  -AllTests        Enable extended remote verification (celery/rate-limit)'
+  Write-Host '  -LocalTests      Run local post-deploy tests (test.ps1 + React Jest)'
   Write-Host '  -Timestamped     Create per-run log folders under local_run_logs'
   Write-Host '  -LogsDir <path>  Override artifact directory (default: .\local_run_logs)'
   Write-Host '  -Help, -h        Show this help'
@@ -279,7 +281,7 @@ if [ -z "$PREV" ]; then
   exit 2
 fi
 
-echo "Rolling back to $PREV" 
+echo "Rolling back to $PREV"
 git reset --hard "$PREV" || true
 
 # Recreate core services to match the rolled-back code.
@@ -444,9 +446,12 @@ function Stop-DeployTranscript {
   try {
     if ($script:TranscriptStarted) {
       Stop-Transcript | Out-Null
-      $script:TranscriptStarted = $false
     }
   } catch {}
+  finally {
+    # Ensure we don't leave the flag stuck true if Stop-Transcript fails.
+    $script:TranscriptStarted = $false
+  }
 }
 
 function Finalize-ArtifactDirRename {
@@ -456,17 +461,91 @@ function Finalize-ArtifactDirRename {
     if (-not $script:PendingArtifactRenameTo) { return }
     if (-not $script:ArtifactDir) { return }
     if (-not (Test-Path $script:ArtifactDir)) { return }
+    $sourceDir = $script:ArtifactDir
     if (Test-Path $script:PendingArtifactRenameTo) {
       $script:PendingArtifactRenameTo = ''
       return
     }
-    Move-Item -Path $script:ArtifactDir -Destination $script:PendingArtifactRenameTo -Force
-    $script:ArtifactDir = (Resolve-Path $script:PendingArtifactRenameTo).Path
-    try { $env:DEPLOY_ARTIFACT_DIR = $script:ArtifactDir } catch {}
+    try {
+      Move-Item -Path $script:ArtifactDir -Destination $script:PendingArtifactRenameTo -Force
+      $script:ArtifactDir = (Resolve-Path $script:PendingArtifactRenameTo).Path
+      try { $env:DEPLOY_ARTIFACT_DIR = $script:ArtifactDir } catch {}
+    } catch {
+      # Fallback: copy files if a move isn't possible (e.g., lingering handle).
+      try {
+        if (-not (Test-Path $script:PendingArtifactRenameTo)) {
+          New-Item -ItemType Directory -Path $script:PendingArtifactRenameTo -Force | Out-Null
+        }
+        Copy-Item -Path (Join-Path $script:ArtifactDir '*') -Destination $script:PendingArtifactRenameTo -Recurse -Force -ErrorAction SilentlyContinue
+        $aliasPath = Join-Path $script:PendingArtifactRenameTo 'artifact-alias.txt'
+        Set-Content -Path $aliasPath -Value ("Original artifact path: " + $script:ArtifactDir) -Encoding UTF8
+        $script:ArtifactDir = (Resolve-Path $script:PendingArtifactRenameTo).Path
+        try { $env:DEPLOY_ARTIFACT_DIR = $script:ArtifactDir } catch {}
+        try {
+          if ($sourceDir -and (Test-Path $sourceDir)) {
+            Remove-Item -LiteralPath $sourceDir -Recurse -Force -ErrorAction SilentlyContinue
+          }
+        } catch {}
+      } catch { }
+    }
   } catch {}
   finally {
     $script:PendingArtifactRenameTo = ''
   }
+}
+
+function Cleanup-UnknownArtifactDir {
+  # Best-effort: remove unknown-<timestamp> if a resolved IP folder exists.
+  try {
+    if (-not $script:ArtifactDir) { return }
+    if (-not (Test-Path $script:ArtifactDir)) { return }
+    $leaf = Split-Path -Leaf $script:ArtifactDir
+    if ($leaf -notmatch '^(?:\d{1,3}\.){3}\d{1,3}-') { return }
+    $stamp = $leaf -replace '^(?:\d{1,3}\.){3}\d{1,3}-',''
+    if (-not $stamp) { return }
+    $unknownPath = Join-Path (Split-Path -Parent $script:ArtifactDir) ("unknown-$stamp")
+    if (Test-Path $unknownPath) {
+      Remove-Item -LiteralPath $unknownPath -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  } catch {}
+}
+
+function Force-ArtifactDirRenameWithIp {
+  # Last-resort: rename unknown-<stamp> to <ip>-<stamp> using resolved IP.
+  try {
+    $ip = $script:ResolvedIp
+    if (-not $ip) { $ip = Get-DropletIp }
+    if (-not $ip) { return }
+    if (-not $script:RunStamp) { return }
+    if (-not $LogsDir) { return }
+
+    $unknownPath = Join-Path $LogsDir ("unknown-$script:RunStamp")
+    $targetPath = Join-Path $LogsDir ("$ip-$script:RunStamp")
+
+    if (-not (Test-Path $unknownPath)) { return }
+    if ($unknownPath -eq $targetPath) { return }
+
+    if (-not (Test-Path $targetPath)) {
+      try {
+        Move-Item -Path $unknownPath -Destination $targetPath -Force
+      } catch {
+        try {
+          New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
+          Copy-Item -Path (Join-Path $unknownPath '*') -Destination $targetPath -Recurse -Force -ErrorAction SilentlyContinue
+          $aliasPath = Join-Path $targetPath 'artifact-alias.txt'
+          Set-Content -Path $aliasPath -Value ("Original artifact path: " + $unknownPath) -Encoding UTF8
+          Remove-Item -LiteralPath $unknownPath -Recurse -Force -ErrorAction SilentlyContinue
+        } catch {}
+      }
+    } else {
+      Remove-Item -LiteralPath $unknownPath -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    if (Test-Path $targetPath) {
+      $script:ArtifactDir = (Resolve-Path $targetPath).Path
+      try { $env:DEPLOY_ARTIFACT_DIR = $script:ArtifactDir } catch {}
+    }
+  } catch {}
 }
 
 function Append-RemoteArtifactsToConsoleLog {
@@ -1635,9 +1714,16 @@ print(json.dumps(payload))" > /root/logs/request-id-log-propagation.json 2> /roo
     fi
 
     # Celery roundtrip: enqueue ping and poll for result
+    # Always create placeholder artifacts so tests don't fail on missing files.
+    python3 - <<'PY' > /root/logs/celery-ping.json 2>/dev/null || true
+import json
+print(json.dumps({"skipped": True, "reason": "celery check not executed"}))
+PY
+    python3 - <<'PY' > /root/logs/celery-result.json 2>/dev/null || true
+import json
+print(json.dumps({"skipped": True, "reason": "celery check not executed"}))
+PY
     if [ "${RUN_CELERY_CHECK:-}" = "1" ]; then
-      : > /root/logs/celery-ping.json || true
-      : > /root/logs/celery-result.json || true
       curl -sk "${RESOLVE_DOMAIN[@]}" -X POST "https://$DOMAIN/api/celery/ping" -H 'Content-Type: application/json' -d '{}' -o /root/logs/celery-ping.json || true
       TASK_ID=$(python3 -c "import json;\
 import sys;\
@@ -1653,6 +1739,11 @@ except Exception:\
           fi
           sleep 2
         done
+      else
+        python3 - <<'PY' > /root/logs/celery-result.json 2>/dev/null || true
+import json
+print(json.dumps({"ok": False, "reason": "missing task_id"}))
+PY
       fi
     fi
   fi
@@ -2012,7 +2103,7 @@ try {
     throw $script:EarlyExitSentinel
   }
   Validate-DoCreds
-  
+
   # Default AllTests to UpdateOnly when an environment exists and -Full was not requested.
   $autoSelectedUpdateOnly = $false
   $detectedExistingIp = ''
@@ -2108,7 +2199,7 @@ try {
   # Bundle droplet-side artifacts/logs into a single local file for later review.
   Write-RemoteArtifactsBundle
 
-  if ($RunTests) {
+  if ($LocalTests) {
     Write-Section "Running post-deploy tests"
     $artifactDir = Ensure-ArtifactDir -ip $script:ResolvedIp
     try { $env:DEPLOY_ARTIFACT_DIR = $artifactDir } catch {}
@@ -2267,6 +2358,9 @@ try {
 } finally {
   Stop-DeployTranscript
   Finalize-ArtifactDirRename
+  Force-ArtifactDirRenameWithIp
+  Cleanup-UnknownArtifactDir
+  Organize-ArtifactsByService
   Append-RemoteArtifactsToConsoleLog
 
   # If a manual test runner wrote its JSON output at repo root, sweep it into this run's meta/.
@@ -2284,4 +2378,3 @@ try {
 }
 
 exit $script:ExitCode
-

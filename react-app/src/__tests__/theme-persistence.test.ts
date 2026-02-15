@@ -6,8 +6,12 @@ describe('theme persistence', () => {
     let store = '';
     Object.defineProperty(document, 'cookie', {
       configurable: true,
-      get() { return store; },
-      set(v: string) { store = v; }
+      get() {
+        return store;
+      },
+      set(v: string) {
+        store = v;
+      },
     });
     document.documentElement.classList.remove('dark');
   });

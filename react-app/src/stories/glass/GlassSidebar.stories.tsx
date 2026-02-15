@@ -12,7 +12,7 @@ export default meta;
 type Story = StoryObj<typeof GlassSidebar>;
 
 function setMatchMedia(matches: boolean) {
-  window.matchMedia = ((query: string) =>
+  window.matchMedia = (query: string) =>
     ({
       matches,
       media: query,
@@ -22,7 +22,7 @@ function setMatchMedia(matches: boolean) {
       addEventListener: () => {},
       removeEventListener: () => {},
       dispatchEvent: () => false,
-    }) as unknown as MediaQueryList);
+    }) as unknown as MediaQueryList;
 }
 
 export const DesktopOpen: Story = {

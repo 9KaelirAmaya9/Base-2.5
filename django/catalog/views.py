@@ -13,10 +13,12 @@ def _item_to_dict(item: Item):
     d["created_at"] = item.created_at.isoformat()
     return d
 
+
 @require_http_methods(["GET"])
 def items_list(request):
     items = Item.objects.order_by("-created_at").all()
     return JsonResponse({"items": [_item_to_dict(i) for i in items]})
+
 
 @require_http_methods(["GET"])
 def item_detail(request, item_id: int):
@@ -25,6 +27,7 @@ def item_detail(request, item_id: int):
         return JsonResponse({"item": _item_to_dict(item)})
     except Item.DoesNotExist:
         return JsonResponse({"error": "not_found"}, status=404)
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
