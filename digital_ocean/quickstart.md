@@ -1,4 +1,4 @@
-## Edit/Maintain
+# Edit/Maintain
 
 Run the edit/maintain script to update deployed resources (with `.venv` active):
 
