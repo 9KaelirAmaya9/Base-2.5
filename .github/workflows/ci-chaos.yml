@@ -7,7 +7,7 @@ jobs:
   chaos-smoke:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Print guidance
         run: |
           echo "This workflow is a placeholder for chaos smoke tests."
