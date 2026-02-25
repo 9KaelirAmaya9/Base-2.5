@@ -18,14 +18,14 @@
     "e2e:test": "cd e2e && npm test"
   },
   "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "inquirer": "^9.3.7"
+    "bcryptjs": "^3.0.3",
+    "inquirer": "^13.3.0"
   },
   "devDependencies": {
-    "@commitlint/cli": "^18.4.3",
-    "@commitlint/config-conventional": "^18.4.3",
-    "husky": "^8.0.3",
-    "lint-staged": "^15.2.0"
+    "@commitlint/cli": "^20.4.2",
+    "@commitlint/config-conventional": "^20.4.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7"
   },
   "engines": {
     "node": ">=24.13.1",
