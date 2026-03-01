@@ -47,7 +47,7 @@ cryptography==46.0.3
     # via
     #   google-auth
     #   pyjwt
-fastapi==0.133.0
+fastapi==0.135.0
     # via -r requirements.in
 google-auth==2.48.0
     # via -r requirements.in
@@ -190,7 +190,7 @@ python-dotenv==1.2.1
     #   uvicorn
 pyyaml==6.0.3
     # via uvicorn
-redis==7.2.0
+redis==7.2.1
     # via -r requirements.in
 requests==2.32.5
     # via opentelemetry-exporter-otlp-proto-http
