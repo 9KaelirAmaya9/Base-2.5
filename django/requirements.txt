@@ -12,8 +12,8 @@ asgiref==3.11.0
     #   django-countries
 billiard==4.2.4
     # via celery
-celery[redis]==5.6.2
-    # via -r requirements.in
+celery[redis]==5.6.3
+    # via -r django/requirements.in
 click==8.3.1
     # via
     #   celery
@@ -26,16 +26,16 @@ click-plugins==1.1.1.2
     # via celery
 click-repl==0.3.0
     # via celery
-django==6.0.2
+django==6.0.3
     # via
-    #   -r requirements.in
+    #   -r django/requirements.in
     #   django-phonenumber-field
 django-countries==8.2.0
-    # via -r requirements.in
+    # via -r django/requirements.in
 django-phonenumber-field[phonenumberslite]==8.4.0
-    # via -r requirements.in
-gunicorn==25.1.0
-    # via -r requirements.in
+    # via -r django/requirements.in
+gunicorn==25.3.0
+    # via -r django/requirements.in
 iniconfig==2.3.0
     # via pytest
 kombu[redis]==5.6.1
@@ -52,19 +52,19 @@ pluggy==1.6.0
 prompt-toolkit==3.0.52
     # via click-repl
 psycopg2-binary==2.9.11
-    # via -r requirements.in
+    # via -r django/requirements.in
 pygments==2.19.2
     # via pytest
 pytest==9.0.2
     # via
-    #   -r requirements.in
+    #   -r django/requirements.in
     #   pytest-django
 pytest-django==4.12.0
-    # via -r requirements.in
+    # via -r django/requirements.in
 python-dateutil==2.9.0.post0
     # via celery
-python-dotenv==1.2.1
-    # via -r requirements.in
+python-dotenv==1.2.2
+    # via -r django/requirements.in
 redis==6.4.0
     # via kombu
 six==1.17.0
