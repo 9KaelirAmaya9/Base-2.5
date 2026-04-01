@@ -4,7 +4,7 @@
   "private": true,
   "description": "E2E tests (Playwright)",
   "devDependencies": {
-    "@playwright/test": "^1.58.2"
+    "@playwright/test": "^1.59.1"
   },
   "scripts": {
     "test": "playwright test",
