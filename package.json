@@ -19,13 +19,13 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
-    "inquirer": "^13.3.0"
+    "inquirer": "^13.3.2"
   },
   "devDependencies": {
-    "@commitlint/cli": "^20.4.2",
-    "@commitlint/config-conventional": "^20.4.2",
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "husky": "^9.1.7",
-    "lint-staged": "^16.2.7"
+    "lint-staged": "^16.4.0"
   },
   "engines": {
     "node": ">=24.13.1",
