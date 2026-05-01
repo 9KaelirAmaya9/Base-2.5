@@ -19,7 +19,7 @@ asgiref==3.11.0
     # via opentelemetry-instrumentation-asgi
 billiard==4.2.4
     # via celery
-celery==5.6.2
+celery==5.6.3
     # via -r requirements.in
 certifi==2025.11.12
     # via
@@ -47,9 +47,9 @@ cryptography==46.0.3
     # via
     #   google-auth
     #   pyjwt
-fastapi==0.133.0
+fastapi==0.136.1
     # via -r requirements.in
-google-auth==2.48.0
+google-auth==2.50.0
     # via -r requirements.in
 googleapis-common-protos==1.72.0
     # via
@@ -57,7 +57,7 @@ googleapis-common-protos==1.72.0
     #   opentelemetry-exporter-otlp-proto-http
 grpcio==1.76.0
     # via opentelemetry-exporter-otlp-proto-grpc
-gunicorn==25.1.0
+gunicorn==25.3.0
     # via -r requirements.in
 h11==0.16.0
     # via
@@ -153,30 +153,28 @@ protobuf==6.33.2
     # via
     #   googleapis-common-protos
     #   opentelemetry-proto
-psycopg2-binary==2.9.11
+psycopg2-binary==2.9.12
     # via -r requirements.in
 pyasn1==0.6.1
-    # via
-    #   pyasn1-modules
-    #   rsa
+    # via pyasn1-modules
 pyasn1-modules==0.4.2
     # via google-auth
 pycparser==2.23
     # via cffi
-pydantic==2.12.5
+pydantic==2.13.3
     # via
     #   -r requirements.in
     #   fastapi
     #   pydantic-settings
-pydantic-core==2.41.5
+pydantic-core==2.46.3
     # via pydantic
-pydantic-settings==2.13.1
+pydantic-settings==2.14.0
     # via -r requirements.in
 pygments==2.19.2
     # via pytest
-pyjwt[crypto]==2.11.0
+pyjwt[crypto]==2.12.1
     # via -r requirements.in
-pytest==9.0.2
+pytest==9.0.3
     # via
     #   -r requirements.in
     #   pytest-asyncio
@@ -190,12 +188,10 @@ python-dotenv==1.2.1
     #   uvicorn
 pyyaml==6.0.3
     # via uvicorn
-redis==7.2.0
+redis==7.4.0
     # via -r requirements.in
 requests==2.32.5
     # via opentelemetry-exporter-otlp-proto-http
-rsa==4.9.1
-    # via google-auth
 six==1.17.0
     # via python-dateutil
 starlette==0.50.0
@@ -226,7 +222,7 @@ tzlocal==5.3.1
     # via celery
 urllib3==2.6.2
     # via requests
-uvicorn[standard]==0.41.0
+uvicorn[standard]==0.46.0
     # via -r requirements.in
 uvloop==0.22.1
     # via uvicorn
