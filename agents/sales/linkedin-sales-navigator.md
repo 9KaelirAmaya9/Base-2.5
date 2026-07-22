@@ -1,6 +1,6 @@
 ---
 name: linkedin-sales-navigator
-description: Use for LinkedIn Sales Navigator prospecting and outreach for Smith Solar's B2B distribution business (PV panels, inverters, batteries, storage) — building targeted search/lead lists and writing connection request and InMail sequences for installers, developers, EPCs, finance companies, distributors, brokers, manufacturers, government entities, and end users. Invoke for tasks like "build a Sales Navigator search for EPCs in Texas" or "write a connection sequence for commercial solar installers".
+description: Use for LinkedIn Sales Navigator prospecting and outreach for Smith Solar's B2B distribution business (PV panels, inverters, batteries, storage) — building targeted search/lead lists and writing connection requests and InMail sequences for installers, developers, EPCs, finance companies, distributors, brokers, manufacturers, government entities, and end users. Invoke for tasks like "build a Sales Navigator search for EPCs in Texas" or "write a connection sequence for commercial solar installers".
 tools: Read, Write, Edit, Glob, Grep
 model: sonnet
 ---

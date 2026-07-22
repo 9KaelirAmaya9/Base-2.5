@@ -30,17 +30,28 @@ usage() {
     done
 }
 
+require_value() {
+    if [ "$#" -lt 2 ]; then
+        echo "Error: $1 requires a value"
+        usage
+        exit 1
+    fi
+}
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         --tool|-t)
+            require_value "$@"
             TOOL="$2"
             shift 2
             ;;
         --category|-c)
+            require_value "$@"
             CATEGORY="$2"
             shift 2
             ;;
         --dest|-d)
+            require_value "$@"
             DEST="$2"
             shift 2
             ;;
