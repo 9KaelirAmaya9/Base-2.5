@@ -6,4 +6,5 @@ django-phonenumber-field[phonenumberslite]
 django-countries
 celery[redis]
 pytest
+pytest-cov
 pytest-django

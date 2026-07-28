@@ -434,6 +434,30 @@ Fresh clone: install these versions before running builds/tests.
 - See CONTRIBUTING.md for dev flow, commit style, and PR guidance.
 - See docs/RELEASE.md for tagging and deploy validation.
 
+## 🤖 Claude Code Agents
+
+This repo ships a library of custom [Claude Code](https://docs.claude.com/en/docs/claude-code) subagents in `agents/`, organized by division (`engineering`, `product`, `design`, `marketing`, `sales`, `finance`, `legal`, `operations`). The `engineering` division is tailored to this project's actual stack (Django, React, Playwright, Docker/Traefik/DigitalOcean, Postgres).
+
+Install all agents to your Claude Code directory:
+
+```bash
+./scripts/install.sh --tool claude-code
+```
+
+Or manually copy a category if you only want one division:
+
+```bash
+cp agents/engineering/*.md ~/.claude/agents/
+```
+
+Then activate any agent in your Claude Code sessions:
+
+```
+"Hey Claude, activate Frontend Developer mode and help me build a React component"
+```
+
+Run `./scripts/install.sh --help` for all options, including `--category` to install a single division and `--dest` to override the target directory.
+
 ## 🛠️ Troubleshooting
 
 If you encounter issues running scripts:
